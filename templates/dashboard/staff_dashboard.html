@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitiGo Staff Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .vitigo-primary {
+            background-color: #1b5f9f;
+        }
+        .vitigo-secondary {
+            background-color: #80d0fa;
+        }
+        .wood-bg {
+            background-color: #eee5d7;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="vitigo-primary text-white w-64 flex-shrink-0">
+            <div class="p-4">
+                <h1 class="text-2xl font-bold">VitiGo Staff</h1>
+            </div>
+            <nav class="mt-6">
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700 bg-blue-800">
+                    <i class="fas fa-home mr-2"></i>Dashboard
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-user-friends mr-2"></i>Patients
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-calendar-alt mr-2"></i>Appointments
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-flask mr-2"></i>Lab Results
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-pills mr-2"></i>Treatments
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-chart-bar mr-2"></i>Analytics
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-cog mr-2"></i>Settings
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Navigation -->
+            <header class="bg-white shadow-sm">
+                <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-gray-800">Staff Dashboard</h2>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600 mr-4">Dr. Sarah Johnson</span>
+                        <button class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-gray-300 transition duration-300">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+                <div class="container mx-auto px-6 py-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <!-- Quick Stats -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center vitigo-secondary bg-opacity-20">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-blue-500">
+                                <i class="fas fa-user-friends text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Total Patients</h3>
+                                <p class="text-3xl font-bold text-gray-800">1,284</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center wood-bg">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-green-500">
+                                <i class="fas fa-calendar-check text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Appointments Today</h3>
+                                <p class="text-3xl font-bold text-gray-800">28</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center vitigo-secondary bg-opacity-20">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-yellow-500">
+                                <i class="fas fa-flask text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Pending Lab Results</h3>
+                                <p class="text-3xl font-bold text-gray-800">13</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center wood-bg">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-purple-500">
+                                <i class="fas fa-lightbulb text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Active Treatments</h3>
+                                <p class="text-3xl font-bold text-gray-800">156</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Appointment Schedule -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Today's Appointments</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Time</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Patient</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Type</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">09:00 AM</td>
+                                            <td class="px-4 py-2 text-sm">John Doe</td>
+                                            <td class="px-4 py-2 text-sm">Check-up</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Confirmed</span></td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">10:30 AM</td>
+                                            <td class="px-4 py-2 text-sm">Jane Smith</td>
+                                            <td class="px-4 py-2 text-sm">Phototherapy</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs">Waiting</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">11:45 AM</td>
+                                            <td class="px-4 py-2 text-sm">Robert Brown</td>
+                                            <td class="px-4 py-2 text-sm">Consultation</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">In Progress</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Appointments</button>
+                        </div>
+
+                        <!-- Treatment Progress Chart -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Treatment Progress Overview</h3>
+                            <canvas id="treatmentProgressChart" height="250"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Recent Lab Results -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Recent Lab Results</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Patient</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Test</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Result</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">Emily Clark</td>
+                                            <td class="px-4 py-2 text-sm">Vitamin D</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Normal</span></td>
+                                            <td class="px-4 py-2 text-sm">Oct 12, 2024</td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">Michael Lee</td>
+                                            <td class="px-4 py-2 text-sm">Thyroid Function</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs">Borderline</span></td>
+                                            <td class="px-4 py-2 text-sm">Oct 11, 2024</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">Sarah Johnson</td>
+                                            <td class="px-4 py-2 text-sm">Autoimmune Panel</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">Abnormal</span></td>
+                                            <td class="px-4 py-2 text-sm">Oct 10, 2024</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Lab Results</button>
+                        </div>
+
+                        <!-- Notifications -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Notifications</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-blue-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">New patient registration: Alex Thompson</p>
+                                        <p class="text-xs text-gray-500">2 hours ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-yellow-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Medication stock alert: Low on Tacrolimus ointment</p>
+                                        <p class="text-xs text-gray-500">5 hours ago</p>
+                                        </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-green-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Lab results ready for patient: Emily Clark</p>
+                                        <p class="text-xs text-gray-500">1 day ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-red-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Missed appointment: John Doe (Rescheduling required)</p>
+                                        <p class="text-xs text-gray-500">2 days ago</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Notifications</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Treatment Progress Chart
+        const ctx = document.getElementById('treatmentProgressChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Phototherapy', 'Topical Treatments', 'Oral Medications', 'Combination Therapy', 'Surgical'],
+                datasets: [{
+                    label: 'Number of Patients',
+                    data: [65, 59, 80, 81, 56],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Current Treatment Distribution'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

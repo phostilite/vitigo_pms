@@ -1,0 +1,8 @@
+<!-- templates/error_handling/400.html -->
+{% extends "error_handling/base_error.html" %}
+
+{% block title %}400 Bad Request{% endblock %}
+{% block error_code %}400{% endblock %}
+{% block error_message %}
+    Oops! The request couldn't be understood by the server due to malformed syntax.
+{% endblock %}

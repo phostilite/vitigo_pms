@@ -1,0 +1,8 @@
+<!-- templates/error_handling/500.html -->
+{% extends "error_handling/base_error.html" %}
+
+{% block title %}500 Internal Server Error{% endblock %}
+{% block error_code %}500{% endblock %}
+{% block error_message %}
+    Oops! Something went wrong on our end. We're working to fix it.
+{% endblock %}
