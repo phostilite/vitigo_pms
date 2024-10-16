@@ -35,7 +35,3 @@ class ErrorLogAdmin(admin.ModelAdmin):
         return False
 
 
-# Customize admin site
-admin.site.site_header = "VitiGo Error Handling"
-admin.site.site_title = "VitiGo Error Admin"
-admin.site.index_title = "Welcome to VitiGo Error Handling System"

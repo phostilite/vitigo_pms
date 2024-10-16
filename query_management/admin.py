@@ -72,8 +72,3 @@ class QueryAttachmentAdmin(admin.ModelAdmin):
     search_fields = ('query__subject', 'file')
     autocomplete_fields = ['query']
 
-
-# Customize admin site header and title
-admin.site.site_header = "VitiGo Patient Management System"
-admin.site.site_title = "VitiGo PMS Admin"
-admin.site.index_title = "Welcome to VitiGo PMS Admin Portal"

@@ -69,8 +69,3 @@ class ImageAnnotationAdmin(admin.ModelAdmin):
         if obj:  # editing an existing object
             return self.readonly_fields + ('image', 'created_by', 'created_at')
         return self.readonly_fields
-
-# Customize admin site
-admin.site.site_header = "VitiGo Image Management"
-admin.site.site_title = "VitiGo Image Admin"
-admin.site.index_title = "Welcome to VitiGo Image Management System"

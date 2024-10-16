@@ -61,7 +61,3 @@ class HomePhototherapyLogAdmin(admin.ModelAdmin):
         return obj.plan.patient.user.get_full_name()
     plan_patient.short_description = 'Patient'
 
-# Customize admin site
-admin.site.site_header = "VitiGo Phototherapy Management"
-admin.site.site_title = "VitiGo Phototherapy Admin"
-admin.site.index_title = "Welcome to VitiGo Phototherapy Management System"

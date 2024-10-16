@@ -62,8 +62,3 @@ class LabReportCommentAdmin(admin.ModelAdmin):
     def comment_preview(self, obj):
         return obj.comment[:50] + '...' if len(obj.comment) > 50 else obj.comment
     comment_preview.short_description = 'Comment Preview'
-
-# Customize admin site
-admin.site.site_header = "VitiGo Lab Management"
-admin.site.site_title = "VitiGo Lab Admin"
-admin.site.index_title = "Welcome to VitiGo Lab Management System"

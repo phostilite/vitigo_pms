@@ -67,8 +67,3 @@ class TelemedicinevirtualWaitingRoomAdmin(admin.ModelAdmin):
     list_display = ('patient', 'teleconsultation', 'joined_at', 'is_active')
     list_filter = ('is_active', 'joined_at')
     search_fields = ('patient__user__first_name', 'patient__user__last_name', 'teleconsultation__doctor__first_name', 'teleconsultation__doctor__last_name')
-
-# Customize admin site
-admin.site.site_header = "VitiGo Telemedicine Management"
-admin.site.site_title = "VitiGo Telemedicine Admin"
-admin.site.index_title = "Welcome to VitiGo Telemedicine Management System"

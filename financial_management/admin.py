@@ -118,8 +118,3 @@ class FinancialReportAdmin(admin.ModelAdmin):
         if not change:
             obj.generated_by = request.user
         super().save_model(request, obj, form, change)
-
-# Customize admin site
-admin.site.site_header = "VitiGo Financial Management"
-admin.site.site_title = "VitiGo Finance Admin"
-admin.site.index_title = "Welcome to VitiGo Financial Management System"

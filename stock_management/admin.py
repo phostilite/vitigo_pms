@@ -66,8 +66,3 @@ class StockAuditAdmin(admin.ModelAdmin):
     list_filter = ('audit_date',)
     search_fields = ('item__name', 'notes')
     readonly_fields = ('audit_date',)
-
-# Customize admin site
-admin.site.site_header = "VitiGo Stock Management"
-admin.site.site_title = "VitiGo Stock Admin"
-admin.site.index_title = "Welcome to VitiGo Stock Management System"

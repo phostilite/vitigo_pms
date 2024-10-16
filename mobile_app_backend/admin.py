@@ -60,8 +60,3 @@ class MobileNotificationAdmin(admin.ModelAdmin):
     list_filter = ('is_read', 'created_at')
     search_fields = ('user__first_name', 'user__last_name', 'user__email', 'title', 'message')
     readonly_fields = ('created_at',)
-
-# Customize admin site
-admin.site.site_header = "VitiGo Mobile App Backend"
-admin.site.site_title = "VitiGo Mobile Admin"
-admin.site.index_title = "Welcome to VitiGo Mobile App Management"

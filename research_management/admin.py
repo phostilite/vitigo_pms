@@ -70,8 +70,3 @@ class PublicationAdmin(admin.ModelAdmin):
 # Registering the remaining models
 admin.site.register(StudyProtocol)
 admin.site.register(DataCollectionPoint)
-
-# Customize admin site
-admin.site.site_header = "VitiGo Research Management"
-admin.site.site_title = "VitiGo Research Admin"
-admin.site.index_title = "Welcome to VitiGo Research Management System"

@@ -75,8 +75,3 @@ class AnalyticsLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
-
-# Customize admin site
-admin.site.site_header = "VitiGo Reporting and Analytics"
-admin.site.site_title = "VitiGo Reports Admin"
-admin.site.index_title = "Welcome to VitiGo Reporting and Analytics System"

@@ -62,7 +62,3 @@ class ProcedureImageAdmin(admin.ModelAdmin):
     list_filter = ('uploaded_at',)
     search_fields = ('procedure__patient__user__first_name', 'procedure__patient__user__last_name', 'procedure__procedure_type__name', 'caption')
 
-# Customize admin site
-admin.site.site_header = "VitiGo Procedure Management"
-admin.site.site_title = "VitiGo Procedure Admin"
-admin.site.index_title = "Welcome to VitiGo Procedure Management System"

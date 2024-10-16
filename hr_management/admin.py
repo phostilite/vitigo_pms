@@ -90,7 +90,3 @@ class TrainingAttendanceAdmin(admin.ModelAdmin):
     'employee__user__first_name', 'employee__user__last_name', 'employee__employee_id', 'training__title')
 
 
-# Customize admin site
-admin.site.site_header = "VitiGo HR Management"
-admin.site.site_title = "VitiGo HR Admin"
-admin.site.index_title = "Welcome to VitiGo HR Management System"
