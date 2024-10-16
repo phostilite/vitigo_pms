@@ -26,7 +26,7 @@
 <body class="bg-gray-100">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div class="vitigo-primary text-white w-64 flex-shrink-0">
+        <div class="vitigo-primary text-white w-64 flex-shrink-0 overflow-y-auto">
             <div class="p-4">
                 <h1 class="text-2xl font-bold">VitiGo Staff</h1>
             </div>
@@ -50,6 +50,21 @@
                     <i class="fas fa-chart-bar mr-2"></i>Analytics
                 </a>
                 <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-comments mr-2"></i>Query Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-camera mr-2"></i>Image Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-sun mr-2"></i>Phototherapy
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-video mr-2"></i>Telemedicine
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-file-medical mr-2"></i>Research
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
                     <i class="fas fa-cog mr-2"></i>Settings
                 </a>
             </nav>
@@ -63,7 +78,9 @@
                     <h2 class="text-xl font-semibold text-gray-800">Staff Dashboard</h2>
                     <div class="flex items-center">
                         <span class="text-sm text-gray-600 mr-4">Dr. Sarah Johnson</span>
-                        <button class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-gray-300 transition duration-300">Logout</button>
+                        <button class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-gray-300 transition duration-300">
+                            <a href="{% url 'logout' %}">Logout</a>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -144,6 +161,60 @@
                                             <td class="px-4 py-2 text-sm">Consultation</td>
                                             <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">In Progress</span></td>
                                         </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">02:00 PM</td>
+                                            <td class="px-4 py-2 text-sm">Emily Clark</td>
+                                            <td class="px-4 py-2 text-sm">Telemedicine</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs">Scheduled</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">03:15 PM</td>
+                                            <td class="px-4 py-2 text-sm">Michael Lee</td>
+                                            <td class="px-4 py-2 text-sm">Follow-up</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Confirmed</span></td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">04:30 PM</td>
+                                            <td class="px-4 py-2 text-sm">Sarah Johnson</td>
+                                            <td class="px-4 py-2 text-sm">Consultation</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs">Waiting</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">05:45 PM</td>
+                                            <td class="px-4 py-2 text-sm">David Wilson</td>
+                                            <td class="px-4 py-2 text-sm">Check-up</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">In Progress</span></td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">07:00 PM</td>
+                                            <td class="px-4 py-2 text-sm">Laura Martinez</td>
+                                            <td class="px-4 py-2 text-sm">Telemedicine</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs">Scheduled</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">08:15 PM</td>
+                                            <td class="px-4 py-2 text-sm">James Anderson</td>
+                                            <td class="px-4 py-2 text-sm">Follow-up</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Confirmed</span></td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">09:30 PM</td>
+                                            <td class="px-4 py-2 text-sm">Patricia Brown</td>
+                                            <td class="px-4 py-2 text-sm">Consultation</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs">Waiting</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">10:45 PM</td>
+                                            <td class="px-4 py-2 text-sm">Charles Davis</td>
+                                            <td class="px-4 py-2 text-sm">Check-up</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">In Progress</span></td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">11:59 PM</td>
+                                            <td class="px-4 py-2 text-sm">Linda Harris</td>
+                                            <td class="px-4 py-2 text-sm">Telemedicine</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs">Scheduled</span></td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -157,7 +228,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                         <!-- Recent Lab Results -->
                         <div class="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
                             <h3 class="text-xl font-semibold text-gray-800 mb-4">Recent Lab Results</h3>
@@ -184,11 +255,34 @@
                                             <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs">Borderline</span></td>
                                             <td class="px-4 py-2 text-sm">Oct 11, 2024</td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-4 py-2 text-sm">Sarah Johnson</td>
+                                        <td class="px-4 py-2 text-sm">Sarah Johnson</td>
                                             <td class="px-4 py-2 text-sm">Autoimmune Panel</td>
                                             <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">Abnormal</span></td>
                                             <td class="px-4 py-2 text-sm">Oct 10, 2024</td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">David Wilson</td>
+                                            <td class="px-4 py-2 text-sm">Complete Blood Count</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Normal</span></td>
+                                            <td class="px-4 py-2 text-sm">Oct 9, 2024</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">Anna White</td>
+                                            <td class="px-4 py-2 text-sm">Liver Function</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Normal</span></td>
+                                            <td class="px-4 py-2 text-sm">Oct 8, 2024</td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">John Doe</td>
+                                            <td class="px-4 py-2 text-sm">Cholesterol</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs">Borderline</span></td>
+                                            <td class="px-4 py-2 text-sm">Oct 7, 2024</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">Jane Smith</td>
+                                            <td class="px-4 py-2 text-sm">Blood Sugar</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">High</span></td>
+                                            <td class="px-4 py-2 text-sm">Oct 6, 2024</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -212,7 +306,7 @@
                                     <div>
                                         <p class="text-sm font-medium text-gray-800">Medication stock alert: Low on Tacrolimus ointment</p>
                                         <p class="text-xs text-gray-500">5 hours ago</p>
-                                        </div>
+                                    </div>
                                 </li>
                                 <li class="flex items-start">
                                     <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-green-500 rounded-full"></span>
@@ -228,8 +322,76 @@
                                         <p class="text-xs text-gray-500">2 days ago</p>
                                     </div>
                                 </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-purple-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">New telemedicine consultation request</p>
+                                        <p class="text-xs text-gray-500">3 days ago</p>
+                                    </div>
+                                </li>
                             </ul>
                             <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Notifications</button>
+                        </div>
+                    </div>
+
+                    <!-- Additional Sections -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Recent Queries -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Recent Queries</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-blue-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Treatment options for widespread vitiligo</p>
+                                        <p class="text-xs text-gray-500">From: patient@example.com</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-green-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Appointment rescheduling request</p>
+                                        <p class="text-xs text-gray-500">From: johndoe@example.com</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-yellow-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Side effects of phototherapy</p>
+                                        <p class="text-xs text-gray-500">From: newpatient@example.com</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Queries</button>
+                        </div>
+
+                        <!-- Upcoming Procedures -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Upcoming Procedures</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-purple-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Skin Biopsy - Sarah Johnson</p>
+                                        <p class="text-xs text-gray-500">Scheduled for: Oct 18, 2024</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-blue-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Narrowband UVB Therapy - Michael Lee</p>
+                                        <p class="text-xs text-gray-500">Scheduled for: Oct 20, 2024</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-green-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Excimer Laser Treatment - Emily Clark</p>
+                                        <p class="text-xs text-gray-500">Scheduled for: Oct 22, 2024</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Procedures</button>
                         </div>
                     </div>
                 </div>

@@ -6,7 +6,36 @@ from django.core.exceptions import ValidationError
 User = get_user_model()
 
 class UserRegistrationForm(UserCreationForm):
-    email = forms.EmailField(max_length=254, help_text='Required. Enter a valid email address.')
+    email = forms.EmailField(
+        max_length=254,
+        help_text='Required. Enter a valid email address.',
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
+            'placeholder': 'you@example.com'
+        })
+    )
+    first_name = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]'
+        })
+    )
+    last_name = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]'
+        })
+    )
+    password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
+            'placeholder': '••••••••'
+        })
+    )
+    password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
+            'placeholder': '••••••••'
+        })
+    )
 
     class Meta:
         model = User
@@ -26,8 +55,18 @@ class UserRegistrationForm(UserCreationForm):
         return user
 
 class UserLoginForm(forms.Form):
-    email = forms.EmailField()
-    password = forms.CharField(widget=forms.PasswordInput)
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
+            'placeholder': 'you@example.com'
+        })
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
+            'placeholder': '••••••••'
+        })
+    )
 
     def clean_email(self):
         email = self.cleaned_data['email']

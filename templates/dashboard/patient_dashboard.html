@@ -99,6 +99,73 @@
                 <button class="mt-4 w-full bg-purple-500 text-white py-2 rounded-md hover:bg-purple-600 transition duration-300">View All Lab Results</button>
             </div>
 
+            <!-- Medication Schedule -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-pills mr-2 text-red-500"></i>Medication Schedule</h2>
+                <ul class="space-y-3">
+                    <li class="flex justify-between items-center bg-white p-3 rounded-md shadow-sm">
+                        <div>
+                            <p class="font-medium">Tacrolimus Ointment</p>
+                            <p class="text-sm text-gray-600">Apply twice daily</p>
+                        </div>
+                        <span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Active</span>
+                    </li>
+                    <li class="flex justify-between items-center bg-white p-3 rounded-md shadow-sm">
+                        <div>
+                            <p class="font-medium">Vitamin D3 Supplement</p>
+                            <p class="text-sm text-gray-600">Take once daily with food</p>
+                        </div>
+                        <span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">Active</span>
+                    </li>
+                </ul>
+                <button class="mt-4 w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition duration-300">View Full Medication List</button>
+            </div>
+
+            <!-- Treatment Timeline -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-history mr-2 text-indigo-500"></i>Treatment Timeline</h2>
+                <ul class="space-y-4">
+                    <li class="flex">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center">
+                            <i class="fas fa-flag text-white"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="font-medium">Treatment Started</p>
+                            <p class="text-sm text-gray-600">August 15, 2024</p>
+                        </div>
+                    </li>
+                    <li class="flex">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                            <i class="fas fa-check text-white"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="font-medium">First Improvement Noticed</p>
+                            <p class="text-sm text-gray-600">September 20, 2024</p>
+                        </div>
+                    </li>
+                    <li class="flex">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                            <i class="fas fa-sync text-white"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="font-medium">Treatment Adjustment</p>
+                            <p class="text-sm text-gray-600">October 5, 2024</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Vitiligo Image Tracker -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-camera mr-2 text-pink-500"></i>Vitiligo Image Tracker</h2>
+                <div class="grid grid-cols-3 gap-4">
+                    <img src="/api/placeholder/100/100" alt="Vitiligo progress" class="w-full h-auto rounded-md shadow-sm">
+                    <img src="/api/placeholder/100/100" alt="Vitiligo progress" class="w-full h-auto rounded-md shadow-sm">
+                    <img src="/api/placeholder/100/100" alt="Vitiligo progress" class="w-full h-auto rounded-md shadow-sm">
+                </div>
+                <button class="mt-4 w-full bg-pink-500 text-white py-2 rounded-md hover:bg-pink-600 transition duration-300">Upload New Image</button>
+            </div>
+
             <!-- Educational Resources -->
             <div class="bg-white rounded-lg shadow-md p-6 md:col-span-2 lg:col-span-3">
                 <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-book-reader mr-2 text-yellow-500"></i>Educational Resources</h2>
@@ -117,6 +184,25 @@
                         <h3 class="font-medium text-blue-800">Coping with Vitiligo</h3>
                         <p class="text-sm text-blue-700 mt-2">Tips and strategies for managing the emotional aspects of living with vitiligo.</p>
                         <a href="#" class="text-sm text-blue-600 hover:underline mt-2 inline-block">Read More</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support Group -->
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-2 lg:col-span-3">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-users mr-2 text-teal-500"></i>Support Group</h2>
+                <p class="text-gray-600 mb-4">Connect with others who are living with vitiligo. Share experiences, tips, and support each other on your journey.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-teal-100 p-4 rounded-md">
+                        <h3 class="font-medium text-teal-800">Upcoming Virtual Meetup</h3>
+                        <p class="text-sm text-teal-700 mt-2">Join our monthly virtual support group meeting.</p>
+                        <p class="text-sm font-medium text-teal-800 mt-1">Date: October 30, 2024 | Time: 7:00 PM</p>
+                        <button class="mt-2 bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 transition duration-300">Join Meeting</button>
+                    </div>
+                    <div class="bg-teal-100 p-4 rounded-md">
+                        <h3 class="font-medium text-teal-800">Discussion Forum</h3>
+                        <p class="text-sm text-teal-700 mt-2">Participate in our online forum to connect with others, ask questions, and share your experiences.</p>
+                        <button class="mt-2 bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 transition duration-300">Access Forum</button>
                     </div>
                 </div>
             </div>
@@ -143,6 +229,13 @@
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.formattedValue + '%';
+                            }
+                        }
                     }
                 }
             }
@@ -165,6 +258,76 @@
             easing: 'easeOutElastic(1, .5)',
             duration: 1500,
             delay: 300
+        });
+
+        // Treatment Timeline Animation
+        anime({
+            targets: '.treatment-timeline li',
+            opacity: [0, 1],
+            translateX: [-20, 0],
+            delay: anime.stagger(200),
+            easing: 'easeOutQuad',
+            duration: 800
+        });
+
+        // Medication Schedule Highlight
+        const highlightMedication = () => {
+            anime({
+                targets: '.medication-item',
+                backgroundColor: ['#ffffff', '#e0f2fe', '#ffffff'],
+                duration: 1000,
+                easing: 'easeInOutQuad',
+                loop: true
+            });
+        };
+
+        // Call the function to start the animation
+        highlightMedication();
+
+        // Image Tracker Hover Effect
+        const imageTrackerItems = document.querySelectorAll('.vitiligo-image-tracker img');
+        imageTrackerItems.forEach(item => {
+            item.addEventListener('mouseover', () => {
+                anime({
+                    targets: item,
+                    scale: 1.1,
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
+            item.addEventListener('mouseout', () => {
+                anime({
+                    targets: item,
+                    scale: 1,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
+        });
+
+        // Educational Resources Card Hover Effect
+        const educationalCards = document.querySelectorAll('.educational-resource');
+        educationalCards.forEach(card => {
+            card.addEventListener('mouseover', () => {
+                anime({
+                    targets: card,
+                    translateY: -5,
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
+            card.addEventListener('mouseout', () => {
+                anime({
+                    targets: card,
+                    translateY: 0,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
         });
     </script>
 </body>

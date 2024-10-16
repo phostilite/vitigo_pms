@@ -1,7 +1,408 @@
-{% extends "./base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitiGo Administrator Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .vitigo-primary {
+            background-color: #1b5f9f;
+        }
+        .vitigo-secondary {
+            background-color: #80d0fa;
+        }
+        .wood-bg {
+            background-color: #eee5d7;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="vitigo-primary text-white w-64 flex-shrink-0 overflow-y-auto">
+            <div class="p-4">
+                <h1 class="text-2xl font-bold">VitiGo Admin</h1>
+            </div>
+            <nav class="mt-6">
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700 bg-blue-800">
+                    <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-users-cog mr-2"></i>User Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-user-friends mr-2"></i>Patient Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-calendar-alt mr-2"></i>Appointment Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-question-circle mr-2"></i>Query Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-stethoscope mr-2"></i>Consultation Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-pills mr-2"></i>Pharmacy Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-boxes mr-2"></i>Stock Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-procedures mr-2"></i>Procedure Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-sun mr-2"></i>Phototherapy Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-images mr-2"></i>Image Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-flask mr-2"></i>Lab Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-microscope mr-2"></i>Research Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-video mr-2"></i>Telemedicine Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-money-bill-wave mr-2"></i>Financial Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-user-tie mr-2"></i>HR Management
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-chart-line mr-2"></i>Reporting and Analytics
+                </a>
+                <a href="#" class="block py-2 px-4 text-gray-200 hover:bg-blue-700">
+                    <i class="fas fa-cogs mr-2"></i>System Settings
+                </a>
+            </nav>
+        </div>
 
-{% block content %}
-<h1>Admin Dashboard</h1>
-<p>Welcome, Administrator {{ user.get_full_name }}!</p>
-<!-- Add more admin-specific content here -->
-{% endblock %}
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Navigation -->
+            <header class="bg-white shadow-sm">
+                <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-gray-800">Administrator Dashboard</h2>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600 mr-4">Dr. Holla (Admin)</span>
+                        <button class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-gray-300 transition duration-300">
+                            <a href="{% url 'logout' %}">Logout</a>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+                <div class="container mx-auto px-6 py-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <!-- Quick Stats -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center vitigo-secondary bg-opacity-20">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-blue-500">
+                                <i class="fas fa-users text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Total Users</h3>
+                                <p class="text-3xl font-bold text-gray-800">1,523</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center wood-bg">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-green-500">
+                                <i class="fas fa-user-friends text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Active Patients</h3>
+                                <p class="text-3xl font-bold text-gray-800">1,284</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center vitigo-secondary bg-opacity-20">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-yellow-500">
+                                <i class="fas fa-calendar-check text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Today's Appointments</h3>
+                                <p class="text-3xl font-bold text-gray-800">42</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-sm p-6 flex items-center wood-bg">
+                            <div class="rounded-full h-12 w-12 flex items-center justify-center bg-purple-500">
+                                <i class="fas fa-money-bill-wave text-white text-2xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-700">Monthly Revenue</h3>
+                                <p class="text-3xl font-bold text-gray-800">₹15.2L</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Left Column: System Health and Quick Actions -->
+                        <div class="space-y-8">
+                            <!-- System Health -->
+                            <div class="bg-white rounded-lg shadow-sm p-6">
+                                <h3 class="text-xl font-semibold text-gray-800 mb-4">System Health</h3>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-600">Server Uptime</span>
+                                        <span class="text-sm font-semibold text-green-600">99.9%</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-600">Database Status</span>
+                                        <span class="text-sm font-semibold text-green-600">Healthy</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-600">Last Backup</span>
+                                        <span class="text-sm font-semibold text-blue-600">2 hours ago</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-600">Active Sessions</span>
+                                        <span class="text-sm font-semibold text-blue-600">128</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-600">SSL Certificate</span>
+                                        <span class="text-sm font-semibold text-green-600">Valid (Expires in 45 days)</span>
+                                    </div>
+                                </div>
+                                <button class="mt-6 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View Detailed Report</button>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="bg-white rounded-lg shadow-sm p-6">
+                                <h3 class="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300 flex items-center justify-center">
+                                        <i class="fas fa-user-plus mr-2"></i>Add User
+                                    </button>
+                                    <button class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300 flex items-center justify-center">
+                                        <i class="fas fa-database mr-2"></i>Backup Now
+                                    </button>
+                                    <button class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition duration-300 flex items-center justify-center">
+                                        <i class="fas fa-cog mr-2"></i>System Settings
+                                    </button>
+                                    <button class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition duration-300 flex items-center justify-center">
+                                        <i class="fas fa-file-alt mr-2"></i>Generate Report
+                                    </button>
+                                    <button class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-300 flex items-center justify-center">
+                                        <i class="fas fa-bell mr-2"></i>Send Notification
+                                    </button>
+                                    <button class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition duration-300 flex items-center justify-center">
+                                        <i class="fas fa-lock mr-2"></i>Security Audit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: User Activity Chart -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">User Activity (Last 7 Days)</h3>
+                            <canvas id="userActivityChart" height="250"></canvas>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                        <!-- Recent System Logs -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Recent System Logs</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Timestamp</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Level</th>
+                                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-600">Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">2024-10-16 15:32:10</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs">WARNING</span></td>
+                                            <td class="px-4 py-2 text-sm">High CPU usage detected</td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">2024-10-16 15:30:05</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs">INFO</span></td>
+                                            <td class="px-4 py-2 text-sm">Database backup completed successfully</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm">2024-10-16 15:28:30</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">ERROR</span></td>
+                                            <td class="px-4 py-2 text-sm">Failed login attempt from IP: 192.168.1.100</td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-4 py-2 text-sm">2024-10-16 15:25:15</td>
+                                            <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">DEBUG</span></td>
+                                            <td class="px-4 py-2 text-sm">User session created for ID: 1052</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Logs</button>
+                        </div>
+
+                        <!-- System Notifications -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">System Notifications</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-red-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Critical: Security update available</p>
+                                        <p class="text-xs text-gray-500">10 minutes ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-yellow-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Warning: Database approaching 80% capacity</p>
+                                        <p class="text-xs text-gray-500">1 hour ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-green-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Info: 5 new user registrations today</p>
+                                        <p class="text-xs text-gray-500">3 hours ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-blue-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Update: Daily system backup completed</p>
+                                        <p class="text-xs text-gray-500">12 hours ago</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Notifications</button>
+                        </div>
+                    </div>
+
+                    <!-- Additional Sections -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Recent User Activities -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Recent User Activities</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-blue-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Dr. Sarah Johnson logged in</p>
+                                        <p class="text-xs text-gray-500">5 minutes ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-green-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">New patient record created by Nurse Emily</p>
+                                        <p class="text-xs text-gray-500">20 minutes ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-yellow-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Appointment rescheduled by Receptionist Alex</p>
+                                        <p class="text-xs text-gray-500">1 hour ago</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-2 h-2 mt-1 mr-2 bg-purple-500 rounded-full"></span>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">Lab results uploaded by Technician Mike</p>
+                                        <p class="text-xs text-gray-500">2 hours ago</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View All Activities</button>
+                        </div>
+
+                        <!-- System Performance -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">System Performance</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium text-gray-700">CPU Usage</span>
+                                        <span class="text-sm font-medium text-gray-700">65%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: 65%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium text-gray-700">Memory Usage</span>
+                                        <span class="text-sm font-medium text-gray-700">48%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-green-600 h-2.5 rounded-full" style="width: 48%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium text-gray-700">Disk Usage</span>
+                                        <span class="text-sm font-medium text-gray-700">72%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-yellow-600 h-2.5 rounded-full" style="width: 72%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium text-gray-700">Network Bandwidth</span>
+                                        <span class="text-sm font-medium text-gray-700">33%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-purple-600 h-2.5 rounded-full" style="width: 33%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="mt-6 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">View Detailed Metrics</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // User Activity Chart
+        const ctx = document.getElementById('userActivityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'User Logins',
+                    data: [65, 59, 80, 81, 56, 55, 40],
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Daily User Activity'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

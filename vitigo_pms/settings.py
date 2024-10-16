@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'reporting_and_analytics',
     'mobile_app_backend',
     'error_handling',
+    'website',
 ]
 
 MIDDLEWARE = [
