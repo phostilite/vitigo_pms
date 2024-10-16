@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'rest_framework.authtoken',
-    'django_ratelimit',
+    # 'django_ratelimit',
 
     # Custom apps
     'user_management',
