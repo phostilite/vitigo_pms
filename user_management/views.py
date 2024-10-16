@@ -11,7 +11,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 class UserRegistrationView(View):
-    @method_decorator(ratelimit(key='ip', rate='5/m', method=['POST', 'GET']))
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
@@ -38,7 +37,6 @@ class UserRegistrationView(View):
         return render(request, 'user_management/register.html', {'form': form})
 
 class UserLoginView(View):
-    @method_decorator(ratelimit(key='ip', rate='5/m', method=['POST', 'GET']))
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
 
@@ -69,7 +67,6 @@ class UserLoginView(View):
     def redirect_based_on_role(self, user):
         return redirect('dashboard')
 
-@ratelimit(key='ip', rate='5/m', method=['POST', 'GET'])
 def user_logout(request):
     if request.user.is_authenticated:
         logger.info(f"User logged out: {request.user.email} (Role: {request.user.role}) from IP: {get_client_ip(request)}")

@@ -228,6 +228,9 @@ LOGGING = {
 # RATELIMIT_USE_CACHE = 'default'
 # RATELIMIT_FAIL_OPEN = False
 
+# RATELIMIT_IP_META_KEY = 'HTTP_X_REAL_IP'
+# RATELIMIT_USE_CACHE = 'default'
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
