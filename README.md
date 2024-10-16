@@ -23,8 +23,6 @@
 
 VitiGo Patient Management System is a comprehensive software solution designed to streamline and enhance the operations of vitiligo treatment centers. This system comprises a desktop application for doctors, staff, and administrators, as well as a mobile application for patients.
 
-Developed by [Priyanshu Sharma](https://github.com/phostilite)
-
 ## 🚀 Features
 
 - 👥 **Multi-user Role-based Access Control**
