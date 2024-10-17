@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .serializers import UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer, SubscriptionSerializer
+from .serializers import (UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer,
+                          SubscriptionSerializer, BasicUserInfoUpdateSerializer)
 from django.contrib.auth import get_user_model
 
 from .custom_auth import CustomTokenAuthentication
@@ -94,3 +95,29 @@ class UserInfoView(APIView):
             response_data['message'] = f"User role is {user.role}. Additional role-specific data will be implemented in the future."
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class BasicUserInfoUpdateAPIView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        user = request.user
+        serializer = BasicUserInfoUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            # Check if password is being updated
+            if 'password' in serializer.validated_data:
+                user.set_password(serializer.validated_data['password'])
+                serializer.validated_data.pop('password')
+
+            serializer.save()
+            return Response({
+                'status': 'success',
+                'message': 'User information updated successfully',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response({
+            'status': 'error',
+            'message': 'Update failed',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
