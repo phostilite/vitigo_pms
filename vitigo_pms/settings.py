@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'error_handling',
     'website',
     'api',
+    'subscription_management',
 ]
 
 MIDDLEWARE = [

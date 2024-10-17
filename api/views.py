@@ -2,9 +2,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny
-from .serializers import UserRegistrationSerializer, UserLoginSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .serializers import UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer, SubscriptionSerializer
 from django.contrib.auth import get_user_model
+
+from patient_management.models import Patient
+from subscription_management.models import Subscription
 
 User = get_user_model()
 
@@ -55,3 +58,35 @@ class UserLoginAPIView(APIView):
             'message': 'Login failed',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserInfoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        user_data = CustomUserSerializer(user).data
+
+        if user.role == 'PATIENT':
+            try:
+                patient = Patient.objects.get(user=user)
+                subscription = Subscription.objects.get(user=user)
+
+                patient_data = PatientSerializer(patient).data
+                subscription_data = SubscriptionSerializer(subscription).data
+
+                return Response({
+                    'user': user_data,
+                    'patient': patient_data,
+                    'subscription': subscription_data
+                }, status=status.HTTP_200_OK)
+            except Patient.DoesNotExist:
+                return Response({'error': 'Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            except Subscription.DoesNotExist:
+                return Response({'error': 'Subscription not found'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # For non-patient roles, return a sample response
+            return Response({
+                'user': user_data,
+                'message': f'User role is {user.role}. Additional data will be implemented in future.'
+            }, status=status.HTTP_200_OK)

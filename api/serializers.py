@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
+from patient_management.models import Patient
+from subscription_management.models import Subscription
 
 User = get_user_model()
 
@@ -34,3 +36,25 @@ class UserLoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Unable to log in with provided credentials.")
         else:
             raise serializers.ValidationError("Must include 'email' and 'password'.")
+
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'is_active', 'date_joined']
+
+
+class PatientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Patient
+        fields = ['date_of_birth', 'gender', 'blood_group', 'address', 'phone_number',
+                  'emergency_contact_name', 'emergency_contact_number', 'vitiligo_onset_date',
+                  'vitiligo_type', 'affected_body_areas']
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    tier_name = serializers.CharField(source='tier.name')
+
+    class Meta:
+        model = Subscription
+        fields = ['tier_name', 'start_date', 'end_date', 'is_active', 'is_trial']
