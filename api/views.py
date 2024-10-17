@@ -7,6 +7,10 @@ from .serializers import (UserRegistrationSerializer, UserLoginSerializer, Custo
                           SubscriptionSerializer, BasicUserInfoUpdateSerializer)
 from django.contrib.auth import get_user_model
 
+from django.contrib.auth import get_user_model
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 from .custom_auth import CustomTokenAuthentication
 from patient_management.models import Patient
 from subscription_management.models import Subscription
@@ -16,6 +20,11 @@ User = get_user_model()
 class UserRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        request_body=UserRegistrationSerializer,
+        responses={201: openapi.Response('User registered successfully', UserRegistrationSerializer)},
+        operation_description="Register a new user"
+    )
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
@@ -40,6 +49,11 @@ class UserRegistrationAPIView(APIView):
 class UserLoginAPIView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        request_body=UserLoginSerializer,
+        responses={200: openapi.Response('Login successful', UserLoginSerializer)},
+        operation_description="Login a user"
+    )
     def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -66,6 +80,10 @@ class UserInfoView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        responses={200: openapi.Response('User information', CustomUserSerializer)},
+        operation_description="Get user information"
+    )
     def get(self, request):
         user = request.user
         user_data = CustomUserSerializer(user).data
@@ -101,6 +119,11 @@ class BasicUserInfoUpdateAPIView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=BasicUserInfoUpdateSerializer,
+        responses={200: openapi.Response('User information updated successfully', BasicUserInfoUpdateSerializer)},
+        operation_description="Update basic user information"
+    )
     def put(self, request):
         user = request.user
         serializer = BasicUserInfoUpdateSerializer(user, data=request.data, partial=True)
