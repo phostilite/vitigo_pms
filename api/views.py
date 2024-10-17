@@ -66,27 +66,29 @@ class UserInfoView(APIView):
     def get(self, request):
         user = request.user
         user_data = CustomUserSerializer(user).data
+        response_data = {'user': user_data}
 
+        # Attempt to get patient data
+        try:
+            patient = Patient.objects.get(user=user)
+            response_data['patient'] = PatientSerializer(patient).data
+        except Patient.DoesNotExist:
+            response_data['patient'] = None
+
+        # Attempt to get subscription data
+        try:
+            subscription = Subscription.objects.get(user=user)
+            response_data['subscription'] = SubscriptionSerializer(subscription).data
+        except Subscription.DoesNotExist:
+            response_data['subscription'] = None
+
+        # Add role-specific message
         if user.role == 'PATIENT':
-            try:
-                patient = Patient.objects.get(user=user)
-                subscription = Subscription.objects.get(user=user)
-
-                patient_data = PatientSerializer(patient).data
-                subscription_data = SubscriptionSerializer(subscription).data
-
-                return Response({
-                    'user': user_data,
-                    'patient': patient_data,
-                    'subscription': subscription_data
-                }, status=status.HTTP_200_OK)
-            except Patient.DoesNotExist:
-                return Response({'error': 'Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
-            except Subscription.DoesNotExist:
-                return Response({'error': 'Subscription not found'}, status=status.HTTP_404_NOT_FOUND)
+            if response_data['patient'] is None:
+                response_data['message'] = "Patient profile not found. Please complete your profile."
+            elif response_data['subscription'] is None:
+                response_data['message'] = "No active subscription found. Please subscribe to access full features."
         else:
-            # For non-patient roles, return a sample response
-            return Response({
-                'user': user_data,
-                'message': f'User role is {user.role}. Additional data will be implemented in future.'
-            }, status=status.HTTP_200_OK)
+            response_data['message'] = f"User role is {user.role}. Additional role-specific data will be implemented in the future."
+
+        return Response(response_data, status=status.HTTP_200_OK)
