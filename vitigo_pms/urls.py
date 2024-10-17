@@ -24,6 +24,7 @@ urlpatterns = [
     path('', include('website.urls')),
     path('accounts/', include('user_management.urls')),
     path('dashboard/', include('dashboard.urls')),
+    path('api/', include('api.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 handler400 = 'error_handling.views.handler400'
