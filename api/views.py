@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .serializers import UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer, SubscriptionSerializer
 from django.contrib.auth import get_user_model
 
+from .custom_auth import CustomTokenAuthentication
 from patient_management.models import Patient
 from subscription_management.models import Subscription
 
@@ -61,6 +62,7 @@ class UserLoginAPIView(APIView):
 
 
 class UserInfoView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

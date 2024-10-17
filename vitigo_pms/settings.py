@@ -171,7 +171,7 @@ AUTH_USER_MODEL = 'user_management.CustomUser'
 # Rest Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'api.custom_auth.CustomTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     # 'DEFAULT_PERMISSION_CLASSES': [
