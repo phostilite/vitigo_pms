@@ -1,3 +1,4 @@
+import logging
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,6 +17,7 @@ from patient_management.models import Patient
 from subscription_management.models import Subscription
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class UserRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
@@ -126,21 +128,31 @@ class BasicUserInfoUpdateAPIView(APIView):
     )
     def put(self, request):
         user = request.user
-        serializer = BasicUserInfoUpdateSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            # Check if password is being updated
-            if 'password' in serializer.validated_data:
-                user.set_password(serializer.validated_data['password'])
-                serializer.validated_data.pop('password')
+        serializer = BasicUserInfoUpdateSerializer(user, data=request.data, partial=True, context={'request': request})
+        try:
+            if serializer.is_valid():
+                # Check if password is being updated
+                if 'password' in serializer.validated_data:
+                    user.set_password(serializer.validated_data['password'])
+                    serializer.validated_data.pop('password')
 
-            serializer.save()
+                serializer.save()
+                logger.info(f"User {user.id} information updated successfully")
+                return Response({
+                    'status': 'success',
+                    'message': 'User information updated successfully',
+                    'data': serializer.data
+                }, status=status.HTTP_200_OK)
+            else:
+                logger.warning(f"User {user.id} update failed: {serializer.errors}")
+                return Response({
+                    'status': 'error',
+                    'message': 'Update failed',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Error updating user {user.id} information: {str(e)}", exc_info=True)
             return Response({
-                'status': 'success',
-                'message': 'User information updated successfully',
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
-        return Response({
-            'status': 'error',
-            'message': 'Update failed',
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+                'status': 'error',
+                'message': 'An unexpected error occurred'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
