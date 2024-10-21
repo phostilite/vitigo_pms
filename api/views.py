@@ -15,12 +15,12 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.core.mail import send_mail
 from .custom_auth import CustomTokenAuthentication
-from patient_management.models import Patient
 from subscription_management.models import Subscription
 from django.utils.encoding import force_bytes
-from django.views.generic import TemplateView
 from django.shortcuts import render
 from django.utils import timezone
+from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
+from patient_management.serializers import MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -307,3 +307,61 @@ class PasswordResetConfirmView(APIView):
                 return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({"error": "Invalid reset link"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PatientInfoView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response('Patient information', PatientSerializer),
+            404: 'Patient not found',
+            500: 'Internal server error'
+        },
+        operation_description="Get comprehensive patient information"
+    )
+    def get(self, request):
+        user = request.user
+        if user.role != 'PATIENT':
+            return Response({"error": "Only patients can access this information"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            patient = Patient.objects.get(user=user)
+            response_data = self.get_patient_data(patient)
+            return Response(response_data, status=status.HTTP_200_OK)
+        except Patient.DoesNotExist:
+            logger.warning(f"Patient profile not found for user {user.id}")
+            return Response({"error": "Patient profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error retrieving patient information for user {user.id}: {str(e)}")
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get_patient_data(self, patient):
+        data = {
+            "patient": PatientSerializer(patient).data,
+            "medical_history": self.get_medical_history(patient),
+            "medications": self.get_medications(patient),
+            "vitiligo_assessments": self.get_vitiligo_assessments(patient),
+            "treatment_plans": self.get_treatment_plans(patient)
+        }
+        return data
+
+    def get_medical_history(self, patient):
+        try:
+            medical_history = MedicalHistory.objects.get(patient=patient)
+            return MedicalHistorySerializer(medical_history).data
+        except MedicalHistory.DoesNotExist:
+            return None
+
+    def get_medications(self, patient):
+        medications = Medication.objects.filter(patient=patient)
+        return MedicationSerializer(medications, many=True).data
+
+    def get_vitiligo_assessments(self, patient):
+        assessments = VitiligoAssessment.objects.filter(patient=patient).order_by('-assessment_date')
+        return VitiligoAssessmentSerializer(assessments, many=True).data
+
+    def get_treatment_plans(self, patient):
+        plans = TreatmentPlan.objects.filter(patient=patient).order_by('-created_date')
+        return TreatmentPlanSerializer(plans, many=True).data

@@ -5,6 +5,17 @@ from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name', 'is_active', 'date_joined', 'role']
+        read_only_fields = ['id', 'date_joined', 'is_active']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['full_name'] = instance.get_full_name()
+        return representation
+
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
