@@ -15,9 +15,10 @@ from pathlib import Path
 
 load_dotenv()
 
+DJANGO_ENV = os.getenv('DJANGO_ENV', 'development')
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -191,7 +192,7 @@ LOGGING = {
             'style': '{',
         },
         'simple': {
-            'format': '{levelname} {message}',
+            'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
     },
@@ -203,7 +204,7 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG',  # Changed from INFO to DEBUG
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
@@ -214,10 +215,14 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'user_management': {
+        'user_management': {  # This should match the name of your app
             'handlers': ['file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
+        },
+        '': {  # Root logger
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',
         },
     },
 }
@@ -234,6 +239,8 @@ LOGGING = {
 # RATELIMIT_IP_META_KEY = 'HTTP_X_REAL_IP'
 # RATELIMIT_USE_CACHE = 'default'
 
+FRONTEND_URL = os.getenv('FRONTEND_URL')
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -247,3 +254,12 @@ CACHES = {
 # Redis as session backend for better performance
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
+
+# Email settings for Gmail
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND')
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
