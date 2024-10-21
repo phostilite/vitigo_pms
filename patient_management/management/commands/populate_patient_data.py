@@ -64,6 +64,7 @@ class Command(BaseCommand):
         )
 
     def create_medications(self, patient):
+        doctor = self.get_or_create_doctor()
         medications = [
             {'name': 'Tacrolimus', 'dosage': '0.1% ointment', 'frequency': 'Twice daily'},
             {'name': 'Vitamin D3', 'dosage': '1000 IU', 'frequency': 'Once daily'},
@@ -75,10 +76,11 @@ class Command(BaseCommand):
                 dosage=med['dosage'],
                 frequency=med['frequency'],
                 start_date=timezone.now().date() - timedelta(days=30),
-                prescribed_by=patient.user
+                prescribed_by=doctor
             )
 
     def create_vitiligo_assessments(self, patient):
+        doctor = self.get_or_create_doctor()
         for i in range(3):
             VitiligoAssessment.objects.create(
                 patient=patient,
@@ -87,15 +89,31 @@ class Command(BaseCommand):
                 vasi_score=random.uniform(0, 50),
                 treatment_response='Moderate improvement',
                 notes='Patient responding well to current treatment',
-                assessed_by=patient.user
+                assessed_by=doctor
             )
 
     def create_treatment_plan(self, patient):
+        doctor = self.get_or_create_doctor()
         TreatmentPlan.objects.create(
             patient=patient,
             treatment_goals='Repigmentation of affected areas',
             phototherapy_details='NB-UVB therapy, 3 times per week',
             lifestyle_recommendations='Regular sun protection, stress management',
             follow_up_frequency='Every 2 months',
-            created_by=patient.user
+            created_by=doctor
         )
+
+    def get_or_create_doctor(self):
+        doctor, created = User.objects.get_or_create(
+            email='doctor@example.com',
+            defaults={
+                'first_name': 'John',
+                'last_name': 'Doe',
+                'role': 'DOCTOR',
+                'is_staff': True
+            }
+        )
+        if created:
+            doctor.set_password('password123')  # Set a default password
+            doctor.save()
+        return doctor
