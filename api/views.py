@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .serializers import (UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer,
                           SubscriptionSerializer, BasicUserInfoUpdateSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer)
 from django.conf import settings
+from subscription_management.models import Subscription, SubscriptionTier
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth import get_user_model
@@ -19,6 +20,7 @@ from subscription_management.models import Subscription
 from django.utils.encoding import force_bytes
 from django.views.generic import TemplateView
 from django.shortcuts import render
+from django.utils import timezone
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -32,10 +34,31 @@ class UserRegistrationAPIView(APIView):
         operation_description="Register a new user"
     )
     def post(self, request):
+        logger.info("Received user registration request")
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
+
+            if user.role == 'PATIENT':
+                logger.info(f"Creating free subscription for patient: {user.email}")
+                try:
+                    free_tier = SubscriptionTier.objects.get(name='Free')
+                    subscription = Subscription.objects.create(
+                        user=user,
+                        tier=free_tier,
+                        start_date=timezone.now(),
+                        end_date=timezone.now() + timezone.timedelta(days=free_tier.duration_days),
+                        is_trial=True,
+                        trial_end_date=timezone.now() + timezone.timedelta(days=free_tier.duration_days)
+                    )
+                    logger.info(f"Free subscription created for patient: {user.email}")
+                except SubscriptionTier.DoesNotExist:
+                    logger.error("Free subscription tier not found")
+                except Exception as e:
+                    logger.error(f"Error creating free subscription for patient: {user.email}. Error: {str(e)}")
+
+            logger.info(f"User registered successfully: {user.email}")
             return Response({
                 'status': 'success',
                 'message': 'User registered successfully',
@@ -46,6 +69,8 @@ class UserRegistrationAPIView(APIView):
                     'role': user.role
                 }
             }, status=status.HTTP_201_CREATED)
+
+        logger.warning(f"User registration failed. Errors: {serializer.errors}")
         return Response({
             'status': 'error',
             'message': 'Registration failed',
@@ -167,7 +192,13 @@ class PasswordResetRequestView(APIView):
     serializer_class = PasswordResetRequestSerializer
 
     @swagger_auto_schema(
-        request_body=PasswordResetRequestSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email address for password reset')
+            },
+        ),
         responses={
             200: openapi.Response(
                 description="Password reset email sent successfully",
@@ -185,14 +216,6 @@ class PasswordResetRequestView(APIView):
                     }
                 }
             ),
-            500: openapi.Response(
-                description="Internal server error",
-                examples={
-                    "application/json": {
-                        "error": "An unexpected error occurred. Please try again later."
-                    }
-                }
-            )
         },
         operation_description="Request a password reset link to be sent to the provided email address."
     )
