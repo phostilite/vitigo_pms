@@ -400,3 +400,19 @@ class DoctorListView(APIView):
         except Exception as e:
             logger.error(f"Error retrieving doctors: {str(e)}", exc_info=True)
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class DoctorDetailView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, doctor_id):
+        try:
+            doctor = User.objects.get(id=doctor_id, role='DOCTOR')
+            serializer = CustomUserSerializer(doctor)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error retrieving doctor details for ID {doctor_id}: {str(e)}", exc_info=True)
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
