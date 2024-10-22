@@ -408,3 +408,30 @@ class UserAppointmentsView(APIView):
         except Exception as e:
             logger.error(f"Error retrieving appointments for user {user.id}: {str(e)}")
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class UserAppointmentDetailView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response('Appointment details', AppointmentSerializer),
+            404: 'Appointment not found',
+            500: 'Internal server error'
+        },
+        operation_description="Get details of a single appointment for the authenticated user"
+    )
+    def get(self, request, appointment_id):
+        user = request.user
+        if user.role != 'PATIENT':
+            return Response({"error": "Only patients can access this information"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            appointment = Appointment.objects.get(id=appointment_id, patient=user)
+            response_data = AppointmentSerializer(appointment).data
+            return Response(response_data, status=status.HTTP_200_OK)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error retrieving appointment {appointment_id} for user {user.id}: {str(e)}")
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
