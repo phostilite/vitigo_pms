@@ -24,7 +24,7 @@ from .custom_auth import CustomTokenAuthentication
 
 # Serializers
 from .serializers import (
-    UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer,
+    UserRegistrationSerializer, UserLoginSerializer, PatientSerializer,
     SubscriptionSerializer, BasicUserInfoUpdateSerializer, PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer
 )
@@ -34,6 +34,7 @@ from patient_management.serializers import (
 from appointment_management.serializers import (
     AppointmentSerializer, TimeSlotSerializer
 )
+from user_management.serializers import CustomUserSerializer
 
 # Models
 from subscription_management.models import Subscription, SubscriptionTier
@@ -384,4 +385,18 @@ class AvailableTimeSlotsView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error retrieving available time slots for date {date}: {str(e)}")
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class DoctorListView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            doctors = User.objects.filter(role='DOCTOR')
+            serializer = CustomUserSerializer(doctors, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving doctors: {str(e)}", exc_info=True)
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

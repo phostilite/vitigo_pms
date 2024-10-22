@@ -37,6 +37,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='PATIENT')
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
 
     objects = CustomUserManager()
 

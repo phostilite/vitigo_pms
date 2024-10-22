@@ -237,6 +237,8 @@ LOGGING = {
 
 FRONTEND_URL = os.getenv('FRONTEND_URL')
 
+BASE_URL = os.getenv('BASE_URL')
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",

@@ -39,11 +39,6 @@ class UserLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Must include 'email' and 'password'.")
 
 
-class CustomUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'is_active', 'date_joined']
-
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
