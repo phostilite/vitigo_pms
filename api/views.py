@@ -46,11 +46,6 @@ logger = logging.getLogger(__name__)
 class UserRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(
-        request_body=UserRegistrationSerializer,
-        responses={201: openapi.Response('User registered successfully', UserRegistrationSerializer)},
-        operation_description="Register a new user"
-    )
     def post(self, request):
         logger.info("Received user registration request")
         serializer = UserRegistrationSerializer(data=request.data)
@@ -98,11 +93,6 @@ class UserRegistrationAPIView(APIView):
 class UserLoginAPIView(APIView):
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(
-        request_body=UserLoginSerializer,
-        responses={200: openapi.Response('Login successful', UserLoginSerializer)},
-        operation_description="Login a user"
-    )
     def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -129,10 +119,6 @@ class UserInfoView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        responses={200: openapi.Response('User information', CustomUserSerializer)},
-        operation_description="Get user information"
-    )
     def get(self, request):
         user = request.user
         user_data = CustomUserSerializer(user).data
@@ -168,11 +154,6 @@ class BasicUserInfoUpdateAPIView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        request_body=BasicUserInfoUpdateSerializer,
-        responses={200: openapi.Response('User information updated successfully', BasicUserInfoUpdateSerializer)},
-        operation_description="Update basic user information"
-    )
     def put(self, request):
         user = request.user
         serializer = BasicUserInfoUpdateSerializer(user, data=request.data, partial=True, context={'request': request})
@@ -209,34 +190,6 @@ class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
     serializer_class = PasswordResetRequestSerializer
 
-    @swagger_auto_schema(
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['email'],
-            properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email address for password reset')
-            },
-        ),
-        responses={
-            200: openapi.Response(
-                description="Password reset email sent successfully",
-                examples={
-                    "application/json": {
-                        "message": "If an account exists with this email, a password reset link has been sent."
-                    }
-                }
-            ),
-            400: openapi.Response(
-                description="Bad request",
-                examples={
-                    "application/json": {
-                        "email": ["This field is required."]
-                    }
-                }
-            ),
-        },
-        operation_description="Request a password reset link to be sent to the provided email address."
-    )
     def post(self, request):
         logger.info("Password reset request received")
         serializer = self.serializer_class(data=request.data)
@@ -331,14 +284,6 @@ class PatientInfoView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        responses={
-            200: openapi.Response('Patient information', PatientSerializer),
-            404: 'Patient not found',
-            500: 'Internal server error'
-        },
-        operation_description="Get comprehensive patient information"
-    )
     def get(self, request):
         user = request.user
         if user.role != 'PATIENT':
@@ -388,14 +333,6 @@ class UserAppointmentsView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        responses={
-            200: openapi.Response('List of appointments', AppointmentSerializer(many=True)),
-            404: 'Appointments not found',
-            500: 'Internal server error'
-        },
-        operation_description="Get all appointments for the authenticated user"
-    )
     def get(self, request):
         user = request.user
         if user.role != 'PATIENT':
@@ -416,14 +353,6 @@ class UserAppointmentDetailView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        responses={
-            200: openapi.Response('Appointment details', AppointmentSerializer),
-            404: 'Appointment not found',
-            500: 'Internal server error'
-        },
-        operation_description="Get details of a single appointment for the authenticated user"
-    )
     def get(self, request, appointment_id):
         user = request.user
         if user.role != 'PATIENT':
@@ -444,17 +373,6 @@ class AvailableTimeSlotsView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter('date', openapi.IN_QUERY, description="Date to check available time slots", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE)
-        ],
-        responses={
-            200: openapi.Response('List of available time slots', TimeSlotSerializer(many=True)),
-            400: 'Bad Request',
-            500: 'Internal server error'
-        },
-        operation_description="Get available time slots for a given date"
-    )
     def get(self, request):
         date = request.query_params.get('date')
         if not date:
