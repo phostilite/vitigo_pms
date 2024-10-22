@@ -10,6 +10,9 @@ class TimeSlot(models.Model):
 
     def __str__(self):
         return f"{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}"
+    
+    def is_available(self, date):
+        return not Appointment.objects.filter(date=date, time_slot=self).exists()
 
 
 class Appointment(models.Model):

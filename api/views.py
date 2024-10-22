@@ -26,16 +26,19 @@ from .custom_auth import CustomTokenAuthentication
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer,
     SubscriptionSerializer, BasicUserInfoUpdateSerializer, PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer, AppointmentSerializer
+    PasswordResetConfirmSerializer
 )
 from patient_management.serializers import (
     MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
+)
+from appointment_management.serializers import (
+    AppointmentSerializer, TimeSlotSerializer
 )
 
 # Models
 from subscription_management.models import Subscription, SubscriptionTier
 from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
-from appointment_management.models import Appointment
+from appointment_management.models import Appointment, TimeSlot
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -434,4 +437,33 @@ class UserAppointmentDetailView(APIView):
             return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error retrieving appointment {appointment_id} for user {user.id}: {str(e)}")
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class AvailableTimeSlotsView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter('date', openapi.IN_QUERY, description="Date to check available time slots", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE)
+        ],
+        responses={
+            200: openapi.Response('List of available time slots', TimeSlotSerializer(many=True)),
+            400: 'Bad Request',
+            500: 'Internal server error'
+        },
+        operation_description="Get available time slots for a given date"
+    )
+    def get(self, request):
+        date = request.query_params.get('date')
+        if not date:
+            return Response({"error": "Date parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            available_time_slots = [time_slot for time_slot in TimeSlot.objects.all() if time_slot.is_available(date)]
+            response_data = TimeSlotSerializer(available_time_slots, many=True).data
+            return Response(response_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving available time slots for date {date}: {str(e)}")
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
