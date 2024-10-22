@@ -204,7 +204,7 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'console': {
-            'level': 'DEBUG',  # Changed from INFO to DEBUG
+            'level': 'DEBUG',  
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
@@ -215,14 +215,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'user_management': {  # This should match the name of your app
+        '': {  
             'handlers': ['file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
-        },
-        '': {  # Root logger
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',
         },
     },
 }

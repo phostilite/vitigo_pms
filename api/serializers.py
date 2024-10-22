@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from patient_management.models import Patient
 from subscription_management.models import Subscription
+from appointment_management.models import Appointment, TimeSlot
 
 User = get_user_model()
 
@@ -93,3 +94,18 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     def validate_new_password(self, value):
         # Add any password validation logic here
         return value
+    
+
+class TimeSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TimeSlot
+        fields = ['id', 'start_time', 'end_time']
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    patient = CustomUserSerializer()
+    doctor = CustomUserSerializer()
+    time_slot = TimeSlotSerializer()
+
+    class Meta:
+        model = Appointment
+        fields = '__all__'

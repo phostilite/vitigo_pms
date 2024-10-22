@@ -1,26 +1,41 @@
 import logging
+
+# Django and DRF imports
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.shortcuts import render
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils import timezone
 from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .serializers import (UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer,
-                          SubscriptionSerializer, BasicUserInfoUpdateSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer)
-from django.conf import settings
-from subscription_management.models import Subscription, SubscriptionTier
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.contrib.auth import get_user_model
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+# Swagger imports
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from django.core.mail import send_mail
+
+# Custom authentication
 from .custom_auth import CustomTokenAuthentication
-from subscription_management.models import Subscription
-from django.utils.encoding import force_bytes
-from django.shortcuts import render
-from django.utils import timezone
+
+# Serializers
+from .serializers import (
+    UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, PatientSerializer,
+    SubscriptionSerializer, BasicUserInfoUpdateSerializer, PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer, AppointmentSerializer
+)
+from patient_management.serializers import (
+    MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
+)
+
+# Models
+from subscription_management.models import Subscription, SubscriptionTier
 from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
-from patient_management.serializers import MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
+from appointment_management.models import Appointment
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -365,3 +380,31 @@ class PatientInfoView(APIView):
     def get_treatment_plans(self, patient):
         plans = TreatmentPlan.objects.filter(patient=patient).order_by('-created_date')
         return TreatmentPlanSerializer(plans, many=True).data
+    
+class UserAppointmentsView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response('List of appointments', AppointmentSerializer(many=True)),
+            404: 'Appointments not found',
+            500: 'Internal server error'
+        },
+        operation_description="Get all appointments for the authenticated user"
+    )
+    def get(self, request):
+        user = request.user
+        if user.role != 'PATIENT':
+            return Response({"error": "Only patients can access this information"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            appointments = Appointment.objects.filter(patient=user)
+            if not appointments.exists():
+                return Response({"error": "No appointments found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            response_data = AppointmentSerializer(appointments, many=True).data
+            return Response(response_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving appointments for user {user.id}: {str(e)}")
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
