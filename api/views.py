@@ -34,7 +34,7 @@ from patient_management.serializers import (
     MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
 )
 from appointment_management.serializers import (
-    AppointmentSerializer, TimeSlotSerializer
+    AppointmentSerializer, TimeSlotSerializer, AppointmentCreateSerializer
 )
 from user_management.serializers import CustomUserSerializer
 from query_management.serializers import QuerySerializer
@@ -391,6 +391,43 @@ class AvailableTimeSlotsView(APIView):
             logger.error(f"Error retrieving available time slots for date {date}: {str(e)}")
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+class AppointmentTypesView(APIView):
+    def get(self, request):
+        types = [{'value': choice[0], 'label': choice[1]} for choice in Appointment.APPOINTMENT_TYPES]
+        return Response(types, status=status.HTTP_200_OK)
+
+
+class AppointmentStatusView(APIView):
+    def get(self, request):
+        statuses = [{'value': choice[0], 'label': choice[1]} for choice in Appointment.STATUS_CHOICES]
+        return Response(statuses, status=status.HTTP_200_OK)
+
+
+class AppointmentPriorityView(APIView):
+    def get(self, request):
+        priorities = [{'value': choice[0], 'label': choice[1]} for choice in Appointment.PRIORITY_CHOICES]
+        return Response(priorities, status=status.HTTP_200_OK)
+        
+
+class CreateAppointmentView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = AppointmentCreateSerializer(data=request.data)
+        try:
+            if serializer.is_valid():
+                serializer.save(patient=request.user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except DatabaseError as e:
+            logger.error(f"Database error: {str(e)}", exc_info=True)
+            return Response({"error": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 class DoctorListView(APIView):
     authentication_classes = [CustomTokenAuthentication]

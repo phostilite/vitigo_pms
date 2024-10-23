@@ -44,7 +44,7 @@ class Appointment(models.Model):
     appointment_type = models.CharField(max_length=20, choices=APPOINTMENT_TYPES)
     date = models.DateField()
     time_slot = models.ForeignKey(TimeSlot, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     priority = models.CharField(max_length=1, choices=PRIORITY_CHOICES, default='B')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

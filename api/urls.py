@@ -19,6 +19,10 @@ urlpatterns = [
     path('appointments/', views.UserAppointmentsView.as_view(), name='user-appointments-list'),
     path('appointments/<int:appointment_id>/', views.UserAppointmentDetailView.as_view(), name='user-appointment-detail'),
     path('appointments/available-time-slots/', views.AvailableTimeSlotsView.as_view(), name='available-time-slots'),
+    path('appointments/types/', views.AppointmentTypesView.as_view(), name='appointment-types'),
+    path('appointments/statuses/', views.AppointmentStatusView.as_view(), name='appointment-statuses'),
+    path('appointments/priorities/', views.AppointmentPriorityView.as_view(), name='appointment-priorities'),
+    path('appointments/create/', views.CreateAppointmentView.as_view(), name='create-appointment'),
 
     path('queries/', views.UserQueriesView.as_view(), name='user-queries'),
 ]
