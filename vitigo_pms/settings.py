@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'website',
     'api',
     'subscription_management',
+    'doctor_management',
 ]
 
 MIDDLEWARE = [

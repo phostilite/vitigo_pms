@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from doctor_management.models import TreatmentMethodSpecialization, BodyAreaSpecialization
 
 
 class TimeSlot(models.Model):

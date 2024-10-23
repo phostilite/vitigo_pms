@@ -7,7 +7,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import DatabaseError
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils import timezone
@@ -38,12 +38,21 @@ from appointment_management.serializers import (
 )
 from user_management.serializers import CustomUserSerializer
 from query_management.serializers import QuerySerializer
+from doctor_management.serializers import (
+    DoctorListSerializer, DoctorDetailSerializer, SpecializationSerializer, TreatmentMethodSerializer,
+    BodyAreaSerializer, AssociatedConditionSerializer
+)
 
 # Models
 from subscription_management.models import Subscription, SubscriptionTier
-from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
+from patient_management.models import (
+    Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
+)
 from appointment_management.models import Appointment, TimeSlot
 from query_management.models import Query
+from doctor_management.models import (
+    DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -435,13 +444,19 @@ class DoctorListView(APIView):
 
     def get(self, request):
         try:
-            doctors = User.objects.filter(role='DOCTOR')
-            serializer = CustomUserSerializer(doctors, many=True)
+            doctors = DoctorProfile.objects.select_related('user').prefetch_related(
+                'specializations'
+            ).filter(user__role='DOCTOR', user__is_active=True)
+            
+            serializer = DoctorListSerializer(doctors, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
+        
         except Exception as e:
             logger.error(f"Error retrieving doctors: {str(e)}", exc_info=True)
-            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class DoctorDetailView(APIView):
     authentication_classes = [CustomTokenAuthentication]
@@ -449,14 +464,94 @@ class DoctorDetailView(APIView):
 
     def get(self, request, doctor_id):
         try:
-            doctor = User.objects.get(id=doctor_id, role='DOCTOR')
-            serializer = CustomUserSerializer(doctor)
+            doctor = get_object_or_404(
+                DoctorProfile.objects.select_related('user').prefetch_related(
+                    'specializations',
+                    'treatment_methods',
+                    'body_areas',
+                    'associated_conditions',
+                    'availability',
+                    'reviews__patient'
+                ),
+                id=doctor_id,
+                user__role='DOCTOR',
+                user__is_active=True
+            )
+            
+            serializer = DoctorDetailSerializer(doctor)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        except DoctorProfile.DoesNotExist:
+            return Response(
+                {"error": "Doctor not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             logger.error(f"Error retrieving doctor details for ID {doctor_id}: {str(e)}", exc_info=True)
-            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+class SpecializationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            specializations = Specialization.objects.filter(is_active=True)
+            serializer = SpecializationSerializer(specializations, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving specializations: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class TreatmentMethodListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            treatments = TreatmentMethodSpecialization.objects.filter(is_active=True)
+            serializer = TreatmentMethodSerializer(treatments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving treatment methods: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class BodyAreaListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            body_areas = BodyAreaSpecialization.objects.filter(is_active=True)
+            serializer = BodyAreaSerializer(body_areas, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving body areas: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class AssociatedConditionListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            conditions = AssociatedConditionSpecialization.objects.filter(is_active=True)
+            serializer = AssociatedConditionSerializer(conditions, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving associated conditions: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
 
 
