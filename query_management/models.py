@@ -18,6 +18,7 @@ class Query(models.Model):
         ('IVR', 'Interactive Voice Response'),
         ('EMAIL', 'Email'),
         ('WALK_IN', 'Walk-in'),
+        ('MOBILE_APP', 'Mobile App'),
     ]
 
     STATUS_CHOICES = [

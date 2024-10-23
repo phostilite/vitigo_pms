@@ -5,6 +5,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import DatabaseError
 from django.shortcuts import render
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -35,11 +37,13 @@ from appointment_management.serializers import (
     AppointmentSerializer, TimeSlotSerializer
 )
 from user_management.serializers import CustomUserSerializer
+from query_management.serializers import QuerySerializer
 
 # Models
 from subscription_management.models import Subscription, SubscriptionTier
 from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 from appointment_management.models import Appointment, TimeSlot
+from query_management.models import Query
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -415,4 +419,25 @@ class DoctorDetailView(APIView):
             return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error retrieving doctor details for ID {doctor_id}: {str(e)}", exc_info=True)
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class UserQueriesView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        try:
+            queries = Query.objects.filter(patient=user)
+            serializer = QuerySerializer(queries, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError as e:
+            logger.error(f"Database error: {str(e)}", exc_info=True)
+            return Response({"error": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

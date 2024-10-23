@@ -20,4 +20,5 @@ urlpatterns = [
     path('appointments/<int:appointment_id>/', views.UserAppointmentDetailView.as_view(), name='user-appointment-detail'),
     path('appointments/available-time-slots/', views.AvailableTimeSlotsView.as_view(), name='available-time-slots'),
 
+    path('queries/', views.UserQueriesView.as_view(), name='user-queries'),
 ]
