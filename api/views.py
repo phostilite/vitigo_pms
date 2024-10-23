@@ -445,11 +445,39 @@ class DoctorListView(APIView):
     def get(self, request):
         try:
             doctors = DoctorProfile.objects.select_related('user').prefetch_related(
-                'specializations'
+                'specializations',
+                'treatment_methods',
+                'body_areas',
+                'associated_conditions'
             ).filter(user__role='DOCTOR', user__is_active=True)
             
+            # Get filter parameters from query string
+            specialization_id = request.query_params.get('specialization')
+            treatment_method_id = request.query_params.get('treatment_method')
+            body_area_id = request.query_params.get('body_area')
+            associated_condition_id = request.query_params.get('associated_condition')
+            
+            # Apply filters if parameters are provided
+            if specialization_id:
+                doctors = doctors.filter(specializations__id=specialization_id)
+            
+            if treatment_method_id:
+                doctors = doctors.filter(treatment_methods__id=treatment_method_id)
+            
+            if body_area_id:
+                doctors = doctors.filter(body_areas__id=body_area_id)
+            
+            if associated_condition_id:
+                doctors = doctors.filter(associated_conditions__id=associated_condition_id)
+            
+            # Remove duplicates that might occur due to multiple matching criteria
+            doctors = doctors.distinct()
+            
             serializer = DoctorListSerializer(doctors, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                'count': doctors.count(),
+                'results': serializer.data
+            }, status=status.HTTP_200_OK)
         
         except Exception as e:
             logger.error(f"Error retrieving doctors: {str(e)}", exc_info=True)
