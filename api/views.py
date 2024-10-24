@@ -713,6 +713,8 @@ class DoctorDetailView(APIView):
 
     def get(self, request, doctor_id):
         try:
+            # Get the user with role DOCTOR
+            user = get_object_or_404(User, id=doctor_id, role='DOCTOR', is_active=True)
             doctor = get_object_or_404(
                 DoctorProfile.objects.select_related('user').prefetch_related(
                     'specializations',
@@ -722,23 +724,30 @@ class DoctorDetailView(APIView):
                     'availability',
                     'reviews__patient'
                 ),
-                id=doctor_id,
-                user__role='DOCTOR',
-                user__is_active=True
+                user=user
             )
             
             serializer = DoctorDetailSerializer(doctor)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                'status': 'success',
+                'message': 'Doctor details retrieved successfully',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
         
-        except DoctorProfile.DoesNotExist:
+        except User.DoesNotExist:
             return Response(
                 {"error": "Doctor not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
-        except Exception as e:
-            logger.error(f"Error retrieving doctor details for ID {doctor_id}: {str(e)}", exc_info=True)
+        except DoctorProfile.DoesNotExist:
             return Response(
-                {"error": "An unexpected error occurred"},
+                {"error": "Doctor profile not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving doctor details for user ID {doctor_id}: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An unexpected error occurred", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
