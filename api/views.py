@@ -430,9 +430,9 @@ class DoctorAvailableTimeSlotsView(APIView):
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
             
-            # Get doctor's availability for the given day
-            day_of_week = date.weekday()
-            doctor = DoctorProfile.objects.get(id=doctor_id)
+            # Get the user with role DOCTOR
+            user = User.objects.get(id=doctor_id, role='DOCTOR')
+            doctor = user.doctor_profile
             
             # Get all available time slots for the doctor on the given date
             available_slots = DoctorTimeSlot.objects.filter(
@@ -443,6 +443,7 @@ class DoctorAvailableTimeSlotsView(APIView):
             
             # If no slots exist for this date, generate them based on doctor's availability
             if not available_slots.exists():
+                day_of_week = date.weekday()
                 availabilities = doctor.availability.filter(
                     day_of_week=day_of_week,
                     is_available=True
@@ -476,14 +477,19 @@ class DoctorAvailableTimeSlotsView(APIView):
                     ).order_by('start_time')
             
             serializer = DoctorTimeSlotSerializer(available_slots, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                'status': 'success',
+                'message': 'Available time slots retrieved successfully',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
             
-        except DoctorProfile.DoesNotExist:
+        except User.DoesNotExist:
             return Response(
                 {"error": "Doctor not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            logger.error(f"Error retrieving available time slots: {str(e)}", exc_info=True)
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
