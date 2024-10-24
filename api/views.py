@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import DatabaseError
 from django.shortcuts import render, get_object_or_404
 from django.utils.encoding import force_bytes
@@ -442,49 +442,141 @@ class DoctorListView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    # Valid parameter mappings
+    PARAM_MAPPINGS = {
+        'specialization': {
+            'model': Specialization,
+            'filter_field': 'specializations__id'
+        },
+        'treatment_method': {
+            'model': TreatmentMethodSpecialization,
+            'filter_field': 'treatment_methods__id'
+        },
+        'body_area': {
+            'model': BodyAreaSpecialization,
+            'filter_field': 'body_areas__id'
+        },
+        'associated_condition': {
+            'model': AssociatedConditionSpecialization,
+            'filter_field': 'associated_conditions__id'
+        }
+    }
+
+    def normalize_param_name(self, param_name):
+        """Normalize parameter names to handle different formats"""
+        return param_name.replace('-', '_')
+
+    def validate_param_name(self, param_name):
+        """Validate if the parameter name is valid"""
+        normalized_name = self.normalize_param_name(param_name)
+        if normalized_name not in self.PARAM_MAPPINGS:
+            return False, f"Invalid parameter: '{param_name}'. Valid parameters are: {', '.join(self.PARAM_MAPPINGS.keys())}"
+        return True, normalized_name
+
+    def validate_single_param(self, param_name, param_value, model):
+        """Validate a single filter parameter value"""
+        try:
+            param_id = int(param_value)
+            if not model.objects.filter(id=param_id, is_active=True).exists():
+                return None, f"Invalid {param_name} ID: {param_value} (ID does not exist)"
+            return param_id, None
+        except (ValueError, TypeError):
+            return None, f"Invalid {param_name} parameter: {param_value} (must be an integer)"
+
     def get(self, request):
         try:
+            # First, validate all parameters in the request
+            unknown_params = []
+            for param_name in request.query_params.keys():
+                is_valid, _ = self.validate_param_name(param_name)
+                if not is_valid:
+                    unknown_params.append(param_name)
+            
+            if unknown_params:
+                return Response({
+                    'status': 'error',
+                    'error': f"Unknown parameter(s): {', '.join(unknown_params)}",
+                    'valid_parameters': list(self.PARAM_MAPPINGS.keys())
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check for any valid filter parameters
+            filter_param = None
+            filter_value = None
+            
+            for key, value in request.query_params.items():
+                is_valid, normalized_key = self.validate_param_name(key)
+                if is_valid:
+                    filter_param = normalized_key
+                    filter_value = value
+                    break
+
+            # If a filter parameter is found, validate and apply it
+            if filter_param and filter_value:
+                mapping = self.PARAM_MAPPINGS[filter_param]
+                param_id, error = self.validate_single_param(
+                    filter_param,
+                    filter_value,
+                    mapping['model']
+                )
+
+                if error:
+                    return Response({
+                        'status': 'error',
+                        'error': error
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Get filtered doctors
+                doctors = DoctorProfile.objects.select_related('user').prefetch_related(
+                    'specializations',
+                    'treatment_methods',
+                    'body_areas',
+                    'associated_conditions'
+                ).filter(
+                    user__role='DOCTOR',
+                    user__is_active=True,
+                    is_available=True,
+                    **{mapping['filter_field']: param_id}
+                ).distinct()
+
+                serializer = DoctorListSerializer(doctors, many=True)
+                return Response({
+                    'status': 'success',
+                    'filter_applied': {
+                        'parameter': filter_param,
+                        'value': filter_value,
+                        'id': param_id
+                    },
+                    'count': doctors.count(),
+                    'results': serializer.data
+                }, status=status.HTTP_200_OK)
+
+            # If no filter parameters are provided, return all active doctors
             doctors = DoctorProfile.objects.select_related('user').prefetch_related(
                 'specializations',
                 'treatment_methods',
                 'body_areas',
                 'associated_conditions'
-            ).filter(user__role='DOCTOR', user__is_active=True)
-            
-            # Get filter parameters from query string
-            specialization_id = request.query_params.get('specialization')
-            treatment_method_id = request.query_params.get('treatment_method')
-            body_area_id = request.query_params.get('body_area')
-            associated_condition_id = request.query_params.get('associated_condition')
-            
-            # Apply filters if parameters are provided
-            if specialization_id:
-                doctors = doctors.filter(specializations__id=specialization_id)
-            
-            if treatment_method_id:
-                doctors = doctors.filter(treatment_methods__id=treatment_method_id)
-            
-            if body_area_id:
-                doctors = doctors.filter(body_areas__id=body_area_id)
-            
-            if associated_condition_id:
-                doctors = doctors.filter(associated_conditions__id=associated_condition_id)
-            
-            # Remove duplicates that might occur due to multiple matching criteria
-            doctors = doctors.distinct()
+            ).filter(
+                user__role='DOCTOR',
+                user__is_active=True,
+                is_available=True
+            )
             
             serializer = DoctorListSerializer(doctors, many=True)
             return Response({
+                'status': 'success',
+                'filter_applied': None,
                 'count': doctors.count(),
                 'results': serializer.data
             }, status=status.HTTP_200_OK)
-        
+
         except Exception as e:
-            logger.error(f"Error retrieving doctors: {str(e)}", exc_info=True)
-            return Response(
-                {"error": "An unexpected error occurred"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Unexpected error in doctor list view: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'An unexpected error occurred',
+                'error_details': str(e) if settings.DEBUG else None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DoctorDetailView(APIView):
     authentication_classes = [CustomTokenAuthentication]
