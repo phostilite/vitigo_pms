@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 # Django and DRF imports
 from django.conf import settings
@@ -34,7 +35,7 @@ from patient_management.serializers import (
     MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
 )
 from appointment_management.serializers import (
-    AppointmentSerializer, TimeSlotSerializer, AppointmentCreateSerializer
+    AppointmentSerializer, AppointmentCreateSerializer, DoctorTimeSlotSerializer
 )
 from user_management.serializers import CustomUserSerializer
 from query_management.serializers import QuerySerializer
@@ -48,7 +49,7 @@ from subscription_management.models import Subscription, SubscriptionTier
 from patient_management.models import (
     Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 )
-from appointment_management.models import Appointment, TimeSlot
+from appointment_management.models import Appointment, DoctorTimeSlot
 from query_management.models import Query
 from doctor_management.models import (
     DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
@@ -412,24 +413,81 @@ class UserAppointmentDetailView(APIView):
             logger.error(f"Error retrieving appointment {appointment_id} for user {user.id}: {str(e)}")
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-
-class AvailableTimeSlotsView(APIView):
+class DoctorAvailableTimeSlotsView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
-
+    
     def get(self, request):
-        date = request.query_params.get('date')
-        if not date:
-            return Response({"error": "Date parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            available_time_slots = [time_slot for time_slot in TimeSlot.objects.all() if time_slot.is_available(date)]
-            response_data = TimeSlotSerializer(available_time_slots, many=True).data
-            return Response(response_data, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error retrieving available time slots for date {date}: {str(e)}")
-            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        doctor_id = request.query_params.get('doctor_id')
+        date_str = request.query_params.get('date')
         
+        if not all([doctor_id, date_str]):
+            return Response(
+                {"error": "Both doctor_id and date parameters are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            
+            # Get doctor's availability for the given day
+            day_of_week = date.weekday()
+            doctor = DoctorProfile.objects.get(id=doctor_id)
+            
+            # Get all available time slots for the doctor on the given date
+            available_slots = DoctorTimeSlot.objects.filter(
+                doctor=doctor,
+                date=date,
+                is_available=True
+            ).order_by('start_time')
+            
+            # If no slots exist for this date, generate them based on doctor's availability
+            if not available_slots.exists():
+                availabilities = doctor.availability.filter(
+                    day_of_week=day_of_week,
+                    is_available=True
+                )
+                
+                new_slots = []
+                for availability in availabilities:
+                    current_time = availability.start_time
+                    while current_time < availability.end_time:
+                        end_time = (
+                            datetime.combine(date, current_time) + 
+                            timedelta(minutes=30)
+                        ).time()
+                        
+                        if end_time <= availability.end_time:
+                            new_slots.append(DoctorTimeSlot(
+                                doctor=doctor,
+                                date=date,
+                                start_time=current_time,
+                                end_time=end_time
+                            ))
+                        
+                        current_time = end_time
+                
+                if new_slots:
+                    DoctorTimeSlot.objects.bulk_create(new_slots)
+                    available_slots = DoctorTimeSlot.objects.filter(
+                        doctor=doctor,
+                        date=date,
+                        is_available=True
+                    ).order_by('start_time')
+            
+            serializer = DoctorTimeSlotSerializer(available_slots, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except DoctorProfile.DoesNotExist:
+            return Response(
+                {"error": "Doctor not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class AppointmentTypesView(APIView):
     def get(self, request):

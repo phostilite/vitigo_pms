@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from patient_management.models import Patient
 from subscription_management.models import Subscription
-from appointment_management.models import Appointment, TimeSlot
+from appointment_management.models import Appointment
 
 User = get_user_model()
 

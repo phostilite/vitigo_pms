@@ -21,11 +21,12 @@ urlpatterns = [
     path('doctors/treatment-methods/', views.TreatmentMethodListView.as_view(), name='treatment-method-list'),
     path('doctors/body-areas/', views.BodyAreaListView.as_view(), name='body-area-list'),
     path('doctors/associated-conditions/', views.AssociatedConditionListView.as_view(), name='associated-condition-list'),
+    path('doctors/<int:doctor_id>/timeslots/', views.DoctorAvailableTimeSlotsView.as_view(), name='doctor-timeslots'),
     
     # Appointment related URLs
     path('appointments/', views.UserAppointmentsView.as_view(), name='user-appointments-list'),
     path('appointments/<int:appointment_id>/', views.UserAppointmentDetailView.as_view(), name='user-appointment-detail'),
-    path('appointments/available-time-slots/', views.AvailableTimeSlotsView.as_view(), name='available-time-slots'),
+    path('appointments/timeslots/available/', views.DoctorAvailableTimeSlotsView.as_view(), name='available-timeslots'),
     path('appointments/types/', views.AppointmentTypesView.as_view(), name='appointment-types'),
     path('appointments/statuses/', views.AppointmentStatusView.as_view(), name='appointment-statuses'),
     path('appointments/priorities/', views.AppointmentPriorityView.as_view(), name='appointment-priorities'),

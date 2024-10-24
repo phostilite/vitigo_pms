@@ -2,7 +2,7 @@ import random
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from appointment_management.models import Appointment, TimeSlot
+from appointment_management.models import Appointment
 from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 from django.conf import settings
 
@@ -73,12 +73,6 @@ class Command(BaseCommand):
 
             doctors.append(doctor_user)
 
-        # Create sample time slots
-        time_slots = [
-            TimeSlot.objects.get_or_create(start_time='09:00', end_time='09:30')[0],
-            TimeSlot.objects.get_or_create(start_time='10:00', end_time='10:30')[0],
-            TimeSlot.objects.get_or_create(start_time='11:00', end_time='11:30')[0],
-        ]
 
         # Create sample appointments
         for i in range(5):
@@ -87,7 +81,6 @@ class Command(BaseCommand):
                 doctor=random.choice(doctors),
                 appointment_type='CONSULTATION',
                 date=timezone.now().date() + timezone.timedelta(days=i),
-                time_slot=random.choice(time_slots),
                 status='SCHEDULED',
                 priority='B',
                 notes='Sample appointment'
