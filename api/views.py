@@ -35,7 +35,7 @@ from patient_management.serializers import (
     MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
 )
 from appointment_management.serializers import (
-    AppointmentSerializer, AppointmentCreateSerializer, DoctorTimeSlotSerializer
+    AppointmentSerializer, AppointmentCreateSerializer, DoctorTimeSlotSerializer, DoctorTimeSlotDetailSerializer
 )
 from user_management.serializers import CustomUserSerializer
 from query_management.serializers import QuerySerializer
@@ -488,6 +488,31 @@ class DoctorAvailableTimeSlotsView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class DoctorTimeSlotDetailView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slot_id):
+        try:
+            # Fetch the time slot by ID
+            time_slot = DoctorTimeSlot.objects.get(id=slot_id)
+            serializer = DoctorTimeSlotDetailSerializer(time_slot)
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except DoctorTimeSlot.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Time slot not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error retrieving time slot {slot_id}: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'An unexpected error occurred'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AppointmentTypesView(APIView):
     def get(self, request):

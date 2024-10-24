@@ -22,6 +22,7 @@ urlpatterns = [
     path('doctors/body-areas/', views.BodyAreaListView.as_view(), name='body-area-list'),
     path('doctors/associated-conditions/', views.AssociatedConditionListView.as_view(), name='associated-condition-list'),
     path('doctors/<int:doctor_id>/timeslots/', views.DoctorAvailableTimeSlotsView.as_view(), name='doctor-timeslots'),
+    path('doctors/time-slot/<int:slot_id>/', views.DoctorTimeSlotDetailView.as_view(), name='time-slot-detail'),
     
     # Appointment related URLs
     path('appointments/', views.UserAppointmentsView.as_view(), name='user-appointments-list'),

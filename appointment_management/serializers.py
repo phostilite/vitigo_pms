@@ -9,6 +9,11 @@ class DoctorTimeSlotSerializer(serializers.ModelSerializer):
         model = DoctorTimeSlot
         fields = ['id', 'date', 'start_time', 'end_time', 'is_available']
 
+class DoctorTimeSlotDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorTimeSlot
+        fields = '__all__'
+
 class AppointmentSerializer(serializers.ModelSerializer):
     patient = CustomUserSerializer()
     doctor = CustomUserSerializer()
