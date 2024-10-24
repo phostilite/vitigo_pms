@@ -57,6 +57,15 @@ from doctor_management.models import (
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+"""
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                           AUTHENTICATION VIEWS                                ║
+║ Contains all authentication related functionality including user registration,║
+║ login, password management, and basic user operations.                        ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+"""
+
+
 class UserRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -103,6 +112,7 @@ class UserRegistrationAPIView(APIView):
             'message': 'Registration failed',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserLoginAPIView(APIView):
     permission_classes = [AllowAny]
@@ -294,6 +304,15 @@ class PasswordResetConfirmView(APIView):
             return Response({"error": "Invalid reset link"}, status=status.HTTP_400_BAD_REQUEST)
 
 
+"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                             PATIENT VIEWS                                    ║
+║ Handles all patient-specific operations including profile management,        ║
+║ medical history, and patient-specific data retrieval.                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+"""
+
+
 class PatientInfoView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -343,6 +362,16 @@ class PatientInfoView(APIView):
         plans = TreatmentPlan.objects.filter(patient=patient).order_by('-created_date')
         return TreatmentPlanSerializer(plans, many=True).data
     
+
+"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           APPOINTMENT VIEWS                                  ║
+║ Handles all appointment-related operations including scheduling, viewing,    ║
+║ and managing appointments.                                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+"""
+
+
 class UserAppointmentsView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -362,7 +391,8 @@ class UserAppointmentsView(APIView):
         except Exception as e:
             logger.error(f"Error retrieving appointments for user {user.id}: {str(e)}")
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+
 class UserAppointmentDetailView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -437,6 +467,15 @@ class CreateAppointmentView(APIView):
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+
+"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              DOCTOR VIEWS                                    ║
+║ Manages doctor-related operations including listings, profiles, and          ║
+║ specialization information.                                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+"""
+
 
 class DoctorListView(APIView):
     authentication_classes = [CustomTokenAuthentication]
@@ -578,6 +617,7 @@ class DoctorListView(APIView):
                 'error_details': str(e) if settings.DEBUG else None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class DoctorDetailView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -612,7 +652,8 @@ class DoctorDetailView(APIView):
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
+
 class SpecializationListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -627,6 +668,7 @@ class SpecializationListView(APIView):
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 class TreatmentMethodListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -643,6 +685,7 @@ class TreatmentMethodListView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 class BodyAreaListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -658,6 +701,7 @@ class BodyAreaListView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 class AssociatedConditionListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -672,7 +716,15 @@ class AssociatedConditionListView(APIView):
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
+
+""" 
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              QUERY VIEWS                                     ║
+║ Manages user queries and related operations for patient-doctor               ║
+║ communication.                                                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+"""
 
 
 class UserQueriesView(APIView):
