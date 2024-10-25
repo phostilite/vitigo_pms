@@ -1,0 +1,200 @@
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-6 bg-gray-50 min-h-screen">
+  <h1 class="text-3xl font-bold text-gray-800 mb-6">Appointment Dashboard</h1>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
+          <i class="fas fa-calendar-alt text-2xl text-blue-600"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-gray-500 text-sm">Total Appointments</h3>
+          <p class="text-2xl font-semibold text-gray-800">{{ total_appointments }}</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
+          <i class="fas fa-clock text-2xl text-green-600"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-gray-500 text-sm">Today's Appointments</h3>
+          <p class="text-2xl font-semibold text-gray-800">{{ today_appointments }}</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
+          <i class="fas fa-hourglass-half text-2xl text-yellow-600"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-gray-500 text-sm">Pending</h3>
+          <p class="text-2xl font-semibold text-gray-800">{{ pending_appointments }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
+          <i class="fas fa-check-circle text-2xl text-purple-600"></i>
+        </div>
+        <div class="ml-4">
+          <h3 class="text-gray-500 text-sm">Completed</h3>
+          <p class="text-2xl font-semibold text-gray-800">{{ completed_appointments }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Search and Filter Section -->
+  <form method="get" class="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl shadow-md mb-6">
+    <div class="flex-1">
+      <input
+        type="text"
+        name="search"
+        value="{{ search_query }}"
+        placeholder="Search appointments..."
+        class="w-full pl-4 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500"
+      />
+    </div>
+    <div class="flex gap-4">
+      <select name="status" class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500">
+        <option value="">All Statuses</option>
+        <option value="PENDING" {% if status == "PENDING" %}selected{% endif %}>Pending</option>
+        <option value="SCHEDULED" {% if status == "SCHEDULED" %}selected{% endif %}>Scheduled</option>
+        <option value="CONFIRMED" {% if status == "CONFIRMED" %}selected{% endif %}>Confirmed</option>
+        <option value="CANCELLED" {% if status == "CANCELLED" %}selected{% endif %}>Cancelled</option>
+        <option value="COMPLETED" {% if status == "COMPLETED" %}selected{% endif %}>Completed</option>
+        <option value="NO_SHOW" {% if status == "NO_SHOW" %}selected{% endif %}>No Show</option>
+      </select>
+      <button type="submit" class="vitigo-secondary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-400 transition">
+        Apply Filters
+      </button>
+    </div>
+  </form>
+
+  <!-- Appointments Table -->
+  <div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <table class="min-w-full">
+      <thead class="vitigo-primary text-white">
+        <tr>
+          <th class="px-6 py-4 text-left">Patient</th>
+          <th class="px-6 py-4 text-left">Doctor</th>
+          <th class="px-6 py-4 text-left">Date & Time</th>
+          <th class="px-6 py-4 text-left">Type</th>
+          <th class="px-6 py-4 text-left">Priority</th>
+          <th class="px-6 py-4 text-left">Status</th>
+          <th class="px-6 py-4 text-left">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        {% for appointment in appointments %}
+        <tr class="hover:bg-gray-50 table-row-animation hover-scale">
+          <td class="px-6 py-4">
+            <div class="flex items-center">
+              {% if appointment.patient.profile_picture %}
+                <img src="{{ appointment.patient.profile_picture.url }}" alt="Profile" class="w-10 h-10 rounded-full">
+              {% else %}
+                <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                  <i class="fas fa-user text-gray-400"></i>
+                </div>
+              {% endif %}
+              <div class="ml-4">
+                <div class="font-medium text-gray-900">{{ appointment.patient.get_full_name }}</div>
+                <div class="text-sm text-gray-500">ID: #{{ appointment.patient.id }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4">
+            <div class="font-medium text-gray-900">Dr. {{ appointment.doctor.get_full_name }}</div>
+          </td>
+          <td class="px-6 py-4">
+            <div class="font-medium text-gray-900">{{ appointment.date|date:"M d, Y" }}</div>
+            <div class="text-sm text-gray-500">{{ appointment.time_slot.start_time|time:"H:i" }}</div>
+          </td>
+          <td class="px-6 py-4">
+            <span class="text-sm font-medium">{{ appointment.get_appointment_type_display }}</span>
+          </td>
+          <td class="px-6 py-4">
+            <span class="px-3 py-1 text-xs font-medium rounded-full 
+                       {% if appointment.priority == 'A' %}priority-a
+                       {% elif appointment.priority == 'B' %}priority-b
+                       {% else %}priority-c{% endif %}">
+              {{ appointment.get_priority_display }}
+            </span>
+          </td>
+          <td class="px-6 py-4">
+            <span class="px-3 py-1 text-xs font-medium rounded-full
+                       {% if appointment.status == 'COMPLETED' %}bg-green-100 text-green-800
+                       {% elif appointment.status == 'CANCELLED' %}bg-red-100 text-red-800
+                       {% elif appointment.status == 'PENDING' %}bg-yellow-100 text-yellow-800
+                       {% else %}bg-blue-100 text-blue-800{% endif %}">
+              {{ appointment.get_status_display }}
+            </span>
+          </td>
+          <td class="px-6 py-4">
+            <div class="flex space-x-3">
+              <a href="{% url 'appointment_detail' appointment.id %}" class="text-blue-600 hover:text-blue-800" title="View Details">
+                <i class="fas fa-eye"></i>
+              </a>
+              <button class="text-green-600 hover:text-green-800" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="text-red-600 hover:text-red-800" title="Cancel">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+
+    </table>
+
+    <!-- Pagination Controls -->
+    {% if page_obj.has_other_pages %}
+      <div class="px-6 py-4 bg-gray-50 flex justify-between items-center">
+        <span class="text-sm text-gray-600">
+          Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} appointments
+        </span>
+        <div class="flex space-x-2">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&status={{ status }}&search={{ search_query }}"
+               class="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
+              Previous
+            </a>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+              <span class="px-3 py-1 rounded-lg vitigo-primary text-white">{{ num }}</span>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+              <a href="?page={{ num }}&status={{ status }}&search={{ search_query }}"
+                 class="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
+                {{ num }}
+              </a>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&status={{ status }}&search={{ search_query }}"
+               class="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
+              Next
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

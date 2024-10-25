@@ -2,10 +2,12 @@ from django.shortcuts import render
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from user_management.models import CustomUser
 from patient_management.models import Patient   
 import logging
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +17,16 @@ class PatientListView(LoginRequiredMixin, View):
             if request.user.role not in ['ADMIN', 'DOCTOR', 'NURSE']:
                 raise PermissionDenied("You do not have permission to view this page.")
             
-            patients = CustomUser.objects.filter(role='PATIENT', is_active=True)
-            return render(request, 'dashboard/admin/patient_management.html/patient_list.html', {'patients': patients})
+            # Determine the template based on the user role
+            role_template_map = {
+                'ADMIN': 'dashboard/admin/patient_management.html/patient_list.html',
+                'DOCTOR': 'dashboard/doctor/patient_management.html/patient_list.html',
+                'NURSE': 'dashboard/nurse/patient_management.html/patient_list.html'
+            }
+            template = role_template_map.get(request.user.role)
+            
+            patients = User.objects.filter(role='PATIENT', is_active=True)
+            return render(request, template, {'patients': patients})
         
         except PermissionDenied as e:
             logger.warning(f"Permission denied for user {request.user.email}: {str(e)}")
