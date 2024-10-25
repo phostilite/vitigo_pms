@@ -1,0 +1,488 @@
+{% extends '../base.html' %}
+
+{% block styles %}
+<style>
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+    animation: fadeIn 0.5s ease-out;
+  }
+  
+  .progress-ring {
+    transform: rotate(-90deg);
+  }
+  
+  .chart-container {
+    transition: transform 0.3s ease;
+  }
+  
+  .chart-container:hover {
+    transform: translateY(-5px);
+  }
+  
+  .detail-card {
+    transition: all 0.3s ease;
+  }
+  
+  .detail-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -39px;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background-color: #e5e7eb;
+  }
+  
+  .timeline-item::after {
+    content: '';
+    position: absolute;
+    left: -43px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #1b5f9f;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 p-8 overflow-y-auto bg-gray-50">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center">
+            <a href="{% url 'patient_list' %}" class="mr-4 text-gray-600 hover:text-gray-800">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h1 class="text-3xl font-bold text-gray-800">Patient Profile</h1>
+        </div>
+        <div class="flex gap-3">
+            <button class="vitigo-secondary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-400 transition duration-300">
+                <i class="fas fa-print mr-2"></i>Print Profile
+            </button>
+            <button class="vitigo-primary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
+                <i class="fas fa-edit mr-2"></i>Edit Profile
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Patient Overview Card -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                {% if patient.user.profile_picture %}
+                <img src="{{ patient.user.profile_picture.url }}" alt="Profile" class="w-24 h-24 rounded-full">
+                {% else %}
+                <div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
+                    <i class="fas fa-user text-4xl text-gray-400"></i>
+                </div>
+                {% endif %}
+            </div>
+            <div class="ml-6 flex-grow">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">{{ patient.user.get_full_name }}</h2>
+                        <p class="text-gray-500">ID: #{{ patient.id }}</p>
+                        <p class="text-gray-500">
+                        <i class="fas fa-envelope mr-2"></i>{{ patient.user.email }}
+                        </p>
+                        <p class="text-gray-500">
+                        <i class="fas fa-phone mr-2"></i>{{ patient.phone_number }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">
+                        <i class="fas fa-calendar mr-2"></i>DOB: {{ patient.date_of_birth|date:"M d, Y" }}
+                        </p>
+                        <p class="text-gray-500">
+                        <i class="fas fa-venus-mars mr-2"></i>Gender: {{ patient.get_gender_display }}
+                        </p>
+                        <p class="text-gray-500">
+                        <i class="fas fa-tint mr-2"></i>Blood Group: {{ patient.blood_group }}
+                        </p>
+                        <p class="text-gray-500">
+                        <i class="fas fa-calendar-plus mr-2"></i>Joined: {{ patient.created_at|date:"M d, Y" }}
+                        </p>
+                    </div>
+                    <div>
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-blue-800 mb-2">Emergency Contact</h3>
+                            <p class="text-blue-600">{{ patient.emergency_contact_name }}</p>
+                            <p class="text-blue-600">{{ patient.emergency_contact_number }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modified Tabs Navigation using Flowbite -->
+    <div class="mb-4 border-b border-gray-200">
+        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="patient-tab" data-tabs-toggle="#patient-tab-content" role="tablist">
+            <li class="mr-2" role="presentation">
+                <button class="inline-block p-4 border-b-2 rounded-t-lg active" id="vitiligo-tab" data-tabs-target="#vitiligo" type="button" role="tab" aria-controls="vitiligo" aria-selected="true">Vitiligo Details</button>
+            </li>
+            <li class="mr-2" role="presentation">
+                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="medical-tab" data-tabs-target="#medical" type="button" role="tab" aria-controls="medical" aria-selected="false">Medical History</button>
+            </li>
+            <li class="mr-2" role="presentation">
+                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="treatment-tab" data-tabs-target="#treatment" type="button" role="tab" aria-controls="treatment" aria-selected="false">Treatment Plans</button>
+            </li>
+            <li class="mr-2" role="presentation">
+                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="medication-tab" data-tabs-target="#medication" type="button" role="tab" aria-controls="medication" aria-selected="false">Medications</button>
+            </li>
+            <li role="presentation">
+                <button class="inline-block p-4 border-b-2 rounded-t-lg" id="assessments-tab" data-tabs-target="#assessments" type="button" role="tab" aria-controls="assessments" aria-selected="false">Assessments</button>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Modified Tab Content -->
+    <div id="patient-tab-content">
+        <div id="vitiligo" role="tabpanel" aria-labelledby="vitiligo-tab">
+
+            <!-- Vitiligo Overview -->
+            <div class="bg-white rounded-xl shadow-md p-6 detail-card">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Vitiligo Overview</h3>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-gray-600 font-medium">Onset Date</p>
+                        <p class="text-gray-800">{{ patient.vitiligo_onset_date|date:"M d, Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-medium">Type</p>
+                        <p class="text-gray-800">{{ patient.vitiligo_type }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-medium">Affected Areas</p>
+                        <p class="text-gray-800">{{ patient.affected_body_areas }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest Assessment -->
+            {% if latest_assessment %}
+            <div class="bg-white rounded-xl shadow-md p-6 detail-card">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Latest Assessment</h3>
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <p class="text-gray-500">Assessment Date</p>
+                        <p class="text-lg font-semibold">{{ latest_assessment.assessment_date|date:"M d, Y" }}</p>
+                    </div>
+                    <div class="relative w-24 h-24">
+                        <svg class="progress-ring" width="96" height="96">
+                        <circle
+                            stroke="#e5e7eb"
+                            stroke-width="8"
+                            fill="transparent"
+                            r="40"
+                            cx="48"
+                            cy="48"
+                        />
+                        <circle
+                            stroke="#1b5f9f"
+                            stroke-width="8"
+                            fill="transparent"
+                            r="40"
+                            cx="48"
+                            cy="48"
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="{{ latest_assessment.body_surface_area_affected }}"
+                        />
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-xl font-bold">{{ latest_assessment.body_surface_area_affected }}%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-gray-600 font-medium">VASI Score</p>
+                        <p class="text-gray-800">{{ latest_assessment.vasi_score }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-medium">Treatment Response</p>
+                        <p class="text-gray-800">{{ latest_assessment.treatment_response }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="hidden" id="medical" role="tabpanel" aria-labelledby="medical-tab">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Allergies</h3>
+                        <p class="text-gray-700">{{ patient.medical_history.allergies|default:"No allergies recorded" }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Chronic Conditions</h3>
+                        <p class="text-gray-700">{{ patient.medical_history.chronic_conditions|default:"No chronic conditions recorded" }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Past Surgeries</h3>
+                        <p class="text-gray-700">{{ patient.medical_history.past_surgeries|default:"No past surgeries recorded" }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Family History</h3>
+                        <p class="text-gray-700">{{ patient.medical_history.family_history|default:"No family history recorded" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hidden" id="treatment" role="tabpanel" aria-labelledby="treatment-tab">
+            <div class="space-y-6">
+                {% for plan in patient.treatment_plans.all %}
+                <div class="bg-white rounded-xl shadow-md p-6 detail-card">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                        <h3 class="text-xl font-bold text-gray-800">Treatment Plan #{{ forloop.revcounter }}</h3>
+                        <p class="text-gray-500">Created on {{ plan.created_date|date:"M d, Y" }}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                        Active
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Treatment Goals</h4>
+                            <p class="text-gray-600">{{ plan.treatment_goals }}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Phototherapy Details</h4>
+                            <p class="text-gray-600">{{ plan.phototherapy_details }}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Lifestyle Recommendations</h4>
+                            <p class="text-gray-600">{{ plan.lifestyle_recommendations }}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-2">Follow-up Frequency</h4>
+                            <p class="text-gray-600">{{ plan.follow_up_frequency }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>          
+        </div>
+
+        <div class="hidden" id="medication" role="tabpanel" aria-labelledby="medication-tab">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-gray-800">Current Medications</h3>
+                        <button class="vitigo-primary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
+                        <i class="fas fa-plus mr-2"></i>Add Medication
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medication</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dosage</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prescribed By</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for medication in patient.medications.all %}
+                            <tr class="hover:bg-gray-50 transition duration-150">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                            <i class="fas fa-pills text-blue-500"></i>
+                                        </div>
+                                        <span class="font-medium text-gray-900">{{ medication.name }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">{{ medication.dosage }}</td>
+                                <td class="px-6 py-4 text-gray-500">{{ medication.frequency }}</td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ medication.start_date|date:"M d, Y" }} - 
+                                    {% if medication.end_date %}
+                                        {{ medication.end_date|date:"M d, Y" }}
+                                    {% else %}
+                                        Present
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">Dr. {{ medication.prescribed_by.get_full_name }}</td>
+                                <td class="px-6 py-4">
+                                    {% if not medication.end_date %}
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Completed</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex space-x-3">
+                                        <button class="text-blue-600 hover:text-blue-800" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-800" title="Delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="hidden" id="assessments" role="tabpanel" aria-labelledby="assessments-tab">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Assessment Stats -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-md p-6 detail-card">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">Assessment Overview</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <p class="text-gray-500 mb-1">Total Assessments</p>
+                                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ patient.vitiligo_assessments.count }}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 mb-2">Latest VASI Score Trend</p>
+                                <div class="h-24">
+                                    <!-- Add a small line chart here using Chart.js -->
+                                    <canvas id="vasiTrendChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 mb-2">Response to Treatment</p>
+                                <div class="flex items-center">
+                                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                        <div class="vitigo-primary h-2 rounded-full" style="width: 75%"></div>
+                                    </div>
+                                    <span class="ml-2 text-sm text-gray-600 dark:text-gray-300">75%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- Assessment Timeline -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white dark:bg-gray-700 rounded-xl shadow-md p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">Assessment History</h3>
+                            <button class="vitigo-primary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
+                                <i class="fas fa-plus mr-2"></i>New Assessment
+                            </button>
+                        </div>
+                        <div class="relative pl-8">
+                            {% for assessment in patient.vitiligo_assessments.all %}
+                            <div class="timeline-item relative pl-8 pb-8">
+                                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h4 class="font-semibold text-gray-900 dark:text-gray-100">Assessment #{{ forloop.revcounter }}</h4>
+                                            <p class="text-sm text-gray-500">{{ assessment.assessment_date|date:"M d, Y" }}</p>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100">
+                                            By Dr. {{ assessment.assessed_by.get_full_name }}
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                                        <div>
+                                            <p class="text-sm text-gray-500">Body Surface Area</p>
+                                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ assessment.body_surface_area_affected }}%</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-500">VASI Score</p>
+                                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ assessment.vasi_score }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-500">Treatment Response</p>
+                                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ assessment.treatment_response }}</p>
+                                        </div>
+                                    </div>
+                                    {% if assessment.notes %}
+                                    <div class="mt-2">
+                                        <p class="text-sm text-gray-500">Notes</p>
+                                        <p class="text-gray-700 dark:text-gray-300">{{ assessment.notes }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+        
+            </div>
+        </div>        
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize VASI trend chart
+    const ctx = document.getElementById('vasiTrendChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'VASI Score',
+                data: [65, 59, 55, 51, 48, 45],
+                borderColor: '#1b5f9f',
+                tension: 0.4,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    display: false
+                },
+                x: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

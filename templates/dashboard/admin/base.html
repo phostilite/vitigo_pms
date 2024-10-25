@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitiGo Administrator Dashboard</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Flowbite CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.css" rel="stylesheet" />
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .vitigo-primary {
+            background-color: #1b5f9f;
+        }
+        .vitigo-secondary {
+            background-color: #80d0fa;
+        }
+        .wood-bg {
+            background-color: #eee5d7;
+        }
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 4px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: #1b5f9f;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: #44acea;
+            border-radius: 2px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+            background: #482110;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        {% include './sidebar.html' %}
+
+        <!-- Main Content -->
+        {% block content %} {% endblock %}
+    </div>
+
+    <!-- Flowbite Script -->
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+</body>
+</html>

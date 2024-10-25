@@ -20,7 +20,7 @@ def patient_dashboard(request):
         raise PermissionDenied("You do not have permission to access the patient dashboard.")
     # Add any context data needed for the patient dashboard
     context = {}
-    return render(request, 'dashboard/patient_dashboard.html', context)
+    return render(request, 'dashboard/patient/patient_dashboard.html', context)
 
 @login_required
 def admin_dashboard(request):
@@ -28,7 +28,7 @@ def admin_dashboard(request):
         raise PermissionDenied("You do not have permission to access the admin dashboard.")
     # Add any context data needed for the admin dashboard
     context = {}
-    return render(request, 'dashboard/admin_dashboard.html', context)
+    return render(request, 'dashboard/admin/admin_dashboard.html', context)
 
 @login_required
 def staff_dashboard(request):
@@ -36,4 +36,4 @@ def staff_dashboard(request):
         raise PermissionDenied("You do not have permission to access the staff dashboard.")
     # Add any context data needed for the staff dashboard
     context = {}
-    return render(request, 'dashboard/staff_dashboard.html', context)
+    return render(request, 'dashboard/staff/staff_dashboard.html', context)
