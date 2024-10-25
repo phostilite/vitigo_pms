@@ -546,9 +546,17 @@ class CreateAppointmentView(APIView):
         serializer = AppointmentCreateSerializer(data=request.data)
         try:
             if serializer.is_valid():
-                serializer.save(patient=request.user)
+                appointment = serializer.save(patient=request.user)
+                
+                # Update the DoctorTimeSlot to mark it as unavailable
+                doctor_time_slot = appointment.time_slot
+                doctor_time_slot.is_available = False
+                doctor_time_slot.save()
+
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except DoctorTimeSlot.DoesNotExist:
+            return Response({"error": "Time slot does not exist"}, status=status.HTTP_400_BAD_REQUEST)
         except DatabaseError as e:
             logger.error(f"Database error: {str(e)}", exc_info=True)
             return Response({"error": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
