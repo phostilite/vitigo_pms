@@ -13,6 +13,8 @@ urlpatterns = [
     
     # Patient related URLs
     path('patient-info/', views.PatientInfoView.as_view(), name='patient-info'),
+    path('patient/<int:user_id>/profile/', views.PatientProfileAPIView.as_view(), name='patient-profile'),
+    path('patient/<int:user_id>/medical-history/', views.MedicalHistoryAPIView.as_view(), name='medical-history'),
     
     # Doctor related URLs - grouped together
     path('doctors/', views.DoctorListView.as_view(), name='doctor-list'),

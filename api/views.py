@@ -17,6 +17,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import NotFound
 
 # Swagger imports
 from drf_yasg.utils import swagger_auto_schema
@@ -32,7 +33,7 @@ from .serializers import (
     PasswordResetConfirmSerializer
 )
 from patient_management.serializers import (
-    MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer
+    MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer, PatientCreateSerializer, MedicalHistoryCreateSerializer, MedicalHistoryUpdateSerializer, PatientUpdateSerializer
 )
 from appointment_management.serializers import (
     AppointmentSerializer, AppointmentCreateSerializer, DoctorTimeSlotSerializer, DoctorTimeSlotDetailSerializer
@@ -363,6 +364,194 @@ class PatientInfoView(APIView):
         plans = TreatmentPlan.objects.filter(patient=patient).order_by('-created_date')
         return TreatmentPlanSerializer(plans, many=True).data
     
+
+class PatientProfileAPIView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            serializer = PatientCreateSerializer(
+                data=request.data, 
+                context={'user': user, 'request': request, 'user_id': user_id}  # Include user_id in context
+            )
+            if serializer.is_valid():
+                patient = serializer.save(user=user)
+                logger.info(f"Patient profile created successfully for user {user_id}")
+                return Response({
+                    'status': 'success',
+                    'message': 'Patient profile created successfully',
+                    'data': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            else:
+                logger.warning(f"Patient profile creation failed: {serializer.errors}")
+                return Response({
+                    'status': 'error',
+                    'message': 'Creation failed',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Error creating patient profile: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'An unexpected error occurred'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = user.patient_profile
+            serializer = PatientUpdateSerializer(patient)
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            logger.error(f"User with id {user_id} not found")
+            raise NotFound('User not found')
+        except Patient.DoesNotExist:
+            logger.error(f"Patient profile for user {user_id} not found")
+            raise NotFound('Patient profile not found')
+        except Exception as e:
+            logger.error(f"Error retrieving patient profile: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'Failed to retrieve patient profile'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = user.patient_profile
+            serializer = PatientUpdateSerializer(patient, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                logger.info(f"Patient profile updated successfully for user {user_id}")
+                return Response({
+                    'status': 'success',
+                    'message': 'Patient profile updated successfully',
+                    'data': serializer.data
+                }, status=status.HTTP_200_OK)
+            else:
+                logger.warning(f"Patient profile update failed: {serializer.errors}")
+                return Response({
+                    'status': 'error',
+                    'message': 'Update failed',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            logger.error(f"User with id {user_id} not found")
+            raise NotFound('User not found')
+        except Patient.DoesNotExist:
+            logger.error(f"Patient profile for user {user_id} not found")
+            raise NotFound('Patient profile not found')
+        except Exception as e:
+            logger.error(f"Error updating patient profile: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'An unexpected error occurred'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MedicalHistoryAPIView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = user.patient_profile
+            serializer = MedicalHistoryCreateSerializer(
+                data=request.data, 
+                context={'patient': patient, 'request': request}
+            )
+            if serializer.is_valid():
+                medical_history = serializer.save(patient=patient)
+                logger.info(f"Medical history created successfully for user {user_id}")
+                return Response({
+                    'status': 'success',
+                    'message': 'Medical history created successfully',
+                    'data': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            else:
+                logger.warning(f"Medical history creation failed: {serializer.errors}")
+                return Response({
+                    'status': 'error',
+                    'message': 'Creation failed',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Error creating medical history: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'An unexpected error occurred'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = user.patient_profile
+            medical_history = get_object_or_404(MedicalHistory, patient=patient)
+            serializer = MedicalHistoryUpdateSerializer(medical_history)
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            logger.error(f"User with id {user_id} not found")
+            raise NotFound('User not found')
+        except Patient.DoesNotExist:
+            logger.error(f"Patient profile for user {user_id} not found")
+            raise NotFound('Patient profile not found')
+        except MedicalHistory.DoesNotExist:
+            logger.error(f"Medical history for patient {patient.id} not found")
+            raise NotFound('Medical history not found')
+        except Exception as e:
+            logger.error(f"Error retrieving medical history: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'Failed to retrieve medical history'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = user.patient_profile
+            medical_history = get_object_or_404(MedicalHistory, patient=patient)
+            serializer = MedicalHistoryUpdateSerializer(medical_history, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                logger.info(f"Medical history updated successfully for user {user_id}")
+                return Response({
+                    'status': 'success',
+                    'message': 'Medical history updated successfully',
+                    'data': serializer.data
+                }, status=status.HTTP_200_OK)
+            else:
+                logger.warning(f"Medical history update failed: {serializer.errors}")
+                return Response({
+                    'status': 'error',
+                    'message': 'Update failed',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            logger.error(f"User with id {user_id} not found")
+            raise NotFound('User not found')
+        except Patient.DoesNotExist:
+            logger.error(f"Patient profile for user {user_id} not found")
+            raise NotFound('Patient profile not found')
+        except MedicalHistory.DoesNotExist:
+            logger.error(f"Medical history for patient {patient.id} not found")
+            raise NotFound('Medical history not found')
+        except Exception as e:
+            logger.error(f"Error updating medical history: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'An unexpected error occurred'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
