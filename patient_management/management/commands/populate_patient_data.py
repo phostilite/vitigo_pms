@@ -64,7 +64,7 @@ class Command(BaseCommand):
         )
 
     def create_medications(self, patient):
-        doctor = self.get_or_create_doctor()
+        doctor = self.get_random_doctor()
         medications = [
             {'name': 'Tacrolimus', 'dosage': '0.1% ointment', 'frequency': 'Twice daily'},
             {'name': 'Vitamin D3', 'dosage': '1000 IU', 'frequency': 'Once daily'},
@@ -80,7 +80,7 @@ class Command(BaseCommand):
             )
 
     def create_vitiligo_assessments(self, patient):
-        doctor = self.get_or_create_doctor()
+        doctor = self.get_random_doctor()
         for i in range(3):
             VitiligoAssessment.objects.create(
                 patient=patient,
@@ -93,7 +93,7 @@ class Command(BaseCommand):
             )
 
     def create_treatment_plan(self, patient):
-        doctor = self.get_or_create_doctor()
+        doctor = self.get_random_doctor()
         TreatmentPlan.objects.create(
             patient=patient,
             treatment_goals='Repigmentation of affected areas',
@@ -103,17 +103,21 @@ class Command(BaseCommand):
             created_by=doctor
         )
 
-    def get_or_create_doctor(self):
-        doctor, created = User.objects.get_or_create(
-            email='doctor@example.com',
-            defaults={
-                'first_name': 'John',
-                'last_name': 'Doe',
-                'role': 'DOCTOR',
-                'is_staff': True
-            }
-        )
-        if created:
-            doctor.set_password('password123')  # Set a default password
-            doctor.save()
-        return doctor
+    def get_random_doctor(self):
+        doctors = User.objects.filter(role='DOCTOR')
+        if doctors.exists():
+            return random.choice(doctors)
+        else:
+            doctor, created = User.objects.get_or_create(
+                email='doctor@example.com',
+                defaults={
+                    'first_name': 'John',
+                    'last_name': 'Doe',
+                    'role': 'DOCTOR',
+                    'is_staff': True
+                }
+            )
+            if created:
+                doctor.set_password('password123')  # Set a default password
+                doctor.save()
+            return doctor
