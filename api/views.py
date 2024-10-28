@@ -186,7 +186,6 @@ class BasicUserInfoUpdateAPIView(APIView):
         serializer = BasicUserInfoUpdateSerializer(user, data=request.data, partial=True, context={'request': request})
         try:
             if serializer.is_valid():
-                # Check if password is being updated
                 if 'password' in serializer.validated_data:
                     user.set_password(serializer.validated_data['password'])
                     serializer.validated_data.pop('password')

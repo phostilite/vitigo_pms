@@ -58,14 +58,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 class BasicUserInfoUpdateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'first_name', 'last_name']
+        fields = ['email', 'password', 'first_name', 'last_name', 'profile_picture']
         extra_kwargs = {
             'email': {'required': False},
             'first_name': {'required': False},
             'last_name': {'required': False},
+            'profile_picture': {'required': False},
         }
 
     def validate_email(self, value):
