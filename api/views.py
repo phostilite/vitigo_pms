@@ -52,7 +52,7 @@ from patient_management.models import (
     Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 )
 from appointment_management.models import Appointment, DoctorTimeSlot
-from query_management.models import Query, QueryTag
+from query_management.models import Query, QueryTag, QueryAttachment
 from doctor_management.models import (
     DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
 )
@@ -1087,15 +1087,22 @@ class UserQueriesView(APIView):
     def post(self, request):
         user = request.user
         data = request.data.copy()
-        data['patient'] = user.id 
+        data['patient'] = user.id  # Set the patient to the current user
 
         serializer = QuerySerializer(data=data)
         if serializer.is_valid():
             try:
                 query = serializer.save()
+                # Handle tags separately
                 tags = data.get('tags', [])
                 if tags:
                     query.tags.set(tags)
+                
+                # Handle attachments separately
+                files = request.FILES.getlist('attachments')
+                for file in files:
+                    QueryAttachment.objects.create(query=query, file=file)
+                
                 return Response(QuerySerializer(query).data, status=status.HTTP_201_CREATED)
             except DatabaseError as e:
                 logger.error(f"Database error: {str(e)}", exc_info=True)
