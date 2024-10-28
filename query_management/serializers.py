@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from .models import Query, QueryTag
 
+class ChoiceSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    display = serializers.CharField()
+
 class QueryTagSerializer(serializers.ModelSerializer):
     class Meta:
         model = QueryTag

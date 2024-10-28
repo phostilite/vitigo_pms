@@ -38,4 +38,7 @@ urlpatterns = [
     # Query related URLs
     path('queries/', views.UserQueriesView.as_view(), name='user-queries'),
     path('queries/query-tags/', views.QueryTagListView.as_view(), name='query-tag-list'),
+    path('queries/priority-choices/', views.PriorityChoicesView.as_view(), name='priority-choices'),
+    path('queries/source-choices/', views.SourceChoicesView.as_view(), name='source-choices'),
+    path('queries/status-choices/', views.StatusChoicesView.as_view(), name='status-choices'),
 ]

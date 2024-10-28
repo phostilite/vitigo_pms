@@ -44,7 +44,7 @@ from doctor_management.serializers import (
     DoctorListSerializer, DoctorDetailSerializer, SpecializationSerializer, TreatmentMethodSerializer,
     BodyAreaSerializer, AssociatedConditionSerializer
 )
-from query_management.serializers import QuerySerializer, QueryTagSerializer
+from query_management.serializers import QuerySerializer, QueryTagSerializer, ChoiceSerializer
 
 # Models
 from subscription_management.models import Subscription, SubscriptionTier
@@ -1021,6 +1021,33 @@ class AssociatedConditionListView(APIView):
 ║ communication.                                                               ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
+
+class PriorityChoicesView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        choices = [{'value': choice[0], 'display': choice[1]} for choice in Query.PRIORITY_CHOICES]
+        serializer = ChoiceSerializer(choices, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class SourceChoicesView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        choices = [{'value': choice[0], 'display': choice[1]} for choice in Query.SOURCE_CHOICES]
+        serializer = ChoiceSerializer(choices, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class StatusChoicesView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        choices = [{'value': choice[0], 'display': choice[1]} for choice in Query.STATUS_CHOICES]
+        serializer = ChoiceSerializer(choices, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class QueryTagListView(APIView):
     def get(self, request):
