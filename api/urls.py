@@ -37,4 +37,5 @@ urlpatterns = [
     
     # Query related URLs
     path('queries/', views.UserQueriesView.as_view(), name='user-queries'),
+    path('api/query-tags/', views.QueryTagListView.as_view(), name='query-tag-list'),
 ]

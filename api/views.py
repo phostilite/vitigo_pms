@@ -12,7 +12,7 @@ from django.shortcuts import render, get_object_or_404
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -44,6 +44,7 @@ from doctor_management.serializers import (
     DoctorListSerializer, DoctorDetailSerializer, SpecializationSerializer, TreatmentMethodSerializer,
     BodyAreaSerializer, AssociatedConditionSerializer
 )
+from query_management.serializers import QuerySerializer, QueryTagSerializer
 
 # Models
 from subscription_management.models import Subscription, SubscriptionTier
@@ -51,7 +52,7 @@ from patient_management.models import (
     Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 )
 from appointment_management.models import Appointment, DoctorTimeSlot
-from query_management.models import Query
+from query_management.models import Query, QueryTag
 from doctor_management.models import (
     DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
 )
@@ -1021,6 +1022,21 @@ class AssociatedConditionListView(APIView):
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
+class QueryTagListView(APIView):
+    def get(self, request):
+        try:
+            tags = QueryTag.objects.all()
+            serializer = QueryTagSerializer(tags, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"error": "Tags not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError as e:
+            logger.error(f"Database error: {str(e)}", exc_info=True)
+            return Response({"error": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class UserQueriesView(APIView):
     authentication_classes = [CustomTokenAuthentication]
@@ -1040,3 +1056,25 @@ class UserQueriesView(APIView):
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def post(self, request):
+        user = request.user
+        data = request.data.copy()
+        data['patient'] = user.id  # Set the patient to the current user
+
+        serializer = QuerySerializer(data=data)
+        if serializer.is_valid():
+            try:
+                query = serializer.save()
+                # Handle tags separately
+                tags = data.get('tags', [])
+                if tags:
+                    query.tags.set(tags)
+                return Response(QuerySerializer(query).data, status=status.HTTP_201_CREATED)
+            except DatabaseError as e:
+                logger.error(f"Database error: {str(e)}", exc_info=True)
+                return Response({"error": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e:
+                logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+                return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
