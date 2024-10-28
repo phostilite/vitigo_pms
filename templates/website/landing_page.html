@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VitiGo PMS - Advanced Vitiligo Patient Management System</title>
+    <title>VitiGo PMS - Advanced Vitiligo Practice Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         body {
@@ -29,19 +28,6 @@
         }
         .custom-shape-divider-bottom-1697465392 .shape-fill {
             fill: #FFFFFF;
-        }
-        .animate-fade-in-up {
-            animation: fadeInUp 0.6s ease-out;
-        }
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
     </style>
 </head>
@@ -74,8 +60,8 @@
             <div class="container mx-auto px-6">
                 <div class="flex flex-col md:flex-row items-center">
                     <div class="md:w-1/2 mb-12 md:mb-0">
-                        <h1 class="text-4xl md:text-6xl font-bold leading-tight mb-6">Revolutionize Your Vitiligo Care Management</h1>
-                        <p class="text-xl mb-8">VitiGo PMS: The all-in-one solution for streamlined patient care, enhanced clinic operations, and optimized treatment outcomes.</p>
+                        <h1 class="text-4xl md:text-6xl font-bold leading-tight mb-6">Revolutionize Your Vitiligo Practice Management</h1>
+                        <p class="text-xl mb-8">VitiGo PMS: The all-in-one solution for streamlined practice operations, enhanced clinic efficiency, and optimized treatment outcomes.</p>
                         <div class="flex space-x-4">
                             <a href="#" class="bg-white text-[#1a365d] px-6 py-3 rounded-full font-semibold hover:bg-[#f8fafc] transition duration-300">Start Free Trial</a>
                             <a href="#" class="bg-transparent border-2 border-white text-white px-6 py-3 rounded-full font-semibold hover:bg-white hover:text-[#1a365d] transition duration-300">Schedule Demo</a>
@@ -316,7 +302,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div>
                     <h3 class="text-xl font-semibold mb-4">VitiGo PMS</h3>
-                    <p class="text-[#a0aec0]">Advanced Vitiligo Patient Management System for healthcare professionals.</p>
+                    <p class="text-[#a0aec0]">Advanced Vitiligo Practice Management System for healthcare professionals.</p>
                 </div>
                 <div>
                     <h3 class="text-xl font-semibold mb-4">Quick Links</h3>
@@ -351,6 +337,7 @@
         </div>
     </footer>
 
+
     <script>
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -359,63 +346,6 @@
             document.querySelector(this.getAttribute('href')).scrollIntoView({
                 behavior: 'smooth'
             });
-        });
-    });
-
-    // Animate elements on scroll
-    const animateOnScroll = (entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('animate-fade-in-up');
-                observer.unobserve(entry.target);
-            }
-        });
-    };
-
-    const observer = new IntersectionObserver(animateOnScroll, {
-        root: null,
-        threshold: 0.1
-    });
-
-    document.querySelectorAll('section > div').forEach(section => {
-        observer.observe(section);
-    });
-
-    // Animate hero section on load
-    window.addEventListener('load', () => {
-        const heroElements = document.querySelectorAll('#hero h1, #hero p, #hero a');
-        heroElements.forEach((el, index) => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            setTimeout(() => {
-                el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
-                el.style.opacity = '1';
-                el.style.transform = 'translateY(0)';
-            }, index * 200);
-        });
-    });
-
-    // Animate feature cards on hover
-    const featureCards = document.querySelectorAll('#features .bg-white');
-    featureCards.forEach(card => {
-        card.addEventListener('mouseenter', () => {
-            card.style.transform = 'translateY(-10px)';
-            card.style.transition = 'transform 0.3s ease-out';
-        });
-        card.addEventListener('mouseleave', () => {
-            card.style.transform = 'translateY(0)';
-        });
-    });
-
-    // Animate pricing cards on hover
-    const pricingCards = document.querySelectorAll('#pricing .bg-white');
-    pricingCards.forEach(card => {
-        card.addEventListener('mouseenter', () => {
-            card.style.transform = 'scale(1.05)';
-            card.style.transition = 'transform 0.3s ease-out';
-        });
-        card.addEventListener('mouseleave', () => {
-            card.style.transform = 'scale(1)';
         });
     });
 
@@ -434,20 +364,11 @@
     scrollToTopButton.style.height = '50px';
     scrollToTopButton.style.cursor = 'pointer';
     scrollToTopButton.style.display = 'none';
-    scrollToTopButton.style.transition = 'opacity 0.3s ease-out';
 
     document.body.appendChild(scrollToTopButton);
 
     window.addEventListener('scroll', () => {
-        if (window.pageYOffset > 300) {
-            scrollToTopButton.style.display = 'block';
-            scrollToTopButton.style.opacity = '1';
-        } else {
-            scrollToTopButton.style.opacity = '0';
-            setTimeout(() => {
-                scrollToTopButton.style.display = 'none';
-            }, 300);
-        }
+        scrollToTopButton.style.display = window.pageYOffset > 300 ? 'block' : 'none';
     });
 
     scrollToTopButton.addEventListener('click', () => {
@@ -456,6 +377,6 @@
             behavior: 'smooth'
         });
     });
-</script>
+    </script>
 </body>
 </html>
