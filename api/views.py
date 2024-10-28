@@ -1043,7 +1043,7 @@ class SourceChoicesView(APIView):
 class StatusChoicesView(APIView):
     authentication_classes = [CustomTokenAuthentication]
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         choices = [{'value': choice[0], 'display': choice[1]} for choice in Query.STATUS_CHOICES]
         serializer = ChoiceSerializer(choices, many=True)
@@ -1087,13 +1087,12 @@ class UserQueriesView(APIView):
     def post(self, request):
         user = request.user
         data = request.data.copy()
-        data['patient'] = user.id  # Set the patient to the current user
+        data['patient'] = user.id 
 
         serializer = QuerySerializer(data=data)
         if serializer.is_valid():
             try:
                 query = serializer.save()
-                # Handle tags separately
                 tags = data.get('tags', [])
                 if tags:
                     query.tags.set(tags)

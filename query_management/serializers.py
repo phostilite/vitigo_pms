@@ -16,3 +16,8 @@ class QuerySerializer(serializers.ModelSerializer):
     class Meta:
         model = Query
         fields = '__all__'
+        extra_kwargs = {
+            'status': {'required': False},
+            'priority': {'required': False},
+            'tags': {'required': False}
+        }
