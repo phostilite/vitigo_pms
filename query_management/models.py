@@ -5,9 +5,9 @@ from django.utils.translation import gettext_lazy as _
 
 class Query(models.Model):
     PRIORITY_CHOICES = [
-        ('A', 'Blue A - High Priority'),
-        ('B', 'Green B - Medium Priority'),
-        ('C', 'Red C - Low Priority'),
+        ('A', 'High'),
+        ('B', 'Medium'),
+        ('C', 'Low'),
     ]
 
     SOURCE_CHOICES = [
