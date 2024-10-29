@@ -4,13 +4,24 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import Consultation
 from django.db.models import Q
+from django.contrib.auth.mixins import LoginRequiredMixin
 
-class ConsultationManagementView(ListView):
+class ConsultationManagementView(LoginRequiredMixin, ListView):
     model = Consultation
-    template_name = 'dashboard/admin/consultation_management/consultation_dashboard.html'
     context_object_name = 'consultations'
     paginate_by = 10
     
+    def get_template_names(self):
+        user_role = self.request.user.role
+        if user_role == 'ADMIN':
+            return ['dashboard/admin/consultation_management/consultation_dashboard.html']
+        elif user_role == 'DOCTOR':
+            return ['dashboard/doctor/consultation_management/consultation_dashboard.html']
+        elif user_role == 'STAFF':
+            return ['dashboard/staff/consultation_management/consultation_dashboard.html']
+        else:
+            return ['dashboard/default/consultation_management/consultation_dashboard.html']  # Fallback template
+
     def get_queryset(self):
         queryset = super().get_queryset()
         

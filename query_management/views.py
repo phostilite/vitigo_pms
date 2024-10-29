@@ -6,10 +6,20 @@ from .models import Query, QueryTag
 
 class QueryManagementView(LoginRequiredMixin, ListView):
     model = Query
-    template_name = 'dashboard/admin/query_management/query_dashboard.html'
     context_object_name = 'queries'
     paginate_by = 10
     
+    def get_template_names(self):
+        user_role = self.request.user.role
+        if user_role == 'ADMIN':
+            return ['dashboard/admin/query_management/query_dashboard.html']
+        elif user_role == 'DOCTOR':
+            return ['dashboard/doctor/query_management/query_dashboard.html']
+        elif user_role == 'STAFF':
+            return ['dashboard/staff/query_management/query_dashboard.html']
+        else:
+            return ['dashboard/default/query_management/query_dashboard.html']  
+
     def get_queryset(self):
         queryset = Query.objects.select_related(
             'patient', 
