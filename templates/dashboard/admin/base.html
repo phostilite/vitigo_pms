@@ -31,24 +31,12 @@
         .wood-bg {
             background-color: #eee5d7;
         }
-        .overflow-y-auto::-webkit-scrollbar {
-            width: 4px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-track {
-            background: #1b5f9f;
-        }
-        .overflow-y-auto::-webkit-scrollbar-thumb {
-            background: #44acea;
-            border-radius: 2px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-            background: #482110;
-        }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div class="flex h-screen">
+<body>
+    <div>
         <!-- Sidebar -->
+        {% include './navbar.html' %}
         {% include './sidebar.html' %}
 
         <!-- Main Content -->

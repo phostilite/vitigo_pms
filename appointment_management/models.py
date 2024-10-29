@@ -33,7 +33,7 @@ class DoctorTimeSlot(models.Model):
         ordering = ['date', 'start_time']
 
     def __str__(self):
-        return f"{self.doctor} - {self.date} {self.start_time}-{self.end_time}"
+        return f"{self.date} {self.start_time}-{self.end_time}"
 
     def clean(self):
         # Check if the time slot falls within doctor's availability
@@ -68,9 +68,9 @@ class Appointment(models.Model):
     ]
 
     PRIORITY_CHOICES = [
-        ('A', 'Blue A - High Priority'),
-        ('B', 'Green B - Medium Priority'),
-        ('C', 'Red C - Low Priority'),
+        ('A', 'High'),
+        ('B', 'Medium'),
+        ('C', 'Low'),
     ]
 
     patient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='appointments')

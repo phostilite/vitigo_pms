@@ -25,8 +25,19 @@ class PatientListView(LoginRequiredMixin, View):
             }
             template = role_template_map.get(request.user.role)
             
+            # Get patient metrics
+            total_patients = User.objects.filter(role='PATIENT').count()
+            active_patients = User.objects.filter(role='PATIENT', is_active=True).count()
+            inactive_patients = User.objects.filter(role='PATIENT', is_active=False).count()
+            
             patients = User.objects.filter(role='PATIENT', is_active=True)
-            return render(request, template, {'patients': patients})
+            context = {
+                'patients': patients,
+                'total_patients': total_patients,
+                'active_patients': active_patients,
+                'inactive_patients': inactive_patients
+            }
+            return render(request, template, context)
         
         except PermissionDenied as e:
             logger.warning(f"Permission denied for user {request.user.email}: {str(e)}")

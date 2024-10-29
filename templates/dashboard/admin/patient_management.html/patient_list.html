@@ -1,211 +1,137 @@
 {% extends '../base.html' %}
 
 {% block styles %}
-<style>
-  .search-animation {
-    animation: slideDown 0.3s ease-out;
-  }
-  
-  @keyframes slideDown {
-    from {
-      transform: translateY(-20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  .table-row-animation {
-    animation: fadeIn 0.5s ease-out;
-  }
-  
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  
-  .hover-scale {
-    transition: transform 0.2s;
-  }
-  
-  .hover-scale:hover {
-    transform: scale(1.02);
-  }
-  
-  .stats-card {
-    transition: all 0.3s ease;
-  }
-  
-  .stats-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  }
-</style>
 {% endblock %}
 
 {% block content %}
-<div class="flex-1 p-8 overflow-hidden bg-gray-50">
-  <!-- Header Section -->
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">Patient Management</h1>
-    <button class="vitigo-primary hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center">
-      <i class="fas fa-plus-circle mr-2"></i>
-      Add New Patient
-    </button>
-  </div>
+<div class="p-4 mt-14 sm:ml-64">
+	<!-- Page Heading -->
+	<div class="flex items-center justify-between mb-6">
+		<h1 class="text-2xl font-semibold text-gray-800">Patient Management</h1>
+		<div class="flex space-x-2">
+			<button class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">
+				Add New Patient
+			</button>
+			<button class="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600">
+				Export Data
+			</button>
+		</div>
+	</div>
 
-  <!-- Stats Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
-          <i class="fas fa-users text-2xl text-blue-600"></i>
-        </div>
-        <div class="ml-4">
-          <h3 class="text-gray-500 text-sm">Total Patients</h3>
-          <p class="text-2xl font-semibold text-gray-800">{{ patients.count }}</p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
-          <i class="fas fa-user-plus text-2xl text-green-600"></i>
-        </div>
-        <div class="ml-4">
-          <h3 class="text-gray-500 text-sm">New This Month</h3>
-          <p class="text-2xl font-semibold text-gray-800">{{ patients.count }}</p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
-          <i class="fas fa-calendar-check text-2xl text-purple-600"></i>
-        </div>
-        <div class="ml-4">
-          <h3 class="text-gray-500 text-sm">Active Patients</h3>
-          <p class="text-2xl font-semibold text-gray-800">{{ patients.count }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
+	<!-- Metrics Section -->
+	<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+		<div class="bg-white p-4 rounded-lg shadow-md">
+			<h2 class="text-gray-700 font-bold">Total Patients</h2>
+			<p class="text-2xl font-semibold text-gray-900">{{ total_patients }}</p>
+		</div>
+		<div class="bg-white p-4 rounded-lg shadow-md">
+			<h2 class="text-gray-700 font-bold">Active Patients</h2>
+			<p class="text-2xl font-semibold text-green-500">{{ active_patients }}</p>
+		</div>
+		<div class="bg-white p-4 rounded-lg shadow-md">
+			<h2 class="text-gray-700 font-bold">Inactive Patients</h2>
+			<p class="text-2xl font-semibold text-red-500">{{ inactive_patients }}</p>
+		</div>
+	</div>
 
-  <!-- Search and Filter Section -->
-  <div class="bg-white p-4 rounded-xl shadow-md mb-6 search-animation">
-    <div class="flex flex-col md:flex-row gap-4">
-      <div class="flex-1">
-        <div class="relative">
-          <input type="text" id="searchInput" placeholder="Search patients..." 
-                 class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500">
-          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-        </div>
-      </div>
-      <div class="flex gap-4">
-        <select class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500">
-          <option>Filter by Status</option>
-          <option>Active</option>
-          <option>Inactive</option>
-        </select>
-        <button class="vitigo-secondary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-400 transition duration-300">
-          <i class="fas fa-filter mr-2"></i>Apply Filters
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Patient Table -->
-  <div class="bg-white rounded-xl shadow-md overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="min-w-full">
-        <thead class="vitigo-primary text-white">
-          <tr>
-            <th class="px-6 py-4 text-left">Patient</th>
-            <th class="px-6 py-4 text-left">Email</th>
-            <th class="px-6 py-4 text-left">Join Date</th>
-            <th class="px-6 py-4 text-left">Status</th>
-            <th class="px-6 py-4 text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-          {% for patient in patients %}
-          <tr class="hover:bg-gray-50 table-row-animation hover-scale">
-            <td class="px-6 py-4">
-              <div class="flex items-center">
-                {% if patient.profile_picture %}
-                  <img src="{{ patient.profile_picture.url }}" alt="Profile" class="w-10 h-10 rounded-full">
-                {% else %}
-                  <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <i class="fas fa-user text-gray-400"></i>
-                  </div>
-                {% endif %}
-                <div class="ml-4">
-                  <div class="font-medium text-gray-900">{{ patient.get_full_name }}</div>
-                  <div class="text-sm text-gray-500">ID: #{{ patient.id }}</div>
-                </div>
-              </div>
-            </td>
-            <td class="px-6 py-4 text-gray-500">{{ patient.email }}</td>
-            <td class="px-6 py-4 text-gray-500">{{ patient.date_joined|date:"M d, Y" }}</td>
-            <td class="px-6 py-4">
-              {% if patient.is_active %}
-                <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
-              {% else %}
-                <span class="px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Inactive</span>
-              {% endif %}
-            </td>
-            <td class="px-6 py-4">
-              <div class="flex space-x-3">
-                <button class="text-blue-600 hover:text-blue-800" title="View Details">
-                    <a href="{% url 'patient_detail' patient.id %}">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                </button>
-                <button class="text-green-600 hover:text-green-800" title="Edit">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="text-red-600 hover:text-red-800" title="Delete">
-                  <i class="fas fa-trash-alt"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+	<!-- Patient List -->
+	<div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+		<div class="flex items-center justify-between flex-column flex-wrap md:flex-row space-y-4 md:space-y-0 pb-4 bg-white">
+			<div>
+				<button id="dropdownActionButton" data-dropdown-toggle="dropdownAction" class="inline-flex items-center text-gray-500 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-lg text-sm px-3 py-1.5" type="button">
+					<span class="sr-only">Action button</span>
+					Action
+					<svg class="w-2.5 h-2.5 ms-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+						<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
+					</svg>
+				</button>
+				<!-- Dropdown menu -->
+				<div id="dropdownAction" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-44">
+					<ul class="py-1 text-sm text-gray-700" aria-labelledby="dropdownActionButton">
+						<li>
+							<a href="#" class="block px-4 py-2 hover:bg-gray-100">Activate account</a>
+						</li>
+					</ul>
+					<div class="py-1">
+						<a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Delete Patient</a>
+					</div>
+				</div>
+			</div>
+			<label for="table-search" class="sr-only">Search</label>
+			<div class="relative">
+				<div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+					<svg class="w-4 h-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+						<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+					</svg>
+				</div>
+				<input type="text" id="table-search-users" class="block p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg w-80 bg-gray-50 focus:ring-blue-500 focus:border-blue-500" placeholder="Search for patients">
+			</div>
+		</div>
+		<table class="w-full text-sm text-left rtl:text-right text-gray-500">
+			<thead class="text-xs text-gray-700 uppercase bg-gray-50">
+				<tr>
+					<th scope="col" class="p-4">
+						<div class="flex items-center">
+							<input id="checkbox-all-search" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+							<label for="checkbox-all-search" class="sr-only">checkbox</label>
+						</div>
+					</th>
+					<th scope="col" class="px-6 py-3">
+						Name
+					</th>
+					<th scope="col" class="px-6 py-3">
+						Date Joined
+					</th>
+					<th scope="col" class="px-6 py-3">
+						Status
+					</th>
+					<th scope="col" class="px-6 py-3">
+						Action
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+			{% for patient in patients %}
+				<tr class="bg-white hover:bg-gray-50">
+					<td class="w-4 p-4">
+						<div class="flex items-center">
+							<input id="checkbox-table-search-3" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+							<label for="checkbox-table-search-3" class="sr-only">checkbox</label>
+						</div>
+					</td>
+					<th scope="row" class="flex items-center px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+						{% if patient.profile_picture %}
+							<img class="w-10 h-10 rounded-full" src="{{ patient.profile_picture.url }}" alt="Profile picture">
+						{% else %}
+							<i class="fas fa-user-circle fa-3x"></i>
+						{% endif %}
+						<div class="ps-3">
+							<div class="text-base font-semibold">{{ patient.first_name }} {{ patient.last_name }}</div>
+							<div class="font-normal text-gray-500">{{ patient.email }}</div>
+						</div>
+					</th>
+					<td class="px-6 py-4">
+						{{ patient.date_joined }}
+					</td>
+					<td class="px-6 py-4">
+						<div class="flex items-center">
+						{% if patient.is_active %}
+							<div class="h-2.5 w-2.5 rounded-full bg-green-500 me-2"></div> Active
+						{% else %}
+							<div class="h-2.5 w-2.5 rounded-full bg-red-500 me-2"></div> Inactive
+						{% endif %}
+						</div>
+					</td>
+					<td class="px-6 py-4 text-center">
+						<i class="fa-duotone fa-solid fa-ellipsis-vertical"></i>
+					</td>
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+	</div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Search functionality
-  const searchInput = document.getElementById('searchInput');
-  searchInput.addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll('tbody tr');
-    
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      row.style.display = text.includes(searchTerm) ? '' : 'none';
-    });
-  });
-
-  // Add smooth animations for table rows
-  const rows = document.querySelectorAll('tbody tr');
-  rows.forEach((row, index) => {
-    row.style.animationDelay = `${index * 0.05}s`;
-  });
-});
-</script>
 {% endblock %}

@@ -1,200 +1,168 @@
 {% extends '../base.html' %}
 
+{% block styles %}
+{% endblock %}
+
 {% block content %}
-<div class="container mx-auto p-6 bg-gray-50 min-h-screen">
-  <h1 class="text-3xl font-bold text-gray-800 mb-6">Appointment Dashboard</h1>
-
-  <!-- Stats Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
-          <i class="fas fa-calendar-alt text-2xl text-blue-600"></i>
-        </div>
-        <div class="ml-4">
-          <h3 class="text-gray-500 text-sm">Total Appointments</h3>
-          <p class="text-2xl font-semibold text-gray-800">{{ total_appointments }}</p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
-          <i class="fas fa-clock text-2xl text-green-600"></i>
-        </div>
-        <div class="ml-4">
-          <h3 class="text-gray-500 text-sm">Today's Appointments</h3>
-          <p class="text-2xl font-semibold text-gray-800">{{ today_appointments }}</p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
-          <i class="fas fa-hourglass-half text-2xl text-yellow-600"></i>
-        </div>
-        <div class="ml-4">
-          <h3 class="text-gray-500 text-sm">Pending</h3>
-          <p class="text-2xl font-semibold text-gray-800">{{ pending_appointments }}</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="stats-card bg-white p-6 rounded-xl shadow-md">
-      <div class="flex items-center">
-        <div class="p-3 rounded-full vitigo-secondary bg-opacity-20">
-          <i class="fas fa-check-circle text-2xl text-purple-600"></i>
-        </div>
-        <div class="ml-4">
-          <h3 class="text-gray-500 text-sm">Completed</h3>
-          <p class="text-2xl font-semibold text-gray-800">{{ completed_appointments }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- Search and Filter Section -->
-  <form method="get" class="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl shadow-md mb-6">
-    <div class="flex-1">
-      <input
-        type="text"
-        name="search"
-        value="{{ search_query }}"
-        placeholder="Search appointments..."
-        class="w-full pl-4 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500"
-      />
-    </div>
-    <div class="flex gap-4">
-      <select name="status" class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500">
-        <option value="">All Statuses</option>
-        <option value="PENDING" {% if status == "PENDING" %}selected{% endif %}>Pending</option>
-        <option value="SCHEDULED" {% if status == "SCHEDULED" %}selected{% endif %}>Scheduled</option>
-        <option value="CONFIRMED" {% if status == "CONFIRMED" %}selected{% endif %}>Confirmed</option>
-        <option value="CANCELLED" {% if status == "CANCELLED" %}selected{% endif %}>Cancelled</option>
-        <option value="COMPLETED" {% if status == "COMPLETED" %}selected{% endif %}>Completed</option>
-        <option value="NO_SHOW" {% if status == "NO_SHOW" %}selected{% endif %}>No Show</option>
-      </select>
-      <button type="submit" class="vitigo-secondary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-400 transition">
-        Apply Filters
-      </button>
-    </div>
-  </form>
-
-  <!-- Appointments Table -->
-  <div class="bg-white rounded-xl shadow-md overflow-hidden">
-    <table class="min-w-full">
-      <thead class="vitigo-primary text-white">
-        <tr>
-          <th class="px-6 py-4 text-left">Patient</th>
-          <th class="px-6 py-4 text-left">Doctor</th>
-          <th class="px-6 py-4 text-left">Date & Time</th>
-          <th class="px-6 py-4 text-left">Type</th>
-          <th class="px-6 py-4 text-left">Priority</th>
-          <th class="px-6 py-4 text-left">Status</th>
-          <th class="px-6 py-4 text-left">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-200">
-        {% for appointment in appointments %}
-        <tr class="hover:bg-gray-50 table-row-animation hover-scale">
-          <td class="px-6 py-4">
-            <div class="flex items-center">
-              {% if appointment.patient.profile_picture %}
-                <img src="{{ appointment.patient.profile_picture.url }}" alt="Profile" class="w-10 h-10 rounded-full">
-              {% else %}
-                <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <i class="fas fa-user text-gray-400"></i>
-                </div>
-              {% endif %}
-              <div class="ml-4">
-                <div class="font-medium text-gray-900">{{ appointment.patient.get_full_name }}</div>
-                <div class="text-sm text-gray-500">ID: #{{ appointment.patient.id }}</div>
-              </div>
+    <div class="p-4 mt-14 sm:ml-64">
+        <!-- Page Heading -->
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-semibold text-gray-800">Appointment Management</h1>
+            <div class="flex space-x-2">
+                <button class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">Create Appointment</button>
+                <button class="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600">Export Data</button>
             </div>
-          </td>
-          <td class="px-6 py-4">
-            <div class="font-medium text-gray-900">Dr. {{ appointment.doctor.get_full_name }}</div>
-          </td>
-          <td class="px-6 py-4">
-            <div class="font-medium text-gray-900">{{ appointment.date|date:"M d, Y" }}</div>
-            <div class="text-sm text-gray-500">{{ appointment.time_slot.start_time|time:"H:i" }}</div>
-          </td>
-          <td class="px-6 py-4">
-            <span class="text-sm font-medium">{{ appointment.get_appointment_type_display }}</span>
-          </td>
-          <td class="px-6 py-4">
-            <span class="px-3 py-1 text-xs font-medium rounded-full 
-                       {% if appointment.priority == 'A' %}priority-a
-                       {% elif appointment.priority == 'B' %}priority-b
-                       {% else %}priority-c{% endif %}">
-              {{ appointment.get_priority_display }}
-            </span>
-          </td>
-          <td class="px-6 py-4">
-            <span class="px-3 py-1 text-xs font-medium rounded-full
-                       {% if appointment.status == 'COMPLETED' %}bg-green-100 text-green-800
-                       {% elif appointment.status == 'CANCELLED' %}bg-red-100 text-red-800
-                       {% elif appointment.status == 'PENDING' %}bg-yellow-100 text-yellow-800
-                       {% else %}bg-blue-100 text-blue-800{% endif %}">
-              {{ appointment.get_status_display }}
-            </span>
-          </td>
-          <td class="px-6 py-4">
-            <div class="flex space-x-3">
-              <a href="{% url 'appointment_detail' appointment.id %}" class="text-blue-600 hover:text-blue-800" title="View Details">
-                <i class="fas fa-eye"></i>
-              </a>
-              <button class="text-green-600 hover:text-green-800" title="Edit">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button class="text-red-600 hover:text-red-800" title="Cancel">
-                  <i class="fas fa-times-circle"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-
-    </table>
-
-    <!-- Pagination Controls -->
-    {% if page_obj.has_other_pages %}
-      <div class="px-6 py-4 bg-gray-50 flex justify-between items-center">
-        <span class="text-sm text-gray-600">
-          Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} appointments
-        </span>
-        <div class="flex space-x-2">
-          {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}&status={{ status }}&search={{ search_query }}"
-               class="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
-              Previous
-            </a>
-          {% endif %}
-
-          {% for num in page_obj.paginator.page_range %}
-            {% if num == page_obj.number %}
-              <span class="px-3 py-1 rounded-lg vitigo-primary text-white">{{ num }}</span>
-            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-              <a href="?page={{ num }}&status={{ status }}&search={{ search_query }}"
-                 class="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
-                {{ num }}
-              </a>
-            {% endif %}
-          {% endfor %}
-
-          {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}&status={{ status }}&search={{ search_query }}"
-               class="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
-              Next
-            </a>
-          {% endif %}
         </div>
-      </div>
-    {% endif %}
-  </div>
-</div>
+
+        <!-- Metrics Section -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <h2 class="text-gray-700 font-bold">Total Appointments</h2>
+                <p class="text-2xl font-semibold text-gray-900">{{ total_appointments }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <h2 class="text-gray-700 font-bold">Pending Appointments</h2>
+                <p class="text-2xl font-semibold text-green-500">{{ pending_appointments }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <h2 class="text-gray-700 font-bold">Completed Appointments</h2>
+                <p class="text-2xl font-semibold text-red-500">{{ completed_appointments }}</p>
+            </div>
+        </div>
+
+        <!-- Appointment List -->
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+            <div class="flex items-center justify-between flex-column flex-wrap md:flex-row space-y-4 md:space-y-0 pb-4 bg-white">
+                <div>
+                    <button id="dropdownActionButton" data-dropdown-toggle="dropdownAction" class="inline-flex items-center text-gray-500 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-lg text-sm px-3 py-1.5" type="button">
+                        Action
+                        <svg class="w-2.5 h-2.5 ms-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4" />
+                        </svg>
+                    </button>
+                    <div id="dropdownAction" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-44">
+                        <ul class="py-1 text-sm text-gray-700" aria-labelledby="dropdownActionButton">
+                            <li>
+                                <a href="#" class="block px-4 py-2 hover:bg-gray-100">Test Option</a>
+                            </li>
+                        </ul>
+                        <div class="py-1">
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Delete Appointment</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative">
+                    <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                        <svg class="w-4 h-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                        </svg>
+                    </div>
+                    <input type="text" id="table-search-users" class="block p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg w-80 bg-gray-50 focus:ring-blue-500 focus:border-blue-500" placeholder="Search for appointments" />
+                </div>
+            </div>
+            <table class="w-full text-sm text-left rtl:text-right text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="p-4">
+                            <div class="flex items-center">
+                                <input id="checkbox-all-search" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                <label for="checkbox-all-search" class="sr-only">checkbox</label>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3">Patient Information</th>
+                        <th scope="col" class="px-6 py-3">Doctor Information</th>
+                        <th scope="col" class="px-6 py-3">Appointment Details</th>
+                        <th scope="col" class="px-6 py-3">Priority</th>
+                        <th scope="col" class="px-6 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appointment in appointments %}
+                        <tr class="bg-white hover:bg-gray-50">
+                            <td class="w-4 p-4">
+                                <div class="flex items-center">
+                                    <input id="checkbox-table-search-{{ forloop.counter }}" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                    <label for="checkbox-table-search-{{ forloop.counter }}" class="sr-only">checkbox</label>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-left">
+                              <div class="text-base font-semibold">{{ appointment.patient.first_name }} {{ appointment.patient.last_name }}</div>
+                              <div class="font-normal text-gray-500">{{ appointment.patient.email }}</div>
+                          </td>
+                          <td class="px-6 py-4 text-left">
+                              <div class="text-base font-semibold">{{ appointment.doctor.first_name }} {{ appointment.doctor.last_name }}</div>
+                              <div class="font-normal text-gray-500">{{ appointment.doctor.email }}</div>
+                          </td>
+                            <td class="px-6 py-4">
+                                <div class="space-y-2">
+                                    <!-- Date -->
+                                    <div class="flex items-center space-x-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="font-medium text-gray-700">{{ appointment.date|date:"l, M d, Y" }}</span>
+                                    </div>
+                                    
+                                    <!-- Time Slot -->
+                                    <div class="flex items-center space-x-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="text-gray-600">
+                                            {{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}
+                                        </span>
+                                    </div>
+                                
+                                    <!-- Appointment Type -->
+                                    <div class="flex items-center space-x-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <span class="text-gray-600">{{ appointment.appointment_type }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full
+                                  {% if appointment.priority == 'A' %}
+                                    bg-blue-100 text-blue-800
+                                  {% elif appointment.priority == 'B' %}
+                                    bg-green-100 text-green-800
+                                  {% else %}
+                                    bg-red-100 text-red-800
+                                  {% endif %}">
+                                  {{ appointment.get_priority_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full
+                                  {% if appointment.status == 'PENDING' %}
+                                    bg-yellow-100 text-yellow-800
+                                  {% elif appointment.status == 'SCHEDULED' %}
+                                    bg-blue-100 text-blue-800
+                                  {% elif appointment.status == 'CONFIRMED' %}
+                                    bg-green-100 text-green-800
+                                  {% elif appointment.status == 'CANCELLED' %}
+                                    bg-red-100 text-red-800
+                                  {% elif appointment.status == 'COMPLETED' %}
+                                    bg-gray-100 text-gray-800
+                                  {% elif appointment.status == 'NO_SHOW' %}
+                                    bg-orange-100 text-orange-800
+                                  {% endif %}">
+                                  {{ appointment.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                              <i class="fa-duotone fa-solid fa-ellipsis-vertical"></i>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
 {% endblock %}
