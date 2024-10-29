@@ -86,11 +86,11 @@
                                     <label for="checkbox-table-search-{{ forloop.counter }}" class="sr-only">checkbox</label>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-left">
+                            <td class="px-6 py-4 text-left font-medium text-gray-900">
                               <div class="text-base font-semibold">{{ appointment.patient.first_name }} {{ appointment.patient.last_name }}</div>
                               <div class="font-normal text-gray-500">{{ appointment.patient.email }}</div>
                           </td>
-                          <td class="px-6 py-4 text-left">
+                          <td class="px-6 py-4 text-left font-medium text-gray-900">
                               <div class="text-base font-semibold">{{ appointment.doctor.first_name }} {{ appointment.doctor.last_name }}</div>
                               <div class="font-normal text-gray-500">{{ appointment.doctor.email }}</div>
                           </td>
@@ -119,7 +119,18 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                         </svg>
-                                        <span class="text-gray-600">{{ appointment.appointment_type }}</span>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                          {% if appointment.appointment_type == 'CONSULTATION' %}
+                                            bg-blue-100 text-blue-800
+                                          {% elif appointment.appointment_type == 'FOLLOW_UP' %}
+                                            bg-green-100 text-green-800
+                                          {% elif appointment.appointment_type == 'PROCEDURE' %}
+                                            bg-purple-100 text-purple-800
+                                          {% else %}
+                                            bg-yellow-100 text-yellow-800
+                                          {% endif %}">
+                                          {{ appointment.get_appointment_type_display }}
+                                        </span>
                                     </div>
                                 </div>
                             </td>
