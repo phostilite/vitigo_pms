@@ -1,4 +1,4 @@
-# phototherapy_managementmanagement/commands/populate_phototherapies.py
+# phototherapy_management/management/commands/populate_phototherapies.py
 
 import random
 from datetime import timedelta
