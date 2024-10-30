@@ -1,0 +1,144 @@
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Settings</h1>
+            <p class="mt-1 text-sm text-gray-600">Manage system settings for various modules</p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="#" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                <i class="fas fa-save mr-2"></i>
+                Save Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Settings Sections -->
+    <div class="space-y-6">
+        <!-- General Settings -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">General Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="clinic_name" class="block text-sm font-medium text-gray-700">Clinic Name</label>
+                    <input type="text" id="clinic_name" name="clinic_name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter clinic name">
+                </div>
+                <div>
+                    <label for="clinic_address" class="block text-sm font-medium text-gray-700">Clinic Address</label>
+                    <input type="text" id="clinic_address" name="clinic_address" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter clinic address">
+                </div>
+                <div>
+                    <label for="clinic_phone" class="block text-sm font-medium text-gray-700">Clinic Phone</label>
+                    <input type="text" id="clinic_phone" name="clinic_phone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter clinic phone number">
+                </div>
+                <div>
+                    <label for="clinic_email" class="block text-sm font-medium text-gray-700">Clinic Email</label>
+                    <input type="email" id="clinic_email" name="clinic_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter clinic email">
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management Settings -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">User Management Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="default_user_role" class="block text-sm font-medium text-gray-700">Default User Role</label>
+                    <select id="default_user_role" name="default_user_role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        <option value="patient">Patient</option>
+                        <option value="doctor">Doctor</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="user_activation" class="block text-sm font-medium text-gray-700">User Activation</label>
+                    <select id="user_activation" name="user_activation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        <option value="auto">Automatic</option>
+                        <option value="manual">Manual</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appointment Management Settings -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Appointment Management Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="appointment_duration" class="block text-sm font-medium text-gray-700">Default Appointment Duration (minutes)</label>
+                    <input type="number" id="appointment_duration" name="appointment_duration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter default appointment duration">
+                </div>
+                <div>
+                    <label for="appointment_reminder" class="block text-sm font-medium text-gray-700">Appointment Reminder (hours before)</label>
+                    <input type="number" id="appointment_reminder" name="appointment_reminder" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter hours before appointment reminder">
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Management Settings -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Financial Management Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
+                    <input type="text" id="currency" name="currency" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter currency">
+                </div>
+                <div>
+                    <label for="tax_rate" class="block text-sm font-medium text-gray-700">Tax Rate (%)</label>
+                    <input type="number" id="tax_rate" name="tax_rate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter tax rate">
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Notification Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="email_notifications" class="block text-sm font-medium text-gray-700">Email Notifications</label>
+                    <select id="email_notifications" name="email_notifications" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        <option value="enabled">Enabled</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="sms_notifications" class="block text-sm font-medium text-gray-700">SMS Notifications</label>
+                    <select id="sms_notifications" name="sms_notifications" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        <option value="enabled">Enabled</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="push_notifications" class="block text-sm font-medium text-gray-700">Push Notifications</label>
+                    <select id="push_notifications" name="push_notifications" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        <option value="enabled">Enabled</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Other Settings -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Other Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="data_backup" class="block text-sm font-medium text-gray-700">Data Backup Frequency</label>
+                    <select id="data_backup" name="data_backup" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="system_maintenance" class="block text-sm font-medium text-gray-700">System Maintenance Window</label>
+                    <input type="text" id="system_maintenance" name="system_maintenance" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50" placeholder="Enter maintenance window (e.g., Sundays 2-4 AM)">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

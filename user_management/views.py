@@ -119,3 +119,9 @@ class UserManagementView(View):
         except Exception as e:
             # Handle any exceptions that occur
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
+        
+class UserProfileView(View):
+    template_name = 'dashboard/admin/profile/profile_management.html'
+
+    def get(self, request):
+        return render(request, self.template_name)
