@@ -5,6 +5,10 @@ from django.contrib import messages
 from django.utils.decorators import method_decorator
 from .forms import UserRegistrationForm, UserLoginForm
 import logging
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.utils import timezone
+from user_management.models import CustomUser
+from django.http import HttpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -71,3 +75,47 @@ def user_logout(request):
         logout(request)
         messages.success(request, 'You have been logged out.')
     return redirect('login')
+
+
+class UserManagementView(View):
+    template_name = 'dashboard/admin/user_management/users_dashboard.html'
+
+    def get(self, request):
+        try:
+            # Fetch all users
+            users = CustomUser.objects.all()
+
+            # Calculate statistics
+            total_users = users.filter(is_active=True).count()
+            doctor_count = users.filter(role='DOCTOR', is_active=True).count()
+            available_doctors = doctor_count  # Assuming all active doctors are available today
+            new_users = users.filter(date_joined__gte=timezone.now().replace(day=1)).count()
+            new_patients = users.filter(role='PATIENT', date_joined__gte=timezone.now().replace(day=1)).count()
+
+            # Pagination for users
+            paginator = Paginator(users, 10)  # Show 10 users per page
+            page = request.GET.get('page')
+            try:
+                users = paginator.page(page)
+            except PageNotAnInteger:
+                users = paginator.page(1)
+            except EmptyPage:
+                users = paginator.page(paginator.num_pages)
+
+            # Context data to be passed to the template
+            context = {
+                'users': users,
+                'total_users': total_users,
+                'doctor_count': doctor_count,
+                'available_doctors': available_doctors,
+                'new_users': new_users,
+                'new_patients': new_patients,
+                'paginator': paginator,
+                'page_obj': users,
+            }
+
+            return render(request, self.template_name, context)
+
+        except Exception as e:
+            # Handle any exceptions that occur
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)
