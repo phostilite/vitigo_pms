@@ -53,6 +53,7 @@ urlpatterns = [
     path('stock/', include('stock_management.urls')),
     path('finance/', include('financial_management.urls')),
     path('hr/', include('hr_management.urls')),
+    path('telemedicine/', include('telemedicine_management.urls')),
 
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
