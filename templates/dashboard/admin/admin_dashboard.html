@@ -214,6 +214,7 @@
 </div>
 
 <!-- Charts Initialization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Demographics Chart
@@ -232,30 +233,6 @@ document.addEventListener('DOMContentLoaded', function() {
             plugins: {
                 legend: {
                     position: 'bottom'
-                }
-            }
-        }
-    });
-
-    // Treatment Progress Chart
-    const treatmentCtx = document.getElementById('treatmentChart').getContext('2d');
-    new Chart(treatmentCtx, {
-        type: 'line',
-        data: {
-            labels: {{ treatment_months|safe }},
-            datasets: [{
-                label: 'Success Rate',
-                data: {{ treatment_progress|safe }},
-                borderColor: '#3B82F6',
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100
                 }
             }
         }
