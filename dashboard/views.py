@@ -1,6 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from patient_management.models import Patient
+from django.utils import timezone
+from datetime import timedelta
+from appointment_management.models import Appointment
+from phototherapy_management.models import PhototherapySession
 
 @login_required
 def dashboard_router(request):
@@ -26,8 +31,37 @@ def patient_dashboard(request):
 def admin_dashboard(request):
     if request.user.role != 'ADMIN':
         raise PermissionDenied("You do not have permission to access the admin dashboard.")
-    # Add any context data needed for the admin dashboard
-    context = {}
+    
+    # Calculate total patients
+    total_patients = Patient.objects.count()
+    
+    # Calculate new patients percentage (e.g., patients added in the last month)
+    one_month_ago = timezone.now() - timedelta(days=30)
+    new_patients = Patient.objects.filter(created_at__gte=one_month_ago).count()
+    new_patients_percentage = (new_patients / total_patients) * 100 if total_patients > 0 else 0
+
+    # Get today's appointments
+    today = timezone.now().date()
+    todays_appointments = Appointment.objects.filter(date=today)
+
+    # Calculate weekly phototherapy sessions
+    one_week_ago = timezone.now() - timedelta(days=7)
+    weekly_phototherapy_sessions = PhototherapySession.objects.filter(session_date__gte=one_week_ago).count()
+
+    # Calculate phototherapy growth (compared to the previous week)
+    two_weeks_ago = timezone.now() - timedelta(days=14)
+    previous_week_sessions = PhototherapySession.objects.filter(session_date__gte=two_weeks_ago, session_date__lt=one_week_ago).count()
+    phototherapy_growth = ((weekly_phototherapy_sessions - previous_week_sessions) / previous_week_sessions * 100) if previous_week_sessions > 0 else 0
+
+    # Add any other context data needed for the admin dashboard
+    context = {
+        'total_patients': total_patients,
+        'new_patients_percentage': new_patients_percentage,
+        'todays_appointments': len(todays_appointments),
+        'weekly_phototherapy_sessions': weekly_phototherapy_sessions,
+        'phototherapy_growth': phototherapy_growth,
+    }
+    
     return render(request, 'dashboard/admin/admin_dashboard.html', context)
 
 @login_required
