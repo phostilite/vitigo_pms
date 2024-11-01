@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from patient_management.models import Patient
+from patient_management.models import Patient, TreatmentPlan
 from django.utils import timezone
 from datetime import timedelta
 from appointment_management.models import Appointment
@@ -63,6 +63,11 @@ def admin_dashboard(request):
     female_count = User.objects.filter(role='PATIENT', gender='F').count()
     other_count = User.objects.filter(role='PATIENT', gender='O').count()
 
+    # Calculate treatment months and progress
+    treatment_plans = TreatmentPlan.objects.all()
+    treatment_months = [plan.created_date.strftime('%B %Y') for plan in treatment_plans]
+    treatment_progress = [plan.medications.count() for plan in treatment_plans]
+
     # Get low stock items
     low_stock_items = StockItem.objects.filter(current_quantity__lte=F('reorder_point'))
 
@@ -78,6 +83,8 @@ def admin_dashboard(request):
             'female': female_count,
             'other': other_count,
         },
+        'treatment_months': treatment_months,  
+        'treatment_progress': treatment_progress,  
         'low_stock_items': low_stock_items,
     }
     
