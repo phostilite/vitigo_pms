@@ -1,36 +1,141 @@
 {% extends '../base.html' %}
 
-{% block styles %}
-{% endblock %}
-
 {% block content %}
     <div class="p-4 mt-14 sm:ml-64">
-        <!-- Page Heading -->
+        <!-- Page Header -->
         <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-semibold text-gray-800">Appointment Management</h1>
+            <div>
+                <h1 class="text-2xl font-semibold text-gray-800">Appointment Management</h1>
+                <p class="mt-1 text-sm text-gray-600">Schedule and manage patient appointments efficiently</p>
+            </div>
             <div class="flex space-x-2">
-                <button class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">Create Appointment</button>
-                <button class="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600">Export Data</button>
+                <button class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                    <i class="fas fa-plus-circle mr-2"></i>
+                    New Appointment
+                </button>
+                <button class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                    <i class="fas fa-file-export mr-2"></i>
+                    Export Data
+                </button>
             </div>
         </div>
 
-        <!-- Metrics Section -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-            <div class="bg-white p-4 rounded-lg shadow-md">
-                <h2 class="text-gray-700 font-bold">Total Appointments</h2>
-                <p class="text-2xl font-semibold text-gray-900">{{ total_appointments }}</p>
+        <!-- Analytics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Total Appointments -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="rounded-full bg-blue-100 p-3">
+                        <i class="fas fa-calendar-check text-blue-500 text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-400">This Month</span>
+                </div>
+                <div class="flex flex-col">
+                    <h3 class="text-2xl font-bold text-gray-700">{{ total_appointments }}</h3>
+                    <span class="text-base font-medium text-gray-500">Total Appointments</span>
+                </div>
+                <div class="mt-4 flex items-center text-sm">
+                    <span class="text-green-500 flex items-center">
+                        <i class="fas fa-arrow-up mr-1"></i>12%
+                    </span>
+                    <span class="text-gray-400 ml-2">vs last month</span>
+                </div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-md">
-                <h2 class="text-gray-700 font-bold">Pending Appointments</h2>
-                <p class="text-2xl font-semibold text-green-500">{{ pending_appointments }}</p>
+
+            <!-- Pending Appointments -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="rounded-full bg-yellow-100 p-3">
+                        <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-400">Active</span>
+                </div>
+                <div class="flex flex-col">
+                    <h3 class="text-2xl font-bold text-gray-700">{{ pending_appointments }}</h3>
+                    <span class="text-base font-medium text-gray-500">Pending Appointments</span>
+                </div>
+                <div class="mt-4 flex items-center text-sm">
+                    <span class="text-yellow-500">Requires Action</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-md">
-                <h2 class="text-gray-700 font-bold">Completed Appointments</h2>
-                <p class="text-2xl font-semibold text-red-500">{{ completed_appointments }}</p>
+
+            <!-- Completed Appointments -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="rounded-full bg-green-100 p-3">
+                        <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-400">Completed</span>
+                </div>
+                <div class="flex flex-col">
+                    <h3 class="text-2xl font-bold text-gray-700">{{ completed_appointments }}</h3>
+                    <span class="text-base font-medium text-gray-500">Completed Appointments</span>
+                </div>
+                <div class="mt-4 flex items-center text-sm">
+                    <span class="text-green-500 flex items-center">
+                        <i class="fas fa-arrow-up mr-1"></i>5%
+                    </span>
+                    <span class="text-gray-400 ml-2">Completion Rate</span>
+                </div>
+            </div>
+
+            <!-- Today's Appointments -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="rounded-full bg-purple-100 p-3">
+                        <i class="fas fa-calendar-day text-purple-500 text-xl"></i>
+                    </div>
+                    <span class="text-sm font-medium text-gray-400">Today</span>
+                </div>
+                <div class="flex flex-col">
+                    <h3 class="text-2xl font-bold text-gray-700">{{ today_appointments }}</h3>
+                    <span class="text-base font-medium text-gray-500">Today's Schedule</span>
+                </div>
+                <div class="mt-4 flex items-center text-sm">
+                    <span class="text-purple-500">View Schedule</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
             </div>
         </div>
 
-        <!-- Appointment List -->
+        <!-- Filters and Search -->
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- Priority Filter -->
+                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                        <option value="">All Priorities</option>
+                        <option value="A">Priority A - Urgent</option>
+                        <option value="B">Priority B - Normal</option>
+                        <option value="C">Priority C - Low</option>
+                    </select>
+
+                    <!-- Status Filter -->
+                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                        <option value="">All Statuses</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="CONFIRMED">Confirmed</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="CANCELLED">Cancelled</option>
+                        <option value="NO_SHOW">No Show</option>
+                    </select>
+
+                    <!-- Date Filter -->
+                    <input type="date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                </div>
+
+                <!-- Search -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                        <i class="fas fa-search text-gray-500"></i>
+                    </div>
+                    <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" placeholder="Search appointments...">
+                </div>
+            </div>
+        </div>
+
+        <!-- Rest of the template remains the same but with updated styling to match -->
         <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
             <div class="flex items-center justify-between flex-column flex-wrap md:flex-row space-y-4 md:space-y-0 pb-4 bg-white">
                 <div>
@@ -209,4 +314,17 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+    // Initialize Flowbite dropdowns
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdownButtons = document.querySelectorAll('[data-dropdown-toggle]');
+        dropdownButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-dropdown-toggle');
+                const dropdownElement = document.getElementById(targetId);
+                dropdownElement.classList.toggle('hidden');
+            });
+        });
+    });
+</script>
 {% endblock %}

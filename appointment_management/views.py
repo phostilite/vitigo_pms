@@ -14,66 +14,63 @@ class AppointmentDashboardView(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = Appointment.objects.all().order_by('-date', '-time_slot__start_time')
+        queryset = Appointment.objects.select_related(
+            'patient',
+            'doctor',
+            'time_slot'
+        )
         
-        # Apply filters if any
-        status_filter = self.request.GET.get('status')
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
+        # Apply filters based on GET parameters
+        filters = {}
+        
+        # Priority filter
+        priority = self.request.GET.get('priority')
+        if priority:
+            filters['priority'] = priority
             
+        # Status filter
+        status = self.request.GET.get('status')
+        if status:
+            filters['status'] = status
+            
+        # Date filter
+        appointment_date = self.request.GET.get('date')
+        if appointment_date:
+            filters['date'] = appointment_date
+            
+        # Search functionality
         search_query = self.request.GET.get('search')
         if search_query:
             queryset = queryset.filter(
                 Q(patient__first_name__icontains=search_query) |
                 Q(patient__last_name__icontains=search_query) |
                 Q(doctor__first_name__icontains=search_query) |
-                Q(doctor__last_name__icontains=search_query)
+                Q(doctor__last_name__icontains=search_query) |
+                Q(notes__icontains=search_query)
             )
             
-        return queryset
+        return queryset.filter(**filters).order_by('-date', '-time_slot__start_time')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         today = timezone.now().date()
+        start_of_month = today.replace(day=1)
         
-        # Get appointment statistics
-        context['total_appointments'] = Appointment.objects.count()
-        context['today_appointments'] = Appointment.objects.filter(date=today).count()
-        context['pending_appointments'] = Appointment.objects.filter(status='PENDING').count()
-        context['completed_appointments'] = Appointment.objects.filter(status='COMPLETED').count()
-        
-        # Get appointments by status for chart
-        status_counts = (Appointment.objects.values('status')
-                        .annotate(count=Count('id'))
-                        .order_by('status'))
-        context['status_data'] = list(status_counts)
-        
-        # Get appointments by priority
-        priority_counts = (Appointment.objects.values('priority')
-                          .annotate(count=Count('id'))
-                          .order_by('priority'))
-        context['priority_data'] = list(priority_counts)
-        
-        # Get upcoming appointments for the next 7 days
-        next_week = today + timedelta(days=7)
-        context['upcoming_appointments'] = (
-            Appointment.objects.filter(date__range=[today, next_week])
-            .order_by('date', 'time_slot__start_time')[:5]
-        )
-        
-        # Get daily appointment counts for the last 30 days
-        last_month = today - timedelta(days=30)
-        daily_appointments = Appointment.objects.filter(date__gte=last_month).values('date')
-        
-        # Manually aggregate daily counts
-        daily_counts = defaultdict(int)
-        for appt in daily_appointments:
-            date_key = appt['date']
-            daily_counts[date_key] += 1
-
-        context['daily_appointment_data'] = [
-            {'day': day, 'count': count} for day, count in sorted(daily_counts.items())
-        ]
+        # Basic statistics
+        context.update({
+            'total_appointments': Appointment.objects.count(),
+            'pending_appointments': Appointment.objects.filter(status='PENDING').count(),
+            'completed_appointments': Appointment.objects.filter(status='COMPLETED').count(),
+            'today_appointments': Appointment.objects.filter(date=today).count(),
+            
+            # Current filters for template
+            'current_filters': {
+                'priority': self.request.GET.get('priority', ''),
+                'status': self.request.GET.get('status', ''),
+                'date': self.request.GET.get('date', ''),
+                'search': self.request.GET.get('search', ''),
+            },
+        })
         
         return context
 
