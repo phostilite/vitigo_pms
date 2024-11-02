@@ -9,6 +9,10 @@ from django.shortcuts import get_object_or_404
 import logging
 from patient_management.models import Patient
 from django.utils import timezone
+from django.views.generic import DetailView
+from .models import Patient, VitiligoAssessment, TreatmentPlan, Medication
+from django.http import Http404
+from django.core.exceptions import ObjectDoesNotExist
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -76,36 +80,87 @@ class PatientListView(LoginRequiredMixin, View):
             return render(request, 'error_handling/500.html', {'error': 'An unexpected error occurred'}, status=500)
 
 
-class PatientDetailView(LoginRequiredMixin, View):
-    def get(self, request, patient_id):
+class PatientDetailView(LoginRequiredMixin, DetailView):
+    template_name = 'dashboard/admin/patient_management/patient_detail.html'
+    context_object_name = 'patient'
+
+    def get_object(self):
         try:
-            if request.user.role not in ['ADMIN', 'DOCTOR', 'NURSE']:
-                raise PermissionDenied("You do not have permission to view this page.")
+            # Get the user first
+            try:
+                user = get_object_or_404(User, id=self.kwargs.get('user_id'))
+            except (ObjectDoesNotExist, ValueError):
+                raise Http404("User not found or invalid user ID")
+            
+            # Check if user is a patient
+            try:
+                if user.role != 'PATIENT':
+                    raise PermissionDenied("This user is not a patient.")
+            except AttributeError:
+                raise PermissionDenied("Unable to verify user role")
+            
+            # Get the associated patient profile
+            try:
+                patient = get_object_or_404(Patient, user=user)
+                return patient
+            except ObjectDoesNotExist:
+                raise Http404("Patient profile not found")
                 
-            patient = get_object_or_404(Patient.objects.select_related(
-                'user',
-                'medical_history'
-            ).prefetch_related(
-                'medications',
-                'vitiligo_assessments',
-                'treatment_plans',
-                'treatment_plans__medications'
-            ), id=patient_id)
-            
-            latest_assessment = patient.vitiligo_assessments.order_by('-assessment_date').first()
-            latest_treatment = patient.treatment_plans.order_by('-created_date').first()
-            
-            context = {
-                'patient': patient,
-                'latest_assessment': latest_assessment,
-                'latest_treatment': latest_treatment,
-            }
-            
-            return render(request, 'dashboard/admin/patient_management.html/patient_detail.html', context)
-            
-        except PermissionDenied as e:
-            logger.warning(f"Permission denied for user {request.user.email}: {str(e)}")
-            return render(request, 'error_handling/403.html', {'error': str(e)}, status=403)
         except Exception as e:
-            logger.error(f"Error retrieving patient details: {str(e)}", exc_info=True)
-            return render(request, 'error_handling/500.html', {'error': 'An unexpected error occurred'}, status=500)
+            # Log the unexpected error here if you have logging configured
+            raise Http404(f"An unexpected error occurred: {str(e)}")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        patient = self.object
+        
+        # Get latest vitiligo assessment
+        try:
+            latest_assessment = VitiligoAssessment.objects.filter(
+                patient=patient
+            ).order_by('-assessment_date').first()
+        except Exception:
+            latest_assessment = None
+        context['latest_assessment'] = latest_assessment
+
+        # Get active treatment plan
+        try:
+            active_treatment = TreatmentPlan.objects.filter(
+                patient=patient
+            ).order_by('-created_date').first()
+        except Exception:
+            active_treatment = None
+        context['active_treatment_plan'] = active_treatment
+
+        # Get current medications
+        try:
+            current_medications = Medication.objects.filter(
+                patient=patient,
+                end_date__isnull=True
+            ).order_by('-start_date')
+        except Exception:
+            current_medications = []
+        context['current_medications'] = current_medications
+
+        # Get medical history with safe access
+        try:
+            medical_history = patient.medical_history
+        except AttributeError:
+            medical_history = None
+        context['medical_history'] = medical_history
+
+        # Get vitiligo progression data for chart
+        try:
+            assessments = VitiligoAssessment.objects.filter(
+                patient=patient
+            ).order_by('assessment_date')
+            assessment_dates = [a.assessment_date.strftime('%Y-%m-%d') for a in assessments]
+            vasi_scores = [a.vasi_score for a in assessments]
+        except Exception:
+            assessment_dates = []
+            vasi_scores = []
+        
+        context['assessment_dates'] = assessment_dates
+        context['vasi_scores'] = vasi_scores
+
+        return context
