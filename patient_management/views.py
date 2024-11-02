@@ -2,47 +2,75 @@ from django.shortcuts import render
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from patient_management.models import Patient   
-import logging
-from django.shortcuts import get_object_or_404
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Q
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+import logging
+from patient_management.models import Patient
+from django.utils import timezone
 
 User = get_user_model()
-
 logger = logging.getLogger(__name__)
 
 class PatientListView(LoginRequiredMixin, View):
+    template_name = 'dashboard/admin/patient_management/patient_list.html'
+
     def get(self, request):
         try:
             if request.user.role not in ['ADMIN', 'DOCTOR', 'NURSE']:
                 raise PermissionDenied("You do not have permission to view this page.")
+
+            # Get all patients with optional filtering
+            patients = User.objects.filter(role='PATIENT')
             
-            # Determine the template based on the user role
-            role_template_map = {
-                'ADMIN': 'dashboard/admin/patient_management.html/patient_list.html',
-                'DOCTOR': 'dashboard/doctor/patient_management.html/patient_list.html',
-                'NURSE': 'dashboard/nurse/patient_management.html/patient_list.html'
-            }
-            template = role_template_map.get(request.user.role)
+            # Apply filters
+            status = request.GET.get('status')
+            search_query = request.GET.get('search')
+
+            if status:
+                patients = patients.filter(is_active=(status == 'active'))
             
-            # Get patient metrics
+            if search_query:
+                patients = patients.filter(
+                    Q(first_name__icontains=search_query) |
+                    Q(last_name__icontains=search_query) |
+                    Q(email__icontains=search_query)
+                )
+
+            # Pagination
+            paginator = Paginator(patients, 10)  # Show 10 patients per page
+            page = request.GET.get('page')
+            try:
+                patients = paginator.page(page)
+            except PageNotAnInteger:
+                patients = paginator.page(1)
+            except EmptyPage:
+                patients = paginator.page(paginator.num_pages)
+
+            # Get metrics
             total_patients = User.objects.filter(role='PATIENT').count()
             active_patients = User.objects.filter(role='PATIENT', is_active=True).count()
             inactive_patients = User.objects.filter(role='PATIENT', is_active=False).count()
             
-            patients = User.objects.filter(role='PATIENT', is_active=True)
+            # Monthly metrics (you might want to adjust this based on your needs)
+            new_patients_this_month = User.objects.filter(
+                role='PATIENT',
+                date_joined__month=timezone.now().month
+            ).count()
+
             context = {
                 'patients': patients,
                 'total_patients': total_patients,
                 'active_patients': active_patients,
-                'inactive_patients': inactive_patients
+                'inactive_patients': inactive_patients,
+                'new_patients_this_month': new_patients_this_month,
+                'paginator': paginator,
+                'page_obj': patients,
             }
-            return render(request, template, context)
-        
-        except PermissionDenied as e:
-            logger.warning(f"Permission denied for user {request.user.email}: {str(e)}")
-            return render(request, 'error_handling/403.html', {'error': str(e)}, status=403)
-        
+
+            return render(request, self.template_name, context)
+            
         except Exception as e:
             logger.error(f"Error retrieving patient list: {str(e)}", exc_info=True)
             return render(request, 'error_handling/500.html', {'error': 'An unexpected error occurred'}, status=500)

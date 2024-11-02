@@ -344,7 +344,7 @@
        // Process dates to add sequence numbers for duplicates
        const processedLabels = months.map((month, index) => {
            const count = months.slice(0, index).filter(m => m === month).length + 1;
-           return count > 1 ? `${month} (Visit ${count})` : month;
+           return count > 1 ? `₹{month} (Visit ₹{count})` : month;
        });
 
        new Chart(treatmentCtx, {
@@ -378,7 +378,7 @@
                        intersect: false,
                        callbacks: {
                            label: function(context) {
-                               return `Progress: ${context.parsed.y}%`;
+                               return `Progress: ₹{context.parsed.y}%`;
                            }
                        }
                    }

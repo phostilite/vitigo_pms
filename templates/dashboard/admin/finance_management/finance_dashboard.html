@@ -51,7 +51,7 @@
                 <span class="text-sm font-medium text-gray-400">Total</span>
             </div>
             <div class="flex flex-col">
-                <h3 class="text-2xl font-bold text-gray-700">${{ total_payments }}</h3>
+                <h3 class="text-2xl font-bold text-gray-700">₹{{ total_payments }}</h3>
                 <span class="text-base font-medium text-gray-500">Payments</span>
             </div>
             <div class="mt-4 flex items-center text-sm">
@@ -71,7 +71,7 @@
                 <span class="text-sm font-medium text-gray-400">Total</span>
             </div>
             <div class="flex flex-col">
-                <h3 class="text-2xl font-bold text-gray-700">${{ total_expenses }}</h3>
+                <h3 class="text-2xl font-bold text-gray-700">₹{{ total_expenses }}</h3>
                 <span class="text-base font-medium text-gray-500">Expenses</span>
             </div>
             <div class="mt-4 flex items-center text-sm">
@@ -91,7 +91,7 @@
                 <span class="text-sm font-medium text-gray-400">Net Profit</span>
             </div>
             <div class="flex flex-col">
-                <h3 class="text-2xl font-bold text-gray-700">${{ net_profit }}</h3>
+                <h3 class="text-2xl font-bold text-gray-700">₹{{ net_profit }}</h3>
                 <span class="text-base font-medium text-gray-500">This Month</span>
             </div>
             <div class="mt-4 flex items-center text-sm">
@@ -185,7 +185,7 @@
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${{ invoice.total_with_gst }}</div>
+                            <div class="text-sm text-gray-900">₹{{ invoice.total_with_gst }}</div>
                         </td>
                         <td class="px-6 py-4 text-right">
                             <button id="dropdownMenuIconButton{{ invoice.id }}" data-dropdown-toggle="dropdownDots{{ invoice.id }}" class="text-gray-500 hover:text-gray-700">
