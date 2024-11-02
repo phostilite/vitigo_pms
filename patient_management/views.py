@@ -86,81 +86,61 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
 
     def get_object(self):
         try:
-            # Get the user first
-            try:
-                user = get_object_or_404(User, id=self.kwargs.get('user_id'))
-            except (ObjectDoesNotExist, ValueError):
-                raise Http404("User not found or invalid user ID")
+            user = get_object_or_404(User, id=self.kwargs.get('user_id'))
             
-            # Check if user is a patient
-            try:
-                if user.role != 'PATIENT':
-                    raise PermissionDenied("This user is not a patient.")
-            except AttributeError:
-                raise PermissionDenied("Unable to verify user role")
+            if user.role != 'PATIENT':
+                raise PermissionDenied("This user is not a patient.")
             
-            # Get the associated patient profile
+            # Instead of get_object_or_404, use get() with a try-except block
             try:
-                patient = get_object_or_404(Patient, user=user)
+                patient = Patient.objects.get(user=user)
                 return patient
-            except ObjectDoesNotExist:
-                raise Http404("Patient profile not found")
+            except Patient.DoesNotExist:
+                # Return None if no patient profile exists
+                return None
                 
         except Exception as e:
-            # Log the unexpected error here if you have logging configured
+            logger.error(f"Error in PatientDetailView: {str(e)}")
             raise Http404(f"An unexpected error occurred: {str(e)}")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         patient = self.object
         
-        # Get latest vitiligo assessment
+        # If patient profile doesn't exist, return basic user info only
+        if patient is None:
+            context['user'] = get_object_or_404(User, id=self.kwargs.get('user_id'))
+            context['profile_exists'] = False
+            return context
+            
+        context['profile_exists'] = True
+        
+        # Only fetch related data if patient profile exists
         try:
-            latest_assessment = VitiligoAssessment.objects.filter(
+            context['latest_assessment'] = VitiligoAssessment.objects.filter(
                 patient=patient
             ).order_by('-assessment_date').first()
         except Exception:
-            latest_assessment = None
-        context['latest_assessment'] = latest_assessment
+            context['latest_assessment'] = None
 
-        # Get active treatment plan
         try:
-            active_treatment = TreatmentPlan.objects.filter(
+            context['active_treatment_plan'] = TreatmentPlan.objects.filter(
                 patient=patient
             ).order_by('-created_date').first()
         except Exception:
-            active_treatment = None
-        context['active_treatment_plan'] = active_treatment
+            context['active_treatment_plan'] = None
 
-        # Get current medications
         try:
-            current_medications = Medication.objects.filter(
+            context['current_medications'] = Medication.objects.filter(
                 patient=patient,
                 end_date__isnull=True
             ).order_by('-start_date')
         except Exception:
-            current_medications = []
-        context['current_medications'] = current_medications
+            context['current_medications'] = []
 
-        # Get medical history with safe access
         try:
-            medical_history = patient.medical_history
-        except AttributeError:
-            medical_history = None
-        context['medical_history'] = medical_history
-
-        # Get vitiligo progression data for chart
-        try:
-            assessments = VitiligoAssessment.objects.filter(
-                patient=patient
-            ).order_by('assessment_date')
-            assessment_dates = [a.assessment_date.strftime('%Y-%m-%d') for a in assessments]
-            vasi_scores = [a.vasi_score for a in assessments]
+            context['medical_history'] = patient.medical_history
         except Exception:
-            assessment_dates = []
-            vasi_scores = []
-        
-        context['assessment_dates'] = assessment_dates
-        context['vasi_scores'] = vasi_scores
+            context['medical_history'] = None
 
         return context

@@ -8,6 +8,7 @@
             <h1 class="text-2xl font-semibold text-gray-800">Patient Details</h1>
             <p class="mt-1 text-sm text-gray-600">Comprehensive patient information and medical history</p>
         </div>
+        {% if profile_exists %}
         <div class="flex space-x-2">
             <a href="#" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
                 <i class="fas fa-edit mr-2"></i>
@@ -18,8 +19,38 @@
                 New Assessment
             </a>
         </div>
+        {% else %}
+        <div>
+            <a href="#" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                <i class="fas fa-plus mr-2"></i>
+                Create Patient Profile
+            </a>
+        </div>
+        {% endif %}
     </div>
 
+    {% if not profile_exists %}
+    <!-- No Profile Message -->
+    <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 mb-6">
+        <div class="text-center py-8">
+            <div class="mb-4">
+                {% if user.profile_picture %}
+                    <img class="w-24 h-24 rounded-full mx-auto" src="{{ user.profile_picture.url }}" alt="Profile picture">
+                {% else %}
+                    <div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center mx-auto">
+                        <i class="fas fa-user-circle text-gray-400 text-4xl"></i>
+                    </div>
+                {% endif %}
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900">{{ user.get_full_name }}</h2>
+            <p class="text-gray-500 mt-2">{{ user.email }}</p>
+            <div class="mt-6">
+                <p class="text-gray-600">Patient profile has not been created yet.</p>
+                <p class="text-gray-600">Please create a patient profile to add medical information and start tracking treatments.</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
     <!-- Patient Overview Card -->
     <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 mb-6">
         <div class="flex items-start">
@@ -177,6 +208,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 
