@@ -8,11 +8,33 @@ from django.http import HttpResponse
 from .models import ResearchStudy, StudyProtocol, PatientStudyEnrollment, DataCollectionPoint, ResearchData, AnalysisResult, Publication
 from django.db.models import Count
 
-class ResearchManagementView(View):
-    template_name = 'dashboard/admin/research_management/research_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'RESEARCHER': 'research',
+        'SUPER_ADMIN': 'admin',
+        'MANAGER': 'admin',
+        'LAB_TECHNICIAN': 'lab'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/research_management/{base_template}'
 
+class ResearchManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role
+            template_path = get_template_path('research_dashboard.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
             # Fetch all research studies, study protocols, patient enrollments, data collection points, research data, analysis results, and publications
             research_studies = ResearchStudy.objects.all()
             study_protocols = StudyProtocol.objects.all()
@@ -57,7 +79,7 @@ class ResearchManagementView(View):
                 'page_obj': research_studies,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
             # Handle any exceptions that occur

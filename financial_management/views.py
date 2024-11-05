@@ -8,11 +8,38 @@ from django.http import HttpResponse
 from .models import GSTRate, Invoice, Payment, Expense, TDSEntry, FinancialYear, FinancialReport
 from django.db.models import Sum
 
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    Example: For 'finance_dashboard.html' and role 'ACCOUNTANT', 
+    returns 'dashboard/accountant/finance_management/finance_dashboard.html'
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'ACCOUNTANT': 'accountant',
+        'MANAGER': 'manager',
+        'DOCTOR': 'doctor',
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/finance_management/{base_template}'
+
 class FinanceManagementView(View):
-    template_name = 'dashboard/admin/finance_management/finance_dashboard.html'
+    def get_template_names(self):
+        user_role = self.request.user.role  # Assuming user role is stored in user model
+        template_path = get_template_path('finance_dashboard.html', user_role)
+        if not template_path:
+            return None
+        return [template_path]
 
     def get(self, request):
         try:
+            template_names = self.get_template_names()
+            if not template_names:
+                return HttpResponse("You do not have permission to view this page.", status=403)
+
             # Fetch all invoices, payments, expenses, TDS entries, financial years, and financial reports
             invoices = Invoice.objects.all()
             payments = Payment.objects.all()
@@ -64,7 +91,7 @@ class FinanceManagementView(View):
                 'page_obj': invoices,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_names, context)
 
         except Exception as e:
             # Handle any exceptions that occur

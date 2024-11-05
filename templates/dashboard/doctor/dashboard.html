@@ -1,0 +1,321 @@
+{% extends './base.html' %}
+
+{% block title %}VitiGo Doctor Dashboard{% endblock %}
+
+{% block extra_styles %}
+<style>
+   .chart-wrapper {
+       position: relative;
+       height: 300px;
+       width: 100%;
+   }
+   
+   .chart-container {
+       position: relative;
+       height: 100%;
+       width: 100%;
+   }
+
+   .no-data-message {
+       text-align: center;
+       color: #6b7280;
+       padding: 2rem;
+       font-style: italic;
+   }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Welcome Section -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800">Welcome back, Dr. {{ request.user.get_full_name }}</h1>
+        <p class="mt-1 text-sm text-gray-600">Here's your practice overview for today</p>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Your Patients -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-blue-100 p-3">
+                    <i class="fas fa-user-group text-blue-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">Your Patients</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">{{ total_patients }}</h3>
+                <span class="text-base font-medium text-gray-500">Active Patients</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-green-500 flex items-center">
+                    <i class="fas fa-arrow-up mr-1"></i>{{ new_patients_percentage }}%
+                </span>
+                <span class="text-gray-400 ml-2">new this month</span>
+            </div>
+        </div>
+
+        <!-- Today's Appointments -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-green-100 p-3">
+                    <i class="fas fa-calendar-check text-green-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">Today</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">{{ todays_appointments }}</h3>
+                <span class="text-base font-medium text-gray-500">Appointments</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <a href="#" class="text-green-500 hover:text-green-600">View Schedule</a>
+                <i class="fas fa-arrow-right ml-2"></i>
+            </div>
+        </div>
+
+        <!-- Weekly Sessions -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-yellow-100 p-3">
+                    <i class="fas fa-sun text-yellow-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">This Week</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">{{ weekly_phototherapy_sessions }}</h3>
+                <span class="text-base font-medium text-gray-500">Phototherapy Sessions</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-yellow-500 flex items-center">
+                    <i class="fas fa-arrow-up mr-1"></i>{{ phototherapy_growth }}%
+                </span>
+                <span class="text-gray-400 ml-2">vs last week</span>
+            </div>
+        </div>
+
+        <!-- Monthly Revenue -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-purple-100 p-3">
+                    <i class="fas fa-money-bill-wave text-purple-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">Monthly</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">₹{{ monthly_revenue|floatformat:2 }}</h3>
+                <span class="text-base font-medium text-gray-500">Revenue</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-purple-500">View Details</span>
+                <i class="fas fa-arrow-right ml-2"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Patient Demographics -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Your Patient Demographics</h3>
+            <div class="chart-wrapper">
+                <canvas id="demographicsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Treatment Progress -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Treatment Progress Overview</h3>
+            <div class="chart-wrapper">
+                <canvas id="treatmentChart"></canvas>
+                <div id="noDataMessage" class="no-data-message" style="display: none;">
+                    No treatment progress data available yet
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activities and Tasks Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Upcoming Tasks -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Upcoming Appointments</h3>
+                {% if upcoming_tasks %}
+                    <a href="#" class="text-blue-500 text-sm hover:text-blue-600">View All</a>
+                {% endif %}
+            </div>
+            {% if upcoming_tasks %}
+                <div class="space-y-4">
+                    {% for task in upcoming_tasks %}
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150">
+                        <div class="flex items-center">
+                            <div class="rounded-full bg-{{ task.status|lower }}-100 w-3 h-3 flex-shrink-0"></div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900">{{ task.patient.get_full_name }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ task.appointment_type }} • 
+                                    {{ task.time_slot.start_time|date:"g:i A" }}
+                                </p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-medium text-gray-500">{{ task.date|date:"M d" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="flex items-center justify-center h-32 bg-gray-50 rounded-lg">
+                    <p class="text-gray-500">No upcoming appointments</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Activities -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Recent Consultations</h3>
+                {% if recent_activities %}
+                    <a href="#" class="text-blue-500 text-sm hover:text-blue-600">View All</a>
+                {% endif %}
+            </div>
+            {% if recent_activities %}
+                <div class="space-y-4">
+                    {% for activity in recent_activities %}
+                    <div class="flex items-start p-3 hover:bg-gray-50 rounded-lg transition-colors duration-150">
+                        <div class="flex-shrink-0">
+                            <span class="inline-block w-2 h-2 rounded-full bg-blue-500 mt-2"></span>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-900">
+                                {{ activity.patient.user.get_full_name }}
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                {{ activity.appointment_type }} • 
+                                {{ activity.created_at|timesince }} ago
+                            </p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="flex items-center justify-center h-32 bg-gray-50 rounded-lg">
+                    <p class="text-gray-500">No recent consultations</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Charts Initialization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Demographics Chart
+    const demographicsCtx = document.getElementById('demographicsChart').getContext('2d');
+    new Chart(demographicsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Male', 'Female', 'Other'],
+            datasets: [{
+                data: [
+                    {{ demographics.male }},
+                    {{ demographics.female }},
+                    {{ demographics.other }}
+                ],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(236, 72, 153, 0.8)',
+                    'rgba(16, 185, 129, 0.8)'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        boxWidth: 12
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Treatment Progress Chart
+    const treatmentCtx = document.getElementById('treatmentChart').getContext('2d');
+    const months = {{ treatment_months|safe }};
+    const progress = {{ treatment_progress|safe }};
+
+    if (progress && progress.length > 0) {
+        new Chart(treatmentCtx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Treatment Progress',
+                    data: progress,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: 'rgb(59, 130, 246)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Progress: ${context.parsed.y.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('treatmentChart').style.display = 'none';
+        document.getElementById('noDataMessage').style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

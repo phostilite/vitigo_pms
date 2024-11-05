@@ -1,18 +1,44 @@
 # views.py
 
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views import View
 from .models import BodyPart, PatientImage, ImageComparison
 from django.db.models import Sum, Count
 from django.utils import timezone
 
-class ImageManagementView(View):
-    template_name = 'dashboard/admin/image_management/image_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    Example: For 'image_dashboard.html' and role 'ACCOUNTANT', 
+    returns 'dashboard/accountant/image_management/image_dashboard.html'
+    """
+    # Only roles that should have access to image management
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'LAB_TECHNICIAN': 'lab',
+        'TECHNICIAN': 'technician'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/image_management/{base_template}'
 
+class ImageManagementView(View):
     def get(self, request):
         try:
+            # Get user role from request
+            user_role = request.user.role if hasattr(request.user, 'role') else None
+            
+            # Resolve template path
+            template_path = get_template_path('image_dashboard.html', user_role)
+            if not template_path:
+                return HttpResponseForbidden("You don't have permission to access this page")
+
             # Fetch all body parts and patient images
             body_parts = BodyPart.objects.all()
             patient_images = PatientImage.objects.all()
@@ -46,7 +72,7 @@ class ImageManagementView(View):
                 'page_obj': patient_images,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
             # Handle any exceptions that occur

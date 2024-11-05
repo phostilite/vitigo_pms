@@ -1,0 +1,290 @@
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Pharmacy Management</h1>
+            <p class="mt-1 text-sm text-gray-600">Monitor medication inventory and prescription fulfillment</p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="#" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                <i class="fas fa-prescription-bottle-alt mr-2"></i>
+                New Purchase Order
+            </a>
+            <a href="#" class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                <i class="fas fa-file-export mr-2"></i>
+                Export Data
+            </a>
+        </div>
+    </div>
+
+    <!-- Analytics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Active Prescriptions -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-blue-100 p-3">
+                    <i class="fas fa-prescription text-blue-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">Today</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">{{ active_prescriptions }}</h3>
+                <span class="text-base font-medium text-gray-500">Active Prescriptions</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-green-500 flex items-center">
+                    <i class="fas fa-arrow-up mr-1"></i>8%
+                </span>
+                <span class="text-gray-400 ml-2">vs yesterday</span>
+            </div>
+        </div>
+
+        <!-- Low Stock Items -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-red-100 p-3">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">Inventory Alert</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">{{ low_stock_count }}</h3>
+                <span class="text-base font-medium text-gray-500">Low Stock Items</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-red-500">Requires Attention</span>
+                <i class="fas fa-arrow-right ml-2"></i>
+            </div>
+        </div>
+
+        <!-- Monthly Revenue -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-green-100 p-3">
+                    <i class="fas fa-dollar-sign text-green-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">This Month</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">₹{{ monthly_revenue }}</h3>
+                <span class="text-base font-medium text-gray-500">Revenue</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-green-500 flex items-center">
+                    <i class="fas fa-arrow-up mr-1"></i>12%
+                </span>
+                <span class="text-gray-400 ml-2">vs last month</span>
+            </div>
+        </div>
+
+        <!-- Pending Orders -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="rounded-full bg-yellow-100 p-3">
+                    <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-400">Pending</span>
+            </div>
+            <div class="flex flex-col">
+                <h3 class="text-2xl font-bold text-gray-700">{{ pending_orders }}</h3>
+                <span class="text-base font-medium text-gray-500">Purchase Orders</span>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-yellow-500">Need Processing</span>
+                <i class="fas fa-arrow-right ml-2"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- Medication Type Filter -->
+                <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <option value="">All Medications</option>
+                    <option value="PRESCRIPTION">Prescription Only</option>
+                    <option value="OTC">Over the Counter</option>
+                </select>
+
+                <!-- Status Filter -->
+                <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <option value="">All Status</option>
+                    <option value="IN_STOCK">In Stock</option>
+                    <option value="LOW_STOCK">Low Stock</option>
+                    <option value="OUT_OF_STOCK">Out of Stock</option>
+                </select>
+
+                <!-- Supplier Filter -->
+                <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <option value="">All Suppliers</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Search -->
+            <div class="relative">
+                <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                    <i class="fas fa-search text-gray-500"></i>
+                </div>
+                <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" placeholder="Search medications...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Medication Inventory Table -->
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="p-4">
+                            <div class="flex items-center">
+                                <input type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3">Medication Info</th>
+                        <th scope="col" class="px-6 py-3">Stock Status</th>
+                        <th scope="col" class="px-6 py-3">Price</th>
+                        <th scope="col" class="px-6 py-3">Last Restocked</th>
+                        <th scope="col" class="px-6 py-3">Supplier</th>
+                        <th scope="col" class="px-6 py-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medication in medications %}
+                    <tr class="bg-white border-b hover:bg-gray-50">
+                        <td class="w-4 p-4">
+                            <div class="flex items-center">
+                                <input type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="space-y-1">
+                                <div class="text-sm font-medium text-gray-900">{{ medication.name }}</div>
+                                <div class="text-xs text-gray-500">{{ medication.generic_name }}</div>
+                                <div class="text-xs text-gray-500">{{ medication.strength }} - {{ medication.dosage_form }}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="space-y-1">
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if medication.stock.quantity > medication.stock.reorder_level %}
+                                        bg-green-100 text-green-800
+                                    {% elif medication.stock.quantity > 0 %}
+                                        bg-yellow-100 text-yellow-800
+                                    {% else %}
+                                        bg-red-100 text-red-800
+                                    {% endif %}">
+                                    {{ medication.stock.quantity }} in stock
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">₹{{ medication.price }}</td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">
+                                <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>
+                                {{ medication.stock.last_restocked|date:"M d, Y" }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ medication.manufacturer }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button id="dropdownMenuIconButton{{ medication.id }}" data-dropdown-toggle="dropdownDots{{ medication.id }}" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- Dropdown Menu -->
+                    <div id="dropdownDots{{ medication.id }}" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-56">
+                        <ul class="py-2 text-sm text-gray-700" aria-labelledby="dropdownMenuIconButton{{ medication.id }}">
+                            <li>
+                                <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                                    <i class="fas fa-eye text-blue-500 mr-2"></i> View Details
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                                    <i class="fas fa-edit text-green-500 mr-2"></i> Edit Medication
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                                    <i class="fas fa-plus-circle text-purple-500 mr-2"></i> Add Stock
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                                    <i class="fas fa-history text-yellow-500 mr-2"></i> View History
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+            <div class="flex flex-1 justify-between sm:hidden">
+                <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Previous</a>
+                <a href="#" class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+            </div>
+            <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Showing
+                        <span class="font-medium">1</span>
+                        to
+                        <span class="font-medium">10</span>
+                        of
+                        <span class="font-medium">{{ paginator.count }}</span>
+                        results
+                    </p>
+                </div>
+                <div>
+                    <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                        {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            <span class="sr-only">Previous</span>
+                            <i class="fas fa-chevron-left h-5 w-5"></i>
+                        </a>
+                        {% endif %}
+                        {% for num in page_obj.paginator.page_range %}
+                        <a href="?page={{ num }}" aria-current="page" class="relative inline-flex items-center {% if page_obj.number == num %}bg-blue-600 text-white{% else %}text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50{% endif %} px-4 py-2 text-sm font-semibold focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
+                            {{ num }}
+                        </a>
+                        {% endfor %}
+            
+                        {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            <span class="sr-only">Next</span>
+                            <i class="fas fa-chevron-right h-5 w-5"></i>
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize any JavaScript functionality needed for the pharmacy dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add any custom JavaScript here
+    });
+</script>
+{% endblock %}

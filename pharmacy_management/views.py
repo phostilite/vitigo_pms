@@ -8,11 +8,35 @@ from .models import Medication, MedicationStock, Supplier, PurchaseOrder, Prescr
 from django.db.models import Sum, F
 from django.utils import timezone
 
-class PharmacyManagementView(View):
-    template_name = 'dashboard/admin/pharmacy_management/pharmacy_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    """
+    # Updated role mappings for pharmacy management access
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'PHARMACIST': 'pharmacy',
+        'RECEPTIONIST': 'reception',
+        'SUPER_ADMIN': 'admin',
+        'MANAGER': 'admin'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/pharmacy_management/{base_template}'
 
+class PharmacyManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role  # Assuming role is stored in user model
+            template_path = get_template_path('pharmacy_dashboard.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
             # Fetch all medications, suppliers, and prescriptions
             medications = Medication.objects.all()
             suppliers = Supplier.objects.all()
@@ -47,8 +71,7 @@ class PharmacyManagementView(View):
                 'page_obj': medications,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
-            # Handle any exceptions that occur
             return HttpResponse(f"An error occurred: {str(e)}", status=500)

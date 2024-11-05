@@ -17,13 +17,32 @@ from django.core.exceptions import ObjectDoesNotExist
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    Example: For 'patient_list.html' and role 'DOCTOR', 
+    returns 'dashboard/doctor/patient_management/patient_list.html'
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'RECEPTIONIST': 'receptionist',
+        'PHARMACIST': 'pharmacist',
+        'LAB_TECHNICIAN': 'lab',
+    }
+    
+    role_folder = role_template_map.get(user_role, 'admin')  # default to admin if role not found
+    return f'dashboard/{role_folder}/patient_management/{base_template}'
+
 class PatientListView(LoginRequiredMixin, View):
-    template_name = 'dashboard/admin/patient_management/patient_list.html'
+    def get_template_name(self):
+        return get_template_path('patient_list.html', self.request.user.role)
 
     def get(self, request):
         try:
-            if request.user.role not in ['ADMIN', 'DOCTOR', 'NURSE']:
-                raise PermissionDenied("You do not have permission to view this page.")
+            if request.user.role == 'PATIENT':
+                raise PermissionDenied("Patients cannot access this page.")
 
             # Get all patients with optional filtering
             patients = User.objects.filter(role='PATIENT')
@@ -71,9 +90,10 @@ class PatientListView(LoginRequiredMixin, View):
                 'new_patients_this_month': new_patients_this_month,
                 'paginator': paginator,
                 'page_obj': patients,
+                'user_role': request.user.role,  # Add user role to context
             }
 
-            return render(request, self.template_name, context)
+            return render(request, self.get_template_name(), context)
             
         except Exception as e:
             logger.error(f"Error retrieving patient list: {str(e)}", exc_info=True)
@@ -81,8 +101,13 @@ class PatientListView(LoginRequiredMixin, View):
 
 
 class PatientDetailView(LoginRequiredMixin, DetailView):
-    template_name = 'dashboard/admin/patient_management/patient_detail.html'
     context_object_name = 'patient'
+    
+    def get_template_name(self):
+        return get_template_path('patient_detail.html', self.request.user.role)
+
+    def get_template_names(self):
+        return [self.get_template_name()]
 
     def get_object(self):
         try:
@@ -105,6 +130,7 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['user_role'] = self.request.user.role  # Add user role to context
         patient = self.object
         
         # If patient profile doesn't exist, return basic user info only

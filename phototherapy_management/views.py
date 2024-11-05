@@ -7,11 +7,33 @@ from django.views import View
 from .models import PhototherapyPlan, PhototherapyType, PhototherapyProtocol, PhototherapySession, PhototherapyDevice
 from patient_management.models import Patient
 
-class PhototherapyManagementView(View):
-    template_name = 'dashboard/admin/phototherapy_management/phototherapy_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    """
+    # Only roles that should have access to phototherapy management
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'SUPER_ADMIN': 'admin',
+        'MANAGER': 'admin'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/phototherapy_management/{base_template}'
 
+class PhototherapyManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role  # Assuming role is stored in user model
+            template_path = get_template_path('phototherapy_dashboard.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
             # Fetch all phototherapy types, protocols, and plans
             phototherapy_types = PhototherapyType.objects.all()
             protocols = PhototherapyProtocol.objects.all()
@@ -56,8 +78,7 @@ class PhototherapyManagementView(View):
                 'page_obj': plans,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
-            # Handle any exceptions that occur
             return HttpResponse(f"An error occurred: {str(e)}", status=500)

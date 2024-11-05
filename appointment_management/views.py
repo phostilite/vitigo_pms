@@ -7,11 +7,32 @@ from .models import Appointment
 from django.db.models import Q
 from collections import defaultdict
 
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    Example: For 'appointment_dashboard.html' and role 'DOCTOR', 
+    returns 'dashboard/doctor/appointment_management/appointment_dashboard.html'
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'RECEPTIONIST': 'receptionist',
+        'PHARMACIST': 'pharmacist',
+        'LAB_TECHNICIAN': 'lab',
+    }
+    
+    role_folder = role_template_map.get(user_role, 'admin') 
+    return f'dashboard/{role_folder}/appointment_management/{base_template}'
+
 class AppointmentDashboardView(LoginRequiredMixin, ListView):
     model = Appointment
-    template_name = 'dashboard/admin/appointment_management/appointment_dashboard.html'
     context_object_name = 'appointments'
     paginate_by = 10
+
+    def get_template_names(self):
+        user_role = self.request.user.role  # Assuming user role is stored in user model
+        return [get_template_path('appointment_dashboard.html', user_role)]
 
     def get_queryset(self):
         queryset = Appointment.objects.select_related(
@@ -76,8 +97,11 @@ class AppointmentDashboardView(LoginRequiredMixin, ListView):
 
 class AppointmentDetailView(LoginRequiredMixin, DetailView):
     model = Appointment
-    template_name = 'dashboard/admin/appointment_management/appointment_detail.html'
     context_object_name = 'appointment'
+
+    def get_template_names(self):
+        user_role = self.request.user.role  # Assuming user role is stored in user model
+        return [get_template_path('appointment_detail.html', user_role)]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

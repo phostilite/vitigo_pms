@@ -6,21 +6,32 @@ from .models import Consultation
 from django.db.models import Q
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    Example: For 'consultation_dashboard.html' and role 'DOCTOR', 
+    returns 'dashboard/doctor/consultation_management/consultation_dashboard.html'
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'RECEPTIONIST': 'receptionist',
+        'PHARMACIST': 'pharmacist',
+        'LAB_TECHNICIAN': 'lab',
+    }
+    
+    role_folder = role_template_map.get(user_role, 'admin') 
+    return f'dashboard/{role_folder}/consultation_management/{base_template}'
+
 class ConsultationManagementView(LoginRequiredMixin, ListView):
     model = Consultation
     context_object_name = 'consultations'
     paginate_by = 10
     
     def get_template_names(self):
-        user_role = self.request.user.role
-        if user_role == 'ADMIN':
-            return ['dashboard/admin/consultation_management/consultation_dashboard.html']
-        elif user_role == 'DOCTOR':
-            return ['dashboard/doctor/consultation_management/consultation_dashboard.html']
-        elif user_role == 'STAFF':
-            return ['dashboard/staff/consultation_management/consultation_dashboard.html']
-        else:
-            return ['dashboard/default/consultation_management/consultation_dashboard.html']  # Fallback template
+        user_role = self.request.user.role  # Assuming user role is stored in user model
+        return [get_template_path('consultation_dashboard.html', user_role)]
 
     def get_queryset(self):
         queryset = super().get_queryset()

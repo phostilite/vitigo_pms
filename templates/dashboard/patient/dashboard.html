@@ -1,0 +1,137 @@
+{% extends './base.html' %}
+
+{% block title %}VitiGo Patient Dashboard{% endblock %}
+
+{% block extra_styles %}
+<style>
+   .chart-wrapper {
+       position: relative;
+       height: 300px;
+       width: 100%;
+   }
+   
+   .chart-container {
+       position: relative;
+       height: 100%;
+       width: 100%;
+   }
+
+   .no-data-message {
+       text-align: center;
+       color: #6b7280;
+       padding: 2rem;
+       font-style: italic;
+   }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    {% if error_message %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Error:</strong>
+            <span class="block sm:inline">{{ error_message }}</span>
+        </div>
+    {% else %}
+        <!-- Welcome Section -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-semibold text-gray-800">Welcome back, {{ request.user.get_full_name }}</h1>
+            <p class="mt-1 text-sm text-gray-600">Here's your health overview</p>
+        </div>
+
+        <!-- User Details -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fa-solid fa-user text-blue-500"></i> User Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Email:</p>
+                    <p class="text-sm text-gray-800">{{ user.email }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Full Name:</p>
+                    <p class="text-sm text-gray-800">{{ user.get_full_name }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Gender:</p>
+                    <p class="text-sm text-gray-800">{{ user.get_gender_display }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Date Joined:</p>
+                    <p class="text-sm text-gray-800">{{ user.date_joined|date:"F j, Y" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient Details -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fa-solid fa-notes-medical text-green-500"></i> Patient Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Date of Birth:</p>
+                    <p class="text-sm text-gray-800">{{ patient_profile.date_of_birth|date:"F j, Y" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Blood Group:</p>
+                    <p class="text-sm text-gray-800">{{ patient_profile.blood_group }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Address:</p>
+                    <p class="text-sm text-gray-800">{{ patient_profile.address }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Phone Number:</p>
+                    <p class="text-sm text-gray-800">{{ patient_profile.phone_number }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Emergency Contact:</p>
+                    <p class="text-sm text-gray-800">{{ patient_profile.emergency_contact_name }} ({{ patient_profile.emergency_contact_number }})</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appointments -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fa-solid fa-calendar-check text-yellow-500"></i> Appointments</h3>
+            {% if appointments %}
+                <div class="space-y-4">
+                    {% for appointment in appointments %}
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">{{ appointment.date|date:"F j, Y" }} at {{ appointment.time_slot.start_time|time:"H:i" }}</p>
+                                <p class="text-sm text-gray-600">{{ appointment.get_appointment_type_display }}</p>
+                            </div>
+                            <span class="text-xs font-medium text-gray-500">{{ appointment.get_status_display }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="flex items-center justify-center h-32 bg-gray-50 rounded-lg">
+                    <p class="text-gray-500">No upcoming appointments</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Consultations -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fa-solid fa-stethoscope text-red-500"></i> Consultations</h3>
+            {% if consultations %}
+                <div class="space-y-4">
+                    {% for consultation in consultations %}
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">{{ consultation.date_time|date:"F j, Y" }} at {{ consultation.date_time|time:"H:i" }}</p>
+                                <p class="text-sm text-gray-600">{{ consultation.get_consultation_type_display }}</p>
+                            </div>
+                            <span class="text-xs font-medium text-gray-500">{{ consultation.chief_complaint }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="flex items-center justify-center h-32 bg-gray-50 rounded-lg">
+                    <p class="text-gray-500">No recent consultations</p>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

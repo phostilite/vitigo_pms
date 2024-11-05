@@ -8,11 +8,34 @@ from django.http import HttpResponse
 from .models import Employee, Attendance, LeaveType, LeaveRequest, PerformanceReview, Training, TrainingAttendance
 from django.db.models import Count, Sum
 
-class HRManagementView(View):
-    template_name = 'dashboard/admin/hr_management/hr_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'HR_MANAGER': 'hr',
+        'DOCTOR': 'doctor',
+        'MANAGER': 'admin',
+        'SUPER_ADMIN': 'admin',
+        'RECEPTIONIST': 'reception',
+        'HR_STAFF': 'hr'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/hr_management/{base_template}'
 
+class HRManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role
+            template_path = get_template_path('hr_dashboard.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
             # Fetch all employees, attendance records, leave requests, performance reviews, and trainings
             employees = Employee.objects.all()
             attendance_records = Attendance.objects.all()
@@ -53,7 +76,7 @@ class HRManagementView(View):
                 'page_obj': employees,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
             # Handle any exceptions that occur

@@ -9,8 +9,31 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils import timezone
 from user_management.models import CustomUser
 from django.http import HttpResponse
+from django.core.exceptions import PermissionDenied
+from doctor_management.models import DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
 
 logger = logging.getLogger(__name__)
+
+def get_template_path(base_template, user_role, module=''):
+    """
+    Resolves template path based on user role.
+    Example: For 'users_dashboard.html', 'DOCTOR', and module='user_management' 
+    returns 'dashboard/doctor/user_management/users_dashboard.html'
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'RECEPTIONIST': 'receptionist',
+        'PHARMACIST': 'pharmacist',
+        'LAB_TECHNICIAN': 'lab',
+        'PATIENT': 'patient'
+    }
+    
+    role_folder = role_template_map.get(user_role, 'admin')
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class UserRegistrationView(View):
     def dispatch(self, *args, **kwargs):
@@ -67,7 +90,16 @@ class UserLoginView(View):
         return render(request, 'user_management/login.html', {'form': form})
 
     def redirect_based_on_role(self, user):
-        return redirect('dashboard')
+        """
+        Redirects user to appropriate dashboard based on their role
+        """
+        role_redirect_map = {
+            'ADMIN': 'admin_dashboard',
+            'DOCTOR': 'doctor_dashboard',
+            'PATIENT': 'patient_dashboard',
+            # Add other roles as needed
+        }
+        return redirect(role_redirect_map.get(user.role, 'dashboard'))
 
 def user_logout(request):
     if request.user.is_authenticated:
@@ -78,7 +110,8 @@ def user_logout(request):
 
 
 class UserManagementView(View):
-    template_name = 'dashboard/admin/user_management/users_dashboard.html'
+    def get_template_name(self):
+        return get_template_path('users_dashboard.html', self.request.user.role, 'user_management')
 
     def get(self, request):
         try:
@@ -112,16 +145,47 @@ class UserManagementView(View):
                 'new_patients': new_patients,
                 'paginator': paginator,
                 'page_obj': users,
+                'user_role': request.user.role,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, self.get_template_name(), context)
 
         except Exception as e:
-            # Handle any exceptions that occur
+            logger.error(f"Error in UserManagementView: {str(e)}")
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
         
 class UserProfileView(View):
-    template_name = 'dashboard/admin/profile/profile_management.html'
+    def get_template_name(self):
+        return get_template_path('profile_management.html', self.request.user.role, 'profile')
 
     def get(self, request):
-        return render(request, self.template_name)
+        try:
+            context = {
+                'user_role': request.user.role,
+            }
+
+            if request.user.role == 'DOCTOR':
+                # Try to fetch doctor profile if it exists
+                try:
+                    doctor_profile = DoctorProfile.objects.get(user=request.user)
+                    context.update({
+                        'doctor_profile': doctor_profile,
+                        'specializations': Specialization.objects.filter(is_active=True),
+                        'treatment_methods': TreatmentMethodSpecialization.objects.filter(is_active=True),
+                        'body_areas': BodyAreaSpecialization.objects.filter(is_active=True),
+                        'associated_conditions': AssociatedConditionSpecialization.objects.filter(is_active=True),
+                        'has_doctor_profile': True
+                    })
+                except DoctorProfile.DoesNotExist:
+                    context.update({
+                        'has_doctor_profile': False,
+                        'specializations': Specialization.objects.filter(is_active=True),
+                        'treatment_methods': TreatmentMethodSpecialization.objects.filter(is_active=True),
+                        'body_areas': BodyAreaSpecialization.objects.filter(is_active=True),
+                        'associated_conditions': AssociatedConditionSpecialization.objects.filter(is_active=True),
+                    })
+
+            return render(request, self.get_template_name(), context)
+        except Exception as e:
+            logger.error(f"Error in UserProfileView: {str(e)}")
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)

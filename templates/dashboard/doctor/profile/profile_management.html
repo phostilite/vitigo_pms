@@ -1,0 +1,468 @@
+{% extends '../base.html' %}
+
+{% block title %}Doctor Profile - VitiGo{% endblock %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800">Doctor Profile Settings</h1>
+        <p class="mt-1 text-sm text-gray-600">Manage your professional profile and account settings</p>
+    </div>
+
+    {% if not has_doctor_profile %}
+    <!-- Doctor Profile Not Found Message -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-circle text-yellow-400 text-xl mr-3"></i>
+            <div>
+                <h3 class="text-lg font-medium text-yellow-800">Complete Your Doctor Profile</h3>
+                <p class="text-yellow-700">Please complete your professional profile to start using all features of the platform.</p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
+                Create Doctor Profile
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Profile Overview Card -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <div class="flex flex-col items-center text-center">
+                    <div class="relative">
+                        <div class="w-32 h-32 rounded-full overflow-hidden bg-gray-100">
+                            {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="w-full h-full object-cover">
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center bg-blue-50">
+                                    <i class="fas fa-user-md text-blue-300 text-5xl"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <label for="profile_picture" class="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 shadow-lg hover:bg-blue-600 transition-colors cursor-pointer">
+                            <i class="fas fa-camera"></i>
+                            <input type="file" id="profile_picture" name="profile_picture" class="hidden" accept="image/*">
+                        </label>
+                    </div>
+                    <h2 class="mt-4 text-xl font-semibold text-gray-800">Dr. {{ user.get_full_name }}</h2>
+                    <p class="text-sm text-gray-500">{{ user.email }}</p>
+                    <span class="mt-2 px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        {{ user.get_role_display }}
+                    </span>
+                </div>
+
+                {% if has_doctor_profile %}
+                <!-- Quick Stats -->
+                <div class="mt-6 pt-6 border-t border-gray-100">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-center">
+                            <span class="block text-2xl font-bold text-gray-700">{{ doctor_profile.rating|floatformat:1 }}</span>
+                            <span class="text-sm text-gray-500">Rating</span>
+                        </div>
+                        <div class="text-center">
+                            <span class="block text-2xl font-bold text-gray-700">{{ doctor_profile.experience }}</span>
+                            <span class="text-sm text-gray-500">Experience</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Basic Information Form -->
+                <div class="mt-6 pt-6 border-t border-gray-100">
+                    <form id="basic-profile-form" class="space-y-4">
+                        <!-- Personal Information -->
+                        <div>
+                            <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+                            <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}"
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        </div>
+                        <div>
+                            <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+                            <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}"
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                            <input type="email" id="email" name="email" value="{{ user.email }}" readonly
+                                class="mt-1 block w-full rounded-lg bg-gray-50 border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label for="gender" class="block text-sm font-medium text-gray-700">Gender</label>
+                            <select id="gender" name="gender" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
+                                {% for code, label in user.GENDER_CHOICES %}
+                                    <option value="{{ code }}" {% if user.gender == code %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- Password Change Section -->
+                        <div class="pt-4 border-t border-gray-100">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Change Password</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <input type="password" id="current_password" name="current_password"
+                                        placeholder="Current Password"
+                                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                </div>
+                                <div>
+                                    <input type="password" id="new_password" name="new_password"
+                                        placeholder="New Password"
+                                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Save Button -->
+                        <div class="pt-4">
+                            <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Update Basic Information
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% if has_doctor_profile %}
+        <!-- Professional Information -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <form id="doctor-profile-form" class="space-y-6">
+                    <!-- Medical Registration -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                            <i class="fas fa-user-md mr-2 text-blue-500"></i>
+                            Professional Information
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Registration Number</label>
+                                <input type="text" value="{{ doctor_profile.registration_number }}"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Qualification</label>
+                                <input type="text" value="{{ doctor_profile.qualification }}"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Specializations -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                            <i class="fas fa-stethoscope mr-2 text-blue-500"></i>
+                            Specializations
+                        </h3>
+                        <div class="space-y-4">
+                            <!-- Primary Specializations -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Primary Specializations</label>
+                                <select multiple name="specializations" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" size="3">
+                                    {% for spec in specializations %}
+                                        <option value="{{ spec.id }}" 
+                                            {% if spec in doctor_profile.specializations.all %}selected{% endif %}>
+                                            {{ spec.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Select multiple specializations using Ctrl/Cmd + Click</p>
+                            </div>
+
+                            <!-- Treatment Methods -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Treatment Methods</label>
+                                <select multiple name="treatment_methods" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" size="3">
+                                    {% for method in treatment_methods %}
+                                        <option value="{{ method.id }}"
+                                            {% if method in doctor_profile.treatment_methods.all %}selected{% endif %}>
+                                            {{ method.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Select the treatment methods you specialize in</p>
+                            </div>
+
+                            <!-- Body Areas -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Body Areas</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    {% for area in body_areas %}
+                                        <div class="flex items-center">
+                                            <input type="checkbox" id="area_{{ area.id }}" name="body_areas" 
+                                                value="{{ area.id }}" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                                                {% if area in doctor_profile.body_areas.all %}checked{% endif %}>
+                                            <label for="area_{{ area.id }}" class="ml-2 block text-sm text-gray-700">
+                                                {{ area.name }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Associated Conditions -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Associated Conditions</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    {% for condition in associated_conditions %}
+                                        <div class="flex items-center">
+                                            <input type="checkbox" id="condition_{{ condition.id }}" name="associated_conditions" 
+                                                value="{{ condition.id }}" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                                                {% if condition in doctor_profile.associated_conditions.all %}checked{% endif %}>
+                                            <label for="condition_{{ condition.id }}" class="ml-2 block text-sm text-gray-700">
+                                                {{ condition.name }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div>
+                                <label for="specialization_description" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Additional Expertise Details
+                                </label>
+                                <textarea id="specialization_description" name="about" rows="4" 
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                                    placeholder="Describe your specific expertise and experience in treating vitiligo...">{{ doctor_profile.about }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Experience & Consultation -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                            <i class="fas fa-briefcase-medical mr-2 text-blue-500"></i>
+                            Practice Details
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Experience</label>
+                                <select class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
+                                    {% for value, label in doctor_profile.EXPERIENCE_CHOICES %}
+                                        <option value="{{ value }}" {% if doctor_profile.experience == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Consultation Fee</label>
+                                <input type="number" value="{{ doctor_profile.consultation_fee }}"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clinic Address -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                            <i class="fas fa-hospital mr-2 text-blue-500"></i>
+                            Clinic Address
+                        </h3>
+                        <div class="space-y-4">
+                            <!-- Street Address -->
+                            <div>
+                                <label for="clinic_address" class="block text-sm font-medium text-gray-700">Street Address</label>
+                                <textarea id="clinic_address" name="address" rows="2" 
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                                    placeholder="Enter your clinic's street address">{{ doctor_profile.address }}</textarea>
+                            </div>
+
+                            <!-- City, State, Country -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="clinic_city" class="block text-sm font-medium text-gray-700">City</label>
+                                    <input type="text" id="clinic_city" name="city" 
+                                        value="{{ doctor_profile.city }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                                        placeholder="City">
+                                </div>
+                                <div>
+                                    <label for="clinic_state" class="block text-sm font-medium text-gray-700">State</label>
+                                    <input type="text" id="clinic_state" name="state" 
+                                        value="{{ doctor_profile.state }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                                        placeholder="State">
+                                </div>
+                                <div>
+                                    <label for="clinic_country" class="block text-sm font-medium text-gray-700">Country</label>
+                                    <input type="text" id="clinic_country" name="country" 
+                                        value="{{ doctor_profile.country }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+                                        placeholder="Country">
+                                </div>
+                            </div>
+
+                            <!-- Additional Location Details -->
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">Location Visibility</h4>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="show_map" name="show_map" 
+                                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                                    <label for="show_map" class="ml-2 block text-sm text-gray-600">
+                                        Show clinic location on map for patients
+                                    </label>
+                                </div>
+                                <p class="mt-2 text-xs text-gray-500">
+                                    This will allow patients to see your clinic's location on the map when booking appointments
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="flex justify-end space-x-4 pt-6 border-t border-gray-100">
+                        <button type="submit" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Profile Picture Upload Handler
+    const profilePictureInput = document.getElementById('profile_picture');
+    if (profilePictureInput) {
+        profilePictureInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.querySelector('.w-32.h-32 img') || document.createElement('img');
+                    img.src = e.target.result;
+                    img.classList.add('w-full', 'h-full', 'object-cover');
+                    const container = document.querySelector('.w-32.h-32');
+                    container.innerHTML = '';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Basic Profile Form Handler
+    const basicProfileForm = document.getElementById('basic-profile-form');
+    if (basicProfileForm) {
+        basicProfileForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch('/api/profile/basic/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (response.ok) {
+                    showToast('Basic profile updated successfully', 'success');
+                } else {
+                    showToast('Failed to update basic profile', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('An error occurred', 'error');
+            }
+        });
+    }
+
+    // Doctor Profile Form Handler
+    const doctorProfileForm = document.getElementById('doctor-profile-form');
+    if (doctorProfileForm) {
+        doctorProfileForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            // Handle multiple select fields
+            const specializations = Array.from(this.querySelector('[name="specializations"]').selectedOptions).map(opt => opt.value);
+            const treatmentMethods = Array.from(this.querySelector('[name="treatment_methods"]').selectedOptions).map(opt => opt.value);
+            
+            // Handle checkboxes
+            const bodyAreas = Array.from(this.querySelectorAll('input[name="body_areas"]:checked')).map(cb => cb.value);
+            const associatedConditions = Array.from(this.querySelectorAll('input[name="associated_conditions"]:checked')).map(cb => cb.value);
+            
+            formData.set('specializations', JSON.stringify(specializations));
+            formData.set('treatment_methods', JSON.stringify(treatmentMethods));
+            formData.set('body_areas', JSON.stringify(bodyAreas));
+            formData.set('associated_conditions', JSON.stringify(associatedConditions));
+
+            try {
+                const response = await fetch('/api/profile/doctor/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (response.ok) {
+                    showToast('Doctor profile updated successfully', 'success');
+                } else {
+                    showToast('Failed to update doctor profile', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('An error occurred', 'error');
+            }
+        });
+    }
+
+    // Toast Notification Handler
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-5 right-5 flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow`;
+        
+        const icon = type === 'success' ? 'check' : 'exclamation-circle';
+        const iconColor = type === 'success' ? 'green' : 'red';
+        
+        toast.innerHTML = `
+            <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-${iconColor}-500 bg-${iconColor}-100 rounded-lg">
+                <i class="fas fa-${icon}"></i>
+            </div>
+            <div class="ml-3 text-sm font-normal">${message}</div>
+            <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex h-8 w-8">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+
+        // Close button handler
+        toast.querySelector('button').addEventListener('click', () => toast.remove());
+    }
+
+    // CSRF Token Helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

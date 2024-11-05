@@ -8,11 +8,34 @@ from django.http import HttpResponse
 from .models import SupportTicket, SupportResponse, FAQ, KnowledgeBaseArticle, SupportCategory, SupportRating
 from django.db.models import Count
 
-class HelpSupportManagementView(View):
-    template_name = 'dashboard/admin/help_support/help_support_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'SUPPORT_MANAGER': 'support',
+        'SUPPORT_STAFF': 'support',
+        'DOCTOR': 'doctor',
+        'SUPER_ADMIN': 'admin',
+        'MANAGER': 'admin',
+        'RECEPTIONIST': 'reception'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/help_support/{base_template}'
 
+class HelpSupportManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role
+            template_path = get_template_path('help_support_dashboard.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
             # Fetch all help and support data
             support_tickets = SupportTicket.objects.all()
             support_responses = SupportResponse.objects.all()
@@ -57,7 +80,7 @@ class HelpSupportManagementView(View):
                 'page_obj': support_tickets,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
             # Handle any exceptions that occur

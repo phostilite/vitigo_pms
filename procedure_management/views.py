@@ -5,11 +5,33 @@ from django.http import HttpResponse
 from django.views import View
 from .models import Procedure, ProcedureType, Patient
 
-class ProcedureManagementView(View):
-    template_name = 'dashboard/admin/procedure_management/procedure_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    """
+    # Only roles that should have access to procedure management
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'SUPER_ADMIN': 'admin',
+        'MANAGER': 'admin'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/procedure_management/{base_template}'
 
+class ProcedureManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role  # Assuming role is stored in user model
+            template_path = get_template_path('procedure_dashboard.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
             # Fetch all procedure types and patients for filters
             procedure_types = ProcedureType.objects.all()
             patients = Patient.objects.all()
@@ -53,7 +75,7 @@ class ProcedureManagementView(View):
                 'page_obj': procedures,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
             # Handle any exceptions that occur

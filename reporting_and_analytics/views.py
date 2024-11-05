@@ -8,11 +8,39 @@ from django.http import HttpResponse
 from .models import Report, ReportExecution, Dashboard, DashboardWidget, AnalyticsLog
 from django.db.models import Count
 
-class ReportsAnalyticsManagementView(View):
-    template_name = 'dashboard/admin/reports_analytics/reports_analytics_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    Example: For 'reports_analytics_dashboard.html' and role 'ACCOUNTANT', 
+    returns 'dashboard/accountant/reports_analytics/reports_analytics_dashboard.html'
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'RECEPTIONIST': 'receptionist',
+        'PHARMACIST': 'pharmacist',
+        'LAB_TECHNICIAN': 'lab',
+        'ACCOUNTANT': 'accountant',
+        'MANAGER': 'manager',
+        'TECHNICIAN': 'technician',
+        'ASSISTANT': 'assistant',
+        'SUPERVISOR': 'supervisor',
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/reports_analytics/{base_template}'
 
+class ReportsAnalyticsManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role  # Assuming user role is stored in request.user.role
+            template_name = get_template_path('reports_analytics_dashboard.html', user_role)
+            if not template_name:
+                return HttpResponse("User role does not have a corresponding template.", status=403)
+
             # Fetch all reports, report executions, dashboards, dashboard widgets, and analytics logs
             reports = Report.objects.all()
             report_executions = ReportExecution.objects.all()
@@ -53,7 +81,7 @@ class ReportsAnalyticsManagementView(View):
                 'page_obj': reports,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_name, context)
 
         except Exception as e:
             # Handle any exceptions that occur

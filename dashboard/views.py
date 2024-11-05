@@ -8,29 +8,56 @@ from appointment_management.models import Appointment
 from phototherapy_management.models import PhototherapySession
 from django.contrib.auth import get_user_model
 from stock_management.models import StockItem
-from django.db.models import F
+from django.db.models import F, Count, Sum, Q
+from decimal import Decimal
+from doctor_management.models import DoctorProfile
+from consultation_management.models import Consultation
 
 User = get_user_model()
 
-@login_required
-def dashboard_router(request):
-    user = request.user
-    if user.role == 'PATIENT':
-        return patient_dashboard(request)
-    elif user.role == 'ADMIN':
-        return admin_dashboard(request)
-    elif user.is_staff:
-        return staff_dashboard(request)
-    else:
-        raise PermissionDenied("You do not have permission to access any dashboard.")
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    Example: For 'dashboard.html' and role 'DOCTOR', 
+    returns 'dashboard/doctor/dashboard.html'
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'NURSE': 'nurse',
+        'RECEPTIONIST': 'receptionist',
+        'PHARMACIST': 'pharmacist',
+        'LAB_TECHNICIAN': 'lab',
+        'PATIENT': 'patient'
+    }
+    
+    role_folder = role_template_map.get(user_role, 'admin')
+    return f'dashboard/{role_folder}/{base_template}'
 
 @login_required
 def patient_dashboard(request):
     if request.user.role != 'PATIENT':
         raise PermissionDenied("You do not have permission to access the patient dashboard.")
-    # Add any context data needed for the patient dashboard
-    context = {}
-    return render(request, 'dashboard/patient/patient_dashboard.html', context)
+    
+    try:
+        patient_profile = request.user.patient_profile
+        appointments = request.user.appointments.all()
+        consultations = patient_profile.consultations.all()
+
+        context = {
+            'user': request.user,
+            'patient_profile': patient_profile,
+            'appointments': appointments,
+            'consultations': consultations,
+        }
+    except User.patient_profile.RelatedObjectDoesNotExist:
+        context = {
+            'user': request.user,
+            'error_message': "Your patient profile is not created yet. Please create it yourself or contact support.",
+        }
+    
+    template_name = get_template_path('dashboard.html', 'PATIENT')
+    return render(request, template_name, context)
 
 @login_required
 def admin_dashboard(request):
@@ -88,12 +115,125 @@ def admin_dashboard(request):
         'low_stock_items': low_stock_items,
     }
     
-    return render(request, 'dashboard/admin/admin_dashboard.html', context)
+    template_name = get_template_path('dashboard.html', 'ADMIN')
+    return render(request, template_name, context)
 
 @login_required
-def staff_dashboard(request):
-    if not request.user.is_staff:
-        raise PermissionDenied("You do not have permission to access the staff dashboard.")
-    # Add any context data needed for the staff dashboard
-    context = {}
-    return render(request, 'dashboard/staff/staff_dashboard.html', context)
+def doctor_dashboard(request):
+    if request.user.role != 'DOCTOR':
+        raise PermissionDenied("You do not have permission to access the doctor dashboard.")
+    
+    today = timezone.now().date()
+    one_month_ago = timezone.now() - timedelta(days=30)
+    one_week_ago = timezone.now() - timedelta(days=7)
+    start_of_month = today.replace(day=1)
+    
+    try:
+        doctor_profile = DoctorProfile.objects.get(user=request.user)
+        
+        # Get patients through consultations
+        patient_ids = Consultation.objects.filter(
+            doctor=request.user
+        ).values_list('patient', flat=True).distinct()
+        
+        total_patients = len(patient_ids)
+        
+        # Calculate new patients (patients with first consultation in last month)
+        new_patient_ids = Consultation.objects.filter(
+            doctor=request.user,
+            created_at__gte=one_month_ago
+        ).values_list('patient', flat=True).distinct()
+        new_patients = len(new_patient_ids)
+        
+        new_patients_percentage = (new_patients / total_patients * 100) if total_patients > 0 else 0
+
+        # Get today's appointments
+        todays_appointments = Appointment.objects.filter(
+            doctor=request.user,
+            date=today
+        ).count()
+
+        # Calculate weekly phototherapy sessions
+        weekly_phototherapy_sessions = PhototherapySession.objects.filter(
+            plan__patient__in=patient_ids,
+            session_date__gte=one_week_ago
+        ).count()
+
+        # Calculate previous week's sessions
+        previous_week_sessions = PhototherapySession.objects.filter(
+            plan__patient__in=patient_ids,
+            session_date__gte=timezone.now() - timedelta(days=14),
+            session_date__lt=one_week_ago
+        ).count()
+        
+        phototherapy_growth = ((weekly_phototherapy_sessions - previous_week_sessions) / previous_week_sessions * 100) if previous_week_sessions > 0 else 0
+
+        # Calculate monthly revenue from completed appointments
+        completed_appointments = Appointment.objects.filter(
+            doctor=request.user,
+            date__gte=start_of_month,
+            status='COMPLETED'
+        ).count()
+        
+        monthly_revenue = completed_appointments * doctor_profile.consultation_fee
+
+        # Calculate demographics for doctor's patients
+        patients = Patient.objects.filter(id__in=patient_ids)
+        demographics = {
+            'male': patients.filter(gender='M').count(),
+            'female': patients.filter(gender='F').count(),
+            'other': patients.filter(gender='O').count(),
+        }
+
+        # Get treatment progress data
+        treatment_plans = TreatmentPlan.objects.filter(
+            created_by=request.user
+        ).order_by('created_date')
+        
+        treatment_months = [plan.created_date.strftime('%B %Y') for plan in treatment_plans]
+        treatment_progress = [
+            (plan.medications.count() / plan.medications.all().count() * 100) 
+            if plan.medications.exists() else 0 
+            for plan in treatment_plans
+        ]
+
+        # Get recent activities (consultations)
+        recent_consultations = Consultation.objects.filter(
+            doctor=request.user
+        ).select_related('patient__user').order_by('-created_at')[:5]
+        
+        recent_activities = [{
+            'patient': consultation.patient,
+            'appointment_type': consultation.consultation_type,
+            'created_at': consultation.created_at
+        } for consultation in recent_consultations]
+
+        # Get upcoming appointments
+        upcoming_tasks = Appointment.objects.filter(
+            doctor=request.user,
+            date__gt=today,
+            status__in=['PENDING', 'SCHEDULED', 'CONFIRMED']
+        ).select_related('patient', 'time_slot').order_by('date', 'time_slot__start_time')[:5]
+
+        context = {
+            'doctor_profile': doctor_profile,
+            'total_patients': total_patients,
+            'new_patients_percentage': round(new_patients_percentage, 2),
+            'todays_appointments': todays_appointments,
+            'weekly_phototherapy_sessions': weekly_phototherapy_sessions,
+            'phototherapy_growth': round(phototherapy_growth, 2),
+            'monthly_revenue': monthly_revenue,
+            'demographics': demographics,
+            'treatment_months': treatment_months,
+            'treatment_progress': treatment_progress,
+            'recent_activities': recent_activities,
+            'upcoming_tasks': upcoming_tasks,
+        }
+    
+    except DoctorProfile.DoesNotExist:
+        context = {
+            'error_message': "Your doctor profile is not set up. Please contact the administrator."
+        }
+    
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)

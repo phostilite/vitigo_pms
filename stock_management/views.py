@@ -8,11 +8,35 @@ from django.http import HttpResponse
 from django.utils import timezone
 from .models import ItemCategory, StockItem, StockMovement
 
-class StockManagementView(View):
-    template_name = 'dashboard/admin/stock_management/stock_dashboard.html'
+def get_template_path(base_template, user_role):
+    """
+    Resolves template path based on user role.
+    """
+    role_template_map = {
+        'ADMIN': 'admin',
+        'STORE_MANAGER': 'store',
+        'STORE_KEEPER': 'store',
+        'SUPER_ADMIN': 'admin',
+        'DOCTOR': 'doctor',
+        'MANAGER': 'admin',
+        'PHARMACIST': 'pharmacy',
+        'INVENTORY_STAFF': 'store'
+    }
+    
+    role_folder = role_template_map.get(user_role)
+    if not role_folder:
+        return None
+    return f'dashboard/{role_folder}/stock_management/{base_template}'
 
+class StockManagementView(View):
     def get(self, request):
         try:
+            user_role = request.user.role
+            template_path = get_template_path('stock_dashboard.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
             # Fetch all stock items, categories, and stock movements
             stock_items = StockItem.objects.all()
             categories = ItemCategory.objects.all()
@@ -47,7 +71,7 @@ class StockManagementView(View):
                 'page_obj': stock_items,
             }
 
-            return render(request, self.template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
             # Handle any exceptions that occur
