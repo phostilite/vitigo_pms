@@ -297,7 +297,7 @@
                                 <p class="font-medium text-gray-800">{{ prev_consult.date_time|date:"M d, Y" }}</p>
                                 <p class="text-sm text-gray-600">{{ prev_consult.get_consultation_type_display }}</p>
                             </div>
-                            <a href="{% url 'consultation-detail' prev_consult.id %}" 
+                            <a href="{% url 'consultation_detail' prev_consult.id %}" 
                                class="text-blue-600 hover:text-blue-800">
                                 <i class="fas fa-external-link-alt"></i>
                             </a>
