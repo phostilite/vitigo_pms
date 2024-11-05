@@ -1,11 +1,13 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.views import View
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib import messages
 from .models import Query, QueryTag
+from patient_management.models import Patient
 
 def get_template_path(base_template, user_role):
     """
@@ -35,9 +37,9 @@ class QueryManagementView(LoginRequiredMixin, View):
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
 
-            # Get base queryset with all relations
+            # Get base queryset with all relations - updated from 'patient' to 'user'
             queryset = Query.objects.select_related(
-                'patient', 
+                'user', 
                 'assigned_to'
             ).prefetch_related(
                 'tags',
@@ -54,14 +56,14 @@ class QueryManagementView(LoginRequiredMixin, View):
             # Apply filters to queryset
             filtered_queries = queryset.filter(**filters)
             
-            # Search functionality
+            # Updated search functionality to use user instead of patient
             search_query = request.GET.get('search')
             if search_query:
                 filtered_queries = filtered_queries.filter(
                     Q(subject__icontains=search_query) |
                     Q(description__icontains=search_query) |
-                    Q(patient__first_name__icontains=search_query) |
-                    Q(patient__last_name__icontains=search_query) |
+                    Q(user__first_name__icontains=search_query) |
+                    Q(user__last_name__icontains=search_query) |
                     Q(query_id__icontains=search_query)
                 )
 
@@ -105,4 +107,58 @@ class QueryManagementView(LoginRequiredMixin, View):
             return render(request, template_path, context)
 
         except Exception as e:
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+
+class QueryDetailView(LoginRequiredMixin, View):
+    def get(self, request, query_id):
+        try:
+            user_role = request.user.role
+            template_path = get_template_path('query_detail.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
+            # Get query with all essential relationships
+            query = get_object_or_404(
+                Query.objects.select_related(
+                    'user',
+                    'assigned_to'
+                ).prefetch_related(
+                    'updates',
+                    'attachments',
+                    'tags'
+                ),
+                query_id=query_id
+            )
+
+            # Get patient profile if it exists
+            patient_profile = None
+            if query.user:
+                try:
+                    patient_profile = Patient.objects.get(user=query.user)
+                except Patient.DoesNotExist:
+                    pass
+
+            context = {
+                'query': query,
+                'user_details': {
+                    'name': query.user.get_full_name() if query.user else 'Anonymous',
+                    'email': query.user.email if query.user else query.contact_email,
+                    'role': query.user.role if query.user else None,
+                },
+                'patient_profile': patient_profile,
+                'assigned_to_details': {
+                    'name': query.assigned_to.get_full_name() if query.assigned_to else 'Unassigned',
+                    'email': query.assigned_to.email if query.assigned_to else None,
+                    'role': query.assigned_to.role if query.assigned_to else None,
+                },
+                'updates': query.updates.all().order_by('-created_at'),
+                'attachments': query.attachments.all(),
+                'tags': query.tags.all(),
+            }
+
+            return render(request, template_path, context)
+
+        except Exception as e:
+            messages.error(request, f"An error occurred: {str(e)}")
             return HttpResponse(f"An error occurred: {str(e)}", status=500)

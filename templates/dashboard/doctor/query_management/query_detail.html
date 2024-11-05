@@ -1,0 +1,176 @@
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="#" class="hover:text-blue-600">
+                <i class="fas fa-question-circle mr-2"></i>Queries</a>
+            </li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Query Details</li>
+        </ol>
+    </nav>
+
+    <!-- Query Status Banner -->
+    <div class="mb-6 p-4 rounded-lg {% if query.status == 'RESOLVED' %}bg-green-50 border border-green-200{% else %}bg-blue-50 border border-blue-200{% endif %}">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-semibold">Query #{{ query.query_id }} - {{ query.subject }}</h2>
+                <p class="text-sm text-gray-600">Created on {{ query.created_at|date:"F d, Y g:i A" }}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-sm font-medium {% if query.status == 'RESOLVED' %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                {{ query.get_status_display }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Left Column - Main Query Info -->
+        <div class="col-span-2 space-y-6">
+            <!-- Query Details -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Query Details</h3>
+                <div class="space-y-4">
+                    <!-- User Information -->
+                    <div class="mb-4">
+                        <h4 class="text-sm text-gray-600 mb-2">Submitted By</h4>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="font-medium">{{ user_details.name }}</p>
+                            <p class="text-sm text-gray-600">{{ user_details.email }}</p>
+                            {% if user_details.role %}<p class="text-sm text-gray-600">Role: {{ user_details.role }}</p>{% endif %}
+                        </div>
+                    </div>
+
+                    {% if patient_profile %}
+                    <div class="mb-4">
+                        <h4 class="text-sm text-gray-600 mb-2">Patient Details</h4>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-sm">Date of Birth: {{ patient_profile.date_of_birth }}</p>
+                            <p class="text-sm">Phone: {{ patient_profile.phone_number }}</p>
+                            {% if patient_profile.vitiligo_type %}
+                            <p class="text-sm">Vitiligo Type: {{ patient_profile.vitiligo_type }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Query Content -->
+                    <div>
+                        <h4 class="text-sm text-gray-600 mb-2">Description</h4>
+                        <p class="bg-gray-50 p-3 rounded-lg">{{ query.description }}</p>
+                    </div>
+
+                    <!-- Priority and Source -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="text-sm text-gray-600 mb-2">Priority</h4>
+                            <span class="px-3 py-1 rounded-full text-sm font-medium
+                                {% if query.priority == 'A' %}bg-red-100 text-red-800
+                                {% elif query.priority == 'B' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ query.get_priority_display }}
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="text-sm text-gray-600 mb-2">Source</h4>
+                            <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                                {{ query.get_source_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Tags -->
+                    {% if tags %}
+                    <div>
+                        <h4 class="text-sm text-gray-600 mb-2">Tags</h4>
+                        <div class="flex flex-wrap gap-2">
+                            {% for tag in tags %}
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Query Updates -->
+            {% if updates %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Updates</h3>
+                <div class="space-y-4">
+                    {% for update in updates %}
+                    <div class="border-b last:border-b-0 pb-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="font-medium">{{ update.user.get_full_name }}</p>
+                            <span class="text-sm text-gray-500">{{ update.created_at|date:"M d, Y g:i A" }}</span>
+                        </div>
+                        <p class="text-gray-700">{{ update.content }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Attachments -->
+            {% if attachments %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Attachments</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    {% for attachment in attachments %}
+                    <a href="{{ attachment.file.url }}" target="_blank" 
+                       class="flex items-center p-3 border rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-paperclip text-blue-500 mr-3"></i>
+                        <div>
+                            <p class="text-sm font-medium">{{ attachment.file.name|truncatechars:20 }}</p>
+                            <p class="text-xs text-gray-500">{{ attachment.uploaded_at|date:"M d, Y" }}</p>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+            <!-- Assignment Info -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Assignment Details</h3>
+                {% if assigned_to_details.name != 'Unassigned' %}
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="font-medium">{{ assigned_to_details.name }}</p>
+                    <p class="text-sm text-gray-600">{{ assigned_to_details.email }}</p>
+                    <p class="text-sm text-gray-600">Role: {{ assigned_to_details.role }}</p>
+                </div>
+                {% else %}
+                <p class="text-gray-600">This query is currently unassigned</p>
+                {% endif %}
+            </div>
+
+            <!-- Basic Query Info -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Query Information</h3>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-sm text-gray-600">Created</p>
+                        <p class="font-medium">{{ query.created_at|date:"F d, Y g:i A" }}</p>
+                    </div>
+                    {% if query.resolved_at %}
+                    <div>
+                        <p class="text-sm text-gray-600">Resolved</p>
+                        <p class="font-medium">{{ query.resolved_at|date:"F d, Y g:i A" }}</p>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p class="text-sm text-gray-600">Last Updated</p>
+                        <p class="font-medium">{{ query.updated_at|date:"F d, Y g:i A" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

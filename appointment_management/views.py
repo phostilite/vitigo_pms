@@ -6,6 +6,8 @@ from datetime import timedelta
 from .models import Appointment
 from django.db.models import Q
 from collections import defaultdict
+from patient_management.models import MedicalHistory
+from .models import CancellationReason
 
 def get_template_path(base_template, user_role):
     """
@@ -100,18 +102,40 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'appointment'
 
     def get_template_names(self):
-        user_role = self.request.user.role  # Assuming user role is stored in user model
+        user_role = self.request.user.role
         return [get_template_path('appointment_detail.html', user_role)]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        appointment = self.get_object()
+        appointment = self.object
         
-        # Add related appointments for the same patient
-        context['related_appointments'] = (
-            Appointment.objects.filter(patient=appointment.patient)
-            .exclude(id=appointment.id)
-            .order_by('-date')[:5]
-        )
+        # Get patient's medical history
+        try:
+            medical_history = MedicalHistory.objects.get(patient=appointment.patient.patient_profile)
+        except MedicalHistory.DoesNotExist:
+            medical_history = None
+
+        # Get cancellation reason if appointment is cancelled
+        try:
+            cancellation = CancellationReason.objects.get(appointment=appointment) if appointment.status == 'CANCELLED' else None
+        except CancellationReason.DoesNotExist:
+            cancellation = None
+
+        # Get doctor's profile and specializations
+        try:
+            doctor_profile = appointment.doctor.doctor_profile
+        except:
+            doctor_profile = None
+
+        context.update({
+            'medical_history': medical_history,
+            'cancellation': cancellation,
+            'doctor_profile': doctor_profile,
+            'previous_appointments': Appointment.objects.filter(
+                patient=appointment.patient,
+                date__lt=appointment.date
+            ).order_by('-date')[:5]
+        })
         
         return context
+

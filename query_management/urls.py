@@ -1,6 +1,7 @@
 from django.urls import path
-from . import views
+from .views import QueryManagementView, QueryDetailView
 
 urlpatterns = [
-    path('', views.QueryManagementView.as_view(), name='query_management'),
+    path('', QueryManagementView.as_view(), name='query_management'),
+    path('<int:query_id>/', QueryDetailView.as_view(), name='query_detail'),
 ]

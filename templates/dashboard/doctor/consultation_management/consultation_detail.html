@@ -1,0 +1,282 @@
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="#" class="hover:text-blue-600">
+                <i class="fas fa-stethoscope mr-2"></i>Consultations</a>
+            </li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Consultation Details</li>
+        </ol>
+    </nav>
+
+    <!-- Consultation Type Banner -->
+    <div class="mb-6 p-4 rounded-lg bg-blue-50 border border-blue-200">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-100 rounded-full p-2">
+                    <i class="fas fa-clipboard-check text-blue-600 text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-blue-800">{{ consultation.get_consultation_type_display }}</h2>
+                    <p class="text-sm text-blue-600">{{ consultation.date_time|date:"l, F d, Y g:i A" }}</p>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex space-x-2">
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                    <i class="fas fa-edit mr-2"></i>Edit
+                </button>
+                <button class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center">
+                    <i class="fas fa-print mr-2"></i>Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Left Column - Main Consultation Info -->
+        <div class="col-span-2 space-y-6">
+            <!-- Medical Assessment -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Medical Assessment</h3>
+                <div class="space-y-6">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Chief Complaint</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ consultation.chief_complaint }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Diagnosis</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ consultation.diagnosis }}</p>
+                    </div>
+                    {% if consultation.vitals %}
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Vitals</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {% for key, value in consultation.vitals.items %}
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <span class="text-sm text-gray-600 block">{{ key }}</span>
+                                <span class="text-gray-800 font-medium">{{ value }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Treatment Instructions -->
+            {% if consultation.treatment_instruction %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Treatment Instructions</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% if consultation.treatment_instruction.lifestyle_changes %}
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Lifestyle Changes</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ consultation.treatment_instruction.lifestyle_changes }}</p>
+                    </div>
+                    {% endif %}
+                    {% if consultation.treatment_instruction.dietary_instructions %}
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Dietary Instructions</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ consultation.treatment_instruction.dietary_instructions }}</p>
+                    </div>
+                    {% endif %}
+                    {% if consultation.treatment_instruction.skincare_routine %}
+                    <div class="md:col-span-2">
+                        <label class="text-sm text-gray-600 block mb-2">Skincare Routine</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ consultation.treatment_instruction.skincare_routine }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Prescriptions -->
+            {% if consultation.prescriptions.exists %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Prescriptions</h3>
+                <div class="space-y-4">
+                    {% for prescription in consultation.prescriptions.all %}
+                    <div class="border-b last:border-b-0 pb-4 last:pb-0">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-medium text-gray-800">{{ prescription.medication.name }}</h4>
+                                <p class="text-sm text-gray-600">{{ prescription.dosage }} - {{ prescription.frequency }}</p>
+                                <p class="text-sm text-gray-600">Duration: {{ prescription.duration }}</p>
+                            </div>
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">Active</span>
+                        </div>
+                        {% if prescription.instructions %}
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-600">Instructions: {{ prescription.instructions }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Vitiligo Assessments -->
+            {% if vitiligo_assessments %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Vitiligo Assessments</h3>
+                <div class="space-y-4">
+                    {% for assessment in vitiligo_assessments %}
+                    <div class="border-b last:border-b-0 pb-4 last:pb-0">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="font-medium text-gray-800">{{ assessment.assessment_date|date:"M d, Y" }}</p>
+                            <span class="text-sm text-gray-500">VASI Score: {{ assessment.vasi_score|default:"N/A" }}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Affected Area: {{ assessment.body_surface_area_affected }}%</p>
+                        {% if assessment.treatment_response %}
+                        <p class="text-sm text-gray-600 mt-1">Response: {{ assessment.treatment_response|truncatechars:100 }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Active Treatment Plan -->
+            {% if treatment_plans %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Current Treatment Plan</h3>
+                {% for plan in treatment_plans %}
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Treatment Goals</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ plan.treatment_goals }}</p>
+                    </div>
+                    {% if plan.phototherapy_details %}
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Phototherapy Details</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ plan.phototherapy_details }}</p>
+                    </div>
+                    {% endif %}
+                    {% if plan.lifestyle_recommendations %}
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Lifestyle Recommendations</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ plan.lifestyle_recommendations }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Attachments -->
+            {% if consultation.attachments.exists %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Attachments</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for attachment in consultation.attachments.all %}
+                    <a href="{{ attachment.file.url }}" target="_blank" 
+                       class="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-paperclip text-blue-500 mr-3"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">{{ attachment.description }}</p>
+                            <p class="text-xs text-gray-500">{{ attachment.uploaded_at|date:"M d, Y" }}</p>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column - Patient Info & History -->
+        <div class="space-y-6">
+            <!-- Patient Information -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Patient Information</h3>
+                <div class="flex items-center space-x-4 mb-4">
+                    {% if consultation.patient.user.profile_picture %}
+                    <img src="{{ consultation.patient.user.profile_picture.url }}" alt="Patient" 
+                         class="w-16 h-16 rounded-full object-cover">
+                    {% else %}
+                    <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                        <i class="fas fa-user text-gray-400 text-2xl"></i>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <h4 class="font-medium text-gray-800">{{ consultation.patient.user.get_full_name }}</h4>
+                        <p class="text-sm text-gray-600">ID: #{{ consultation.patient.id }}</p>
+                    </div>
+                </div>
+
+                {% if medical_history %}
+                <div class="space-y-4 mt-4 pt-4 border-t border-gray-200">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Allergies</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.allergies|default:"None" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-2">Chronic Conditions</label>
+                        <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.chronic_conditions|default:"None" }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Current Medications -->
+            {% if current_medications %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Current Medications</h3>
+                <div class="space-y-3">
+                    {% for medication in current_medications %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="font-medium text-gray-800">{{ medication.name }}</p>
+                            <p class="text-sm text-gray-600">{{ medication.dosage }}</p>
+                        </div>
+                        <span class="text-xs text-gray-500">Since {{ medication.start_date|date:"M d, Y" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Previous Consultations -->
+            {% if previous_consultations %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Previous Consultations</h3>
+                <div class="space-y-4">
+                    {% for prev_consult in previous_consultations %}
+                    <div class="p-3 {% if not forloop.last %}border-b border-gray-100{% endif %}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="font-medium text-gray-800">{{ prev_consult.date_time|date:"M d, Y" }}</p>
+                                <p class="text-sm text-gray-600">{{ prev_consult.get_consultation_type_display }}</p>
+                            </div>
+                            <a href="{% url 'consultation-detail' prev_consult.id %}" 
+                               class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                        {% if prev_consult.diagnosis %}
+                        <p class="text-sm text-gray-600">{{ prev_consult.diagnosis|truncatechars:100 }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    function printConsultation() {
+        window.print();
+    }
+</script>
+{% endblock %}
+{% endblock %}

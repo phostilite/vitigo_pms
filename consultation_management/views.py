@@ -5,6 +5,8 @@ from datetime import timedelta
 from .models import Consultation
 from django.db.models import Q
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic.detail import DetailView
+from django.shortcuts import get_object_or_404
 
 def get_template_path(base_template, user_role):
     """
@@ -126,3 +128,79 @@ class ConsultationManagementView(LoginRequiredMixin, ListView):
             return 0
         
         return ((this_month - prev_month) / prev_month) * 100
+    
+
+class ConsultationDetailView(LoginRequiredMixin, DetailView):
+    model = Consultation
+    context_object_name = 'consultation'
+    
+    def get_template_names(self):
+        user_role = self.request.user.role
+        return [get_template_path('consultation_detail.html', user_role)]
+
+    def get_object(self, queryset=None):
+        # Get consultation with all related data
+        consultation = get_object_or_404(
+            Consultation.objects.select_related(
+                'patient__user',
+                'doctor',
+                'doctor__doctor_profile',  # Add this line
+                'treatment_instruction',
+                'follow_up_plan'
+            ).prefetch_related(
+                'prescriptions__medication',
+                'attachments'
+            ),
+            pk=self.kwargs['pk']
+        )
+        return consultation
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        consultation = self.object
+        
+        # Add doctor details
+        context['doctor_details'] = {
+            'name': consultation.doctor.get_full_name(),
+            'specializations': consultation.doctor.doctor_profile.specializations.all(),
+            'qualification': consultation.doctor.doctor_profile.qualification,
+            'experience': consultation.doctor.doctor_profile.experience,
+            'registration_number': consultation.doctor.doctor_profile.registration_number
+        }
+        
+        # Calculate consultation duration
+        if consultation.date_time:
+            next_consultation = Consultation.objects.filter(
+                date_time__gt=consultation.date_time,
+                patient=consultation.patient
+            ).order_by('date_time').first()
+            
+            if next_consultation:
+                duration = next_consultation.date_time - consultation.date_time
+                context['consultation_duration'] = duration.seconds // 60  # in minutes
+
+        # Get patient's medical history
+        context['medical_history'] = consultation.patient.medical_history
+        
+        # Get previous consultations
+        context['previous_consultations'] = Consultation.objects.filter(
+            patient=consultation.patient,
+            date_time__lt=consultation.date_time
+        ).order_by('-date_time')[:5]
+        
+        # Get patient's current medications
+        context['current_medications'] = consultation.patient.medications.filter(
+            end_date__isnull=True
+        )
+        
+        # Get vitiligo assessments
+        context['vitiligo_assessments'] = consultation.patient.vitiligo_assessments.order_by(
+            '-assessment_date'
+        )[:3]
+        
+        # Get treatment plan
+        context['treatment_plans'] = consultation.patient.treatment_plans.order_by(
+            '-created_date'
+        )[:1]
+        
+        return context

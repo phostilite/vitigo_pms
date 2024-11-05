@@ -1,168 +1,235 @@
 {% extends '../base.html' %}
 
 {% block content %}
-<div class="flex-1 p-8 overflow-hidden bg-gray-50">
-  <!-- Header Section -->
-  <div class="flex justify-between items-center mb-6">
-    <div class="flex items-center">
-      <a href="{% url 'appointment_dashboard' %}" class="text-gray-600 hover:text-gray-800 mr-4">
-        <i class="fas fa-arrow-left"></i>
-      </a>
-      <h1 class="text-3xl font-bold text-gray-800">Appointment Details</h1>
-    </div>
-    <div class="flex space-x-3">
-      <button class="vitigo-secondary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-400 transition duration-300">
-        <i class="fas fa-edit mr-2"></i>Edit
-      </button>
-      {% if appointment.status != 'CANCELLED' %}
-      <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition duration-300">
-        <i class="fas fa-times-circle mr-2"></i>Cancel
-      </button>
-      {% endif %}
-    </div>
-  </div>
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'appointment_dashboard' %}" class="hover:text-blue-600"><i class="fas fa-calendar-check mr-2"></i>Appointments</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Appointment Details</li>
+        </ol>
+    </nav>
 
-  <!-- Main Content Grid -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Appointment Info Card -->
-    <div class="lg:col-span-2">
-      <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="vitigo-primary p-6">
-          <div class="flex justify-between items-center">
-            <h2 class="text-xl font-semibold text-white">Appointment Information</h2>
-            <span class="px-4 py-1 rounded-full text-sm font-medium
-                       {% if appointment.status == 'COMPLETED' %}bg-green-100 text-green-800
-                       {% elif appointment.status == 'CANCELLED' %}bg-red-100 text-red-800
-                       {% elif appointment.status == 'PENDING' %}bg-yellow-100 text-yellow-800
-                       {% else %}bg-blue-100 text-blue-800{% endif %}">
-              {{ appointment.get_status_display }}
-            </span>
-          </div>
-        </div>
-        <div class="p-6">
-          <div class="grid grid-cols-2 gap-6">
-            <div>
-              <h3 class="text-sm font-medium text-gray-500">Appointment Type</h3>
-              <p class="mt-1 text-lg text-gray-900">{{ appointment.get_appointment_type_display }}</p>
-            </div>
-            <div>
-              <h3 class="text-sm font-medium text-gray-500">Priority</h3>
-              <p class="mt-1">
-                <span class="px-3 py-1 text-sm font-medium rounded-full 
-                           {% if appointment.priority == 'A' %}priority-a
-                           {% elif appointment.priority == 'B' %}priority-b
-                           {% else %}priority-c{% endif %}">
-                  {{ appointment.get_priority_display }}
-                </span>
-              </p>
-            </div>
-            <div>
-              <h3 class="text-sm font-medium text-gray-500">Date</h3>
-              <p class="mt-1 text-lg text-gray-900">{{ appointment.date|date:"F d, Y" }}</p>
-            </div>
-            <div>
-              <h3 class="text-sm font-medium text-gray-500">Time</h3>
-              <p class="mt-1 text-lg text-gray-900">{{ appointment.time_slot.start_time|time:"H:i" }} - {{ appointment.time_slot.end_time|time:"H:i" }}</p>
-            </div>
-          </div>
-
-          {% if appointment.notes %}
-          <div class="mt-6">
-            <h3 class="text-sm font-medium text-gray-500">Notes</h3>
-            <p class="mt-1 text-gray-900">{{ appointment.notes }}</p>
-          </div>
-          {% endif %}
-
-          {% if appointment.status == 'CANCELLED' and appointment.cancellation_reason %}
-          <div class="mt-6">
-            <h3 class="text-sm font-medium text-gray-500">Cancellation Reason</h3>
-            <p class="mt-1 text-gray-900">{{ appointment.cancellation_reason.reason }}</p>
-            <p class="mt-1 text-sm text-gray-500">
-              Cancelled by {{ appointment.cancellation_reason.cancelled_by.get_full_name }} 
-              on {{ appointment.cancellation_reason.cancelled_at|date:"F d, Y H:i" }}
-            </p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Patient and Doctor Info -->
-    <div class="space-y-6">
-      <!-- Patient Card -->
-      <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="vitigo-secondary p-4">
-          <h2 class="text-lg font-semibold text-white">Patient Information</h2>
-        </div>
-        <div class="p-4">
-          <div class="flex items-center">
-            {% if appointment.patient.profile_picture %}
-              <img src="{{ appointment.patient.profile_picture.url }}" alt="Patient" class="w-16 h-16 rounded-full">
-            {% else %}
-              <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                <i class="fas fa-user text-gray-400 text-2xl"></i>
-              </div>
-            {% endif %}
-            <div class="ml-4">
-              <h3 class="text-lg font-medium text-gray-900">{{ appointment.patient.get_full_name }}</h3>
-              <p class="text-gray-500">{{ appointment.patient.email }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Doctor Card -->
-      <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="vitigo-secondary p-4">
-          <h2 class="text-lg font-semibold text-white">Doctor Information</h2>
-        </div>
-        <div class="p-4">
-          <div class="flex items-center">
-            {% if appointment.doctor.profile_picture %}
-              <img src="{{ appointment.doctor.profile_picture.url }}" alt="Doctor" class="w-16 h-16 rounded-full">
-            {% else %}
-              <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                <i class="fas fa-user-md text-gray-400 text-2xl"></i>
-              </div>
-            {% endif %}
-            <div class="ml-4">
-              <h3 class="text-lg font-medium text-gray-900">Dr. {{ appointment.doctor.get_full_name }}</h3>
-              <p class="text-gray-500">{{ appointment.doctor.email }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Related Appointments -->
-      <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="vitigo-secondary p-4">
-          <h2 class="text-lg font-semibold text-white">Related Appointments</h2>
-        </div>
-        <div class="p-4">
-          {% if related_appointments %}
-            <div class="space-y-4">
-              {% for related in related_appointments %}
-                <div class="flex items-center justify-between hover:bg-gray-50 p-2 rounded-lg">
-                  <div>
-                    <p class="font-medium text-gray-900">{{ related.get_appointment_type_display }}</p>
-                    <p class="text-sm text-gray-500">{{ related.date|date:"M d, Y" }}</p>
-                  </div>
-                  <span class="px-3 py-1 text-xs font-medium rounded-full
-                             {% if related.status == 'COMPLETED' %}bg-green-100 text-green-800
-                             {% elif related.status == 'CANCELLED' %}bg-red-100 text-red-800
-                             {% elif related.status == 'PENDING' %}bg-yellow-100 text-yellow-800
-                             {% else %}bg-blue-100 text-blue-800{% endif %}">
-                    {{ related.get_status_display }}
-                  </span>
+    <!-- Status Banner -->
+    <div class="mb-6 p-4 rounded-lg {% if appointment.status == 'CONFIRMED' %}bg-green-50 border-green-200{% elif appointment.status == 'PENDING' %}bg-yellow-50 border-yellow-200{% elif appointment.status == 'CANCELLED' %}bg-red-50 border-red-200{% else %}bg-gray-50 border-gray-200{% endif %} border">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="{% if appointment.status == 'CONFIRMED' %}bg-green-100{% elif appointment.status == 'PENDING' %}bg-yellow-100{% elif appointment.status == 'CANCELLED' %}bg-red-100{% else %}bg-gray-100{% endif %} rounded-full p-2">
+                    <i class="fas {% if appointment.status == 'CONFIRMED' %}fa-check-circle text-green-600{% elif appointment.status == 'PENDING' %}fa-clock text-yellow-600{% elif appointment.status == 'CANCELLED' %}fa-times-circle text-red-600{% else %}fa-info-circle text-gray-600{% endif %} text-xl"></i>
                 </div>
-              {% endfor %}
+                <div>
+                    <h2 class="text-lg font-semibold {% if appointment.status == 'CONFIRMED' %}text-green-800{% elif appointment.status == 'PENDING' %}text-yellow-800{% elif appointment.status == 'CANCELLED' %}text-red-800{% else %}text-gray-800{% endif %}">
+                        {{ appointment.get_status_display }}
+                    </h2>
+                    {% if appointment.status == 'CANCELLED' and cancellation %}
+                    <p class="text-red-600 text-sm">Cancelled by {{ cancellation.cancelled_by.get_full_name }} - {{ cancellation.reason }}</p>
+                    {% endif %}
+                </div>
             </div>
-          {% else %}
-            <p class="text-gray-500 text-center py-4">No related appointments found</p>
-          {% endif %}
+            
+            <!-- Action Buttons -->
+            <div class="flex space-x-2">
+                {% if appointment.status == 'PENDING' %}
+                <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i>Confirm
+                </button>
+                {% endif %}
+                {% if appointment.status != 'CANCELLED' and appointment.status != 'COMPLETED' %}
+                <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center">
+                    <i class="fas fa-times-circle mr-2"></i>Cancel
+                </button>
+                {% endif %}
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                    <i class="fas fa-edit mr-2"></i>Edit
+                </button>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Left Column - Appointment and Patient Details -->
+        <div class="col-span-2 space-y-6">
+            <!-- Appointment Details Card -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                    Appointment Details
+                </h3>
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Date</label>
+                        <p class="font-medium text-gray-800">{{ appointment.date|date:"l, F d, Y" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Time</label>
+                        <p class="font-medium text-gray-800">{{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Type</label>
+                        <span class="px-3 py-1 text-sm font-semibold rounded-full inline-block
+                            {% if appointment.appointment_type == 'CONSULTATION' %}bg-blue-100 text-blue-800
+                            {% elif appointment.appointment_type == 'FOLLOW_UP' %}bg-green-100 text-green-800
+                            {% elif appointment.appointment_type == 'PROCEDURE' %}bg-purple-100 text-purple-800
+                            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                            {{ appointment.get_appointment_type_display }}
+                        </span>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Priority</label>
+                        <span class="px-3 py-1 text-sm font-semibold rounded-full inline-block
+                            {% if appointment.priority == 'A' %}bg-red-100 text-red-800
+                            {% elif appointment.priority == 'B' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ appointment.get_priority_display }} Priority
+                        </span>
+                    </div>
+                </div>
+                {% if appointment.notes %}
+                <div class="mt-6">
+                    <label class="text-sm text-gray-600 block mb-1">Notes</label>
+                    <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ appointment.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Patient Information -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-user text-blue-500 mr-2"></i>
+                    Patient Information
+                </h3>
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Name</label>
+                        <p class="font-medium text-gray-800">{{ appointment.patient.get_full_name }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Email</label>
+                        <p class="font-medium text-gray-800">{{ appointment.patient.email }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Gender</label>
+                        <p class="font-medium text-gray-800">{{ appointment.patient.get_gender_display }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Phone</label>
+                        <p class="font-medium text-gray-800">{{ appointment.patient.patient_profile.phone_number }}</p>
+                    </div>
+                </div>
+
+                {% if medical_history %}
+                <div class="mt-6 border-t border-gray-200 pt-6">
+                    <h4 class="font-medium text-gray-800 mb-4">Medical History</h4>
+                    <div class="space-y-4">
+                        {% if medical_history.allergies %}
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Allergies</label>
+                            <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.allergies }}</p>
+                        </div>
+                        {% endif %}
+                        {% if medical_history.chronic_conditions %}
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Chronic Conditions</label>
+                            <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.chronic_conditions }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+            <!-- Doctor Information Card -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-user-md text-blue-500 mr-2"></i>
+                    Doctor Information
+                </h3>
+                <div class="flex items-center space-x-4 mb-4">
+                    {% if appointment.doctor.profile_picture %}
+                        <img src="{{ appointment.doctor.profile_picture.url }}" alt="Doctor" class="w-16 h-16 rounded-full object-cover">
+                    {% else %}
+                        <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                            <i class="fas fa-user-md text-gray-400 text-2xl"></i>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <h4 class="font-medium text-gray-800">Dr. {{ appointment.doctor.get_full_name }}</h4>
+                        <p class="text-sm text-gray-600">{{ appointment.doctor.email }}</p>
+                    </div>
+                </div>
+
+                {% if doctor_profile %}
+                    <div class="space-y-4">
+                        <!-- Qualification & Experience -->
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Qualification</label>
+                            <p class="font-medium text-gray-800">{{ doctor_profile.qualification }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Experience</label>
+                            <p class="font-medium text-gray-800">{{ doctor_profile.get_experience_display }}</p>
+                        </div>
+
+                        <!-- Specializations -->
+                        {% if doctor_profile.specializations.exists %}
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-2">Specializations</label>
+                            <div class="flex flex-wrap gap-2">
+                                {% for spec in doctor_profile.specializations.all %}
+                                <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
+                                    {{ spec.name }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Contact Info -->
+                        <div class="pt-4 border-t border-gray-200">
+                            <label class="text-sm text-gray-600 block mb-1">Contact Information</label>
+                            <p class="text-sm text-gray-800">{{ doctor_profile.address }}</p>
+                            <p class="text-sm text-gray-800">{{ doctor_profile.city }}, {{ doctor_profile.state }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Previous Appointments -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-history text-blue-500 mr-2"></i>
+                    Previous Appointments
+                </h3>
+                <div class="space-y-4">
+                    {% for prev_appt in previous_appointments %}
+                    <div class="p-4 {% if not forloop.last %}border-b border-gray-100{% endif %}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium text-gray-800">{{ prev_appt.date|date:"M d, Y" }}</p>
+                                <p class="text-sm text-gray-600">{{ prev_appt.get_appointment_type_display }}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                {% if prev_appt.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                {% elif prev_appt.status == 'CANCELLED' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ prev_appt.get_status_display }}
+                            </span>
+                        </div>
+                        {% if prev_appt.notes %}
+                        <p class="text-sm text-gray-600 mt-2">{{ prev_appt.notes|truncatechars:100 }}</p>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <p class="text-gray-500 text-center py-4">No previous appointments found</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
