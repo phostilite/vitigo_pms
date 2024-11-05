@@ -11,6 +11,7 @@ from user_management.models import CustomUser
 from django.http import HttpResponse
 from django.core.exceptions import PermissionDenied
 from doctor_management.models import DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
+from patient_management.models import Patient, MedicalHistory
 
 logger = logging.getLogger(__name__)
 
@@ -164,8 +165,30 @@ class UserProfileView(View):
                 'user_role': request.user.role,
             }
 
-            if request.user.role == 'DOCTOR':
-                # Try to fetch doctor profile if it exists
+            if request.user.role == 'PATIENT':
+                try:
+                    # Try to fetch patient profile if it exists
+                    patient_profile = Patient.objects.get(user=request.user)
+                    medical_history = MedicalHistory.objects.filter(patient=patient_profile).first()
+                    
+                    context.update({
+                        'patient_profile': patient_profile,
+                        'medical_history': medical_history,
+                        'has_patient_profile': True,
+                        'blood_group_choices': Patient.BLOOD_GROUP_CHOICES,
+                        'gender_choices': Patient.GENDER_CHOICES
+                    })
+                except Patient.DoesNotExist:
+                    # If profile doesn't exist, provide necessary data for profile creation
+                    context.update({
+                        'has_patient_profile': False,
+                        'blood_group_choices': Patient.BLOOD_GROUP_CHOICES,
+                        'gender_choices': Patient.GENDER_CHOICES,
+                        'error_message': 'Your patient profile has not been created yet. Please fill in the required information below.'
+                    })
+
+            elif request.user.role == 'DOCTOR':
+                # Existing doctor profile logic
                 try:
                     doctor_profile = DoctorProfile.objects.get(user=request.user)
                     context.update({
@@ -186,6 +209,57 @@ class UserProfileView(View):
                     })
 
             return render(request, self.get_template_name(), context)
+
         except Exception as e:
             logger.error(f"Error in UserProfileView: {str(e)}")
+            messages.error(request, "An error occurred while loading your profile.")
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
+
+    def post(self, request):
+        try:
+            if request.user.role == 'PATIENT':
+                # Handle patient profile creation/update
+                if not hasattr(request.user, 'patient_profile'):
+                    patient_data = {
+                        'user': request.user,
+                        'date_of_birth': request.POST.get('date_of_birth'),
+                        'gender': request.POST.get('gender'),
+                        'blood_group': request.POST.get('blood_group'),
+                        'address': request.POST.get('address'),
+                        'phone_number': request.POST.get('phone_number'),
+                        'emergency_contact_name': request.POST.get('emergency_contact_name'),
+                        'emergency_contact_number': request.POST.get('emergency_contact_number'),
+                        'vitiligo_onset_date': request.POST.get('vitiligo_onset_date'),
+                        'vitiligo_type': request.POST.get('vitiligo_type'),
+                        'affected_body_areas': request.POST.get('affected_body_areas'),
+                    }
+                    
+                    patient = Patient.objects.create(**patient_data)
+                    
+                    # Create medical history
+                    medical_history_data = {
+                        'patient': patient,
+                        'allergies': request.POST.get('allergies', ''),
+                        'chronic_conditions': request.POST.get('chronic_conditions', ''),
+                        'past_surgeries': request.POST.get('past_surgeries', ''),
+                        'family_history': request.POST.get('family_history', ''),
+                    }
+                    
+                    MedicalHistory.objects.create(**medical_history_data)
+                    messages.success(request, "Patient profile created successfully!")
+                else:
+                    # Handle profile update logic here
+                    patient = request.user.patient_profile
+                    # Update fields based on POST data
+                    # Similar to creation but with .update() instead
+                    messages.success(request, "Patient profile updated successfully!")
+
+                return redirect('patient_dashboard')
+
+            # Handle other role profile updates here
+            return redirect('dashboard')
+
+        except Exception as e:
+            logger.error(f"Error in UserProfileView POST: {str(e)}")
+            messages.error(request, "An error occurred while saving your profile.")
+            return redirect('profile_management')
