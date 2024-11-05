@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'notifications',
     'help_support',
     'settings',
+    'access_control',
 ]
 
 MIDDLEWARE = [
