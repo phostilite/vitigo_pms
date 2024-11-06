@@ -1,6 +1,9 @@
 from django.db import models
 from django.conf import settings
 from patient_management.models import Patient, Medication
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Consultation(models.Model):
     CONSULTATION_TYPE_CHOICES = [
@@ -10,8 +13,8 @@ class Consultation(models.Model):
         ('TELE', 'Tele-consultation'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='consultations')
-    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor_consultations', limit_choices_to={'role': 'DOCTOR'})
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='consultations', limit_choices_to={'role': 'PATIENT'}, null=True, blank=True)
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='doctor_consultations', limit_choices_to={'role': 'DOCTOR'})
     consultation_type = models.CharField(max_length=20, choices=CONSULTATION_TYPE_CHOICES)
     date_time = models.DateTimeField()
     chief_complaint = models.TextField()
@@ -23,7 +26,12 @@ class Consultation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Consultation for {self.patient.user.get_full_name()} on {self.date_time.date()}"
+        try:
+            patient_name = self.patient.get_full_name() if self.patient else "Unknown Patient"
+            date_str = self.date_time.date() if self.date_time else "Unscheduled Date"
+            return f"Consultation for {patient_name} on {date_str}"
+        except AttributeError:
+            return f"Consultation #{self.id if hasattr(self, 'id') else 'New'}"
 
 class Prescription(models.Model):
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='prescriptions')

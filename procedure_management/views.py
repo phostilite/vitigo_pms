@@ -1,9 +1,12 @@
 # views.py
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import HttpResponse
 from django.views import View
-from .models import Procedure, ProcedureType, Patient
+from .models import Procedure, ProcedureType
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 def get_template_path(base_template, user_role):
     """
@@ -34,7 +37,7 @@ class ProcedureManagementView(View):
 
             # Fetch all procedure types and patients for filters
             procedure_types = ProcedureType.objects.all()
-            patients = Patient.objects.all()
+            patients = User.objects.filter(role='PATIENT')  # This ensures we only get users with PATIENT role
 
             # Fetch procedures with optional filtering
             procedures = Procedure.objects.all()
@@ -48,7 +51,7 @@ class ProcedureManagementView(View):
             if status:
                 procedures = procedures.filter(status=status)
             if patient_id:
-                procedures = procedures.filter(patient_id=patient_id)
+                procedures = procedures.filter(user_id=patient_id)  # Changed from patient_id to user_id
             if search_query:
                 procedures = procedures.filter(notes__icontains=search_query)
 
@@ -80,3 +83,51 @@ class ProcedureManagementView(View):
         except Exception as e:
             # Handle any exceptions that occur
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
+
+class ProcedureDetailView(View):
+    def get(self, request, procedure_id):
+        try:
+            # Check user authorization
+            user_role = request.user.role
+            template_path = get_template_path('procedure_detail.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+
+            # Get procedure with related data
+            procedure = get_object_or_404(Procedure.objects.select_related(
+                'user',
+                'procedure_type',
+                'performed_by',
+                'consent_form',
+                'result'
+            ).prefetch_related('images'), id=procedure_id)
+
+            # Validate that the user is actually a patient
+            if procedure.user and procedure.user.role != 'PATIENT':
+                raise ValueError("Invalid patient assignment")
+
+            context = {
+                'procedure': procedure,
+                'consent_form': procedure.consent_form if hasattr(procedure, 'consent_form') else None,
+                'procedure_result': procedure.result if hasattr(procedure, 'result') else None,
+                'images': procedure.images.all(),
+                'patient_details': {
+                    'name': procedure.user.get_full_name(),
+                    'email': procedure.user.email,
+                    'gender': procedure.user.gender,
+                    'id': procedure.user.id
+                } if procedure.user and procedure.user.role == 'PATIENT' else None,
+                'performer_details': {
+                    'name': procedure.performed_by.get_full_name(),
+                    'role': procedure.performed_by.role,
+                } if procedure.performed_by else None,
+            }
+
+            return render(request, template_path, context)
+
+        except ValueError as e:
+            return HttpResponse(f"Invalid procedure data: {str(e)}", status=400)
+        except Exception as e:
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+

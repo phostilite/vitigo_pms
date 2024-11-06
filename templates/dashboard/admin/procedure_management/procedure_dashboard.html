@@ -190,10 +190,10 @@
                             <div class="flex items-center">
                                 <div class="ml-3">
                                     <div class="text-sm font-medium text-gray-900">
-                                        {{ procedure.patient.user.get_full_name }}
+                                        {{ procedure.user.get_full_name }}
                                     </div>
                                     <div class="text-sm text-gray-500">
-                                        ID: #{{ procedure.patient.id }}
+                                        ID: #{{ procedure.user.id }}
                                     </div>
                                 </div>
                             </div>
@@ -246,7 +246,7 @@
                     <div id="dropdownDots{{ procedure.id }}" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-56">
                         <ul class="py-2 text-sm text-gray-700" aria-labelledby="dropdownMenuIconButton{{ procedure.id }}">
                             <li>
-                                <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                                <a href="{% url 'procedure_detail' procedure.id %}" class="block px-4 py-2 hover:bg-gray-100">
                                     <i class="fas fa-eye text-blue-500 mr-2"></i> View Details
                                 </a>
                             </li>

@@ -1,6 +1,7 @@
 from django.urls import path
-from . import views
+from .views import ProcedureManagementView, ProcedureDetailView
 
 urlpatterns = [
-    path('', views.ProcedureManagementView.as_view(), name='procedure_management'),
+    path('', ProcedureManagementView.as_view(), name='procedure_management'),
+    path('<int:procedure_id>/', ProcedureDetailView.as_view(), name='procedure_detail'),
 ]

@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
-from patient_management.models import Patient
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class ProcedureType(models.Model):
     name = models.CharField(max_length=255)
@@ -20,7 +22,7 @@ class Procedure(models.Model):
         ('CANCELLED', 'Cancelled'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='procedures')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='procedures', null=True, blank=True, limit_choices_to={'role': 'PATIENT'})
     procedure_type = models.ForeignKey(ProcedureType, on_delete=models.CASCADE)
     scheduled_date = models.DateTimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
@@ -30,8 +32,15 @@ class Procedure(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.procedure_type.name} for {self.patient.user.get_full_name()} on {self.scheduled_date}"
-
+        try:
+            procedure_name = self.procedure_type.name if self.procedure_type else "Unknown Procedure"
+            patient_name = self.user.get_full_name() if self.user else "Unknown Patient"
+            date_str = self.scheduled_date.strftime("%Y-%m-%d %H:%M") if self.scheduled_date else "Unscheduled"
+            
+            return f"{procedure_name} for {patient_name} on {date_str}"
+        except Exception:
+            return f"Procedure #{self.id if hasattr(self, 'id') else 'New'}"
+        
 class ConsentForm(models.Model):
     procedure = models.OneToOneField(Procedure, on_delete=models.CASCADE, related_name='consent_form')
     signed_by_patient = models.BooleanField(default=False)

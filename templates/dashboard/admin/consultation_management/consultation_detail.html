@@ -239,8 +239,8 @@
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Patient Information</h3>
                 <div class="flex items-center space-x-4 mb-4">
-                    {% if consultation.patient.user.profile_picture %}
-                    <img src="{{ consultation.patient.user.profile_picture.url }}" alt="Patient" 
+                    {% if consultation.patient.profile_picture %}
+                    <img src="{{ consultation.patient.profile_picture.url }}" alt="Patient" 
                          class="w-16 h-16 rounded-full object-cover">
                     {% else %}
                     <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
@@ -248,7 +248,7 @@
                     </div>
                     {% endif %}
                     <div>
-                        <h4 class="font-medium text-gray-800">{{ consultation.patient.user.get_full_name }}</h4>
+                        <h4 class="font-medium text-gray-800">{{ consultation.patient.get_full_name }}</h4>
                         <p class="text-sm text-gray-600">ID: #{{ consultation.patient.id }}</p>
                     </div>
                 </div>

@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.detail import DetailView
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import PermissionDenied
 
 def get_template_path(base_template, user_role):
     """
@@ -31,12 +32,28 @@ class ConsultationManagementView(LoginRequiredMixin, ListView):
     context_object_name = 'consultations'
     paginate_by = 10
     
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user has valid profile based on role
+        user = request.user
+        if user.role == 'DOCTOR' and not hasattr(user, 'doctor_profile'):
+            raise PermissionDenied("Doctor profile not found")
+        elif user.role == 'PATIENT' and not hasattr(user, 'patient_profile'):
+            raise PermissionDenied("Patient profile not found")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_names(self):
         user_role = self.request.user.role  # Assuming user role is stored in user model
         return [get_template_path('consultation_dashboard.html', user_role)]
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        user = self.request.user
+
+        # Filter consultations based on user role
+        if user.role == 'DOCTOR':
+            queryset = queryset.filter(doctor=user)
+        elif user.role == 'PATIENT':
+            queryset = queryset.filter(patient=user)
         
         # Apply filters from URL parameters
         consultation_type = self.request.GET.get('type')
@@ -50,15 +67,15 @@ class ConsultationManagementView(LoginRequiredMixin, ListView):
         search_query = self.request.GET.get('search')
         if search_query:
             queryset = queryset.filter(
-                Q(patient__user__first_name__icontains=search_query) |
-                Q(patient__user__last_name__icontains=search_query) |
+                Q(patient__first_name__icontains=search_query) |
+                Q(patient__last_name__icontains=search_query) |
                 Q(doctor__first_name__icontains=search_query) |
                 Q(doctor__last_name__icontains=search_query) |
                 Q(diagnosis__icontains=search_query)
             )
             
         return queryset.select_related(
-            'patient__user',
+            'patient',
             'doctor',
             'treatment_instruction',
             'follow_up_plan'
@@ -134,6 +151,15 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
     model = Consultation
     context_object_name = 'consultation'
     
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user has valid profile based on role
+        user = request.user
+        if user.role == 'DOCTOR' and not hasattr(user, 'doctor_profile'):
+            raise PermissionDenied("Doctor profile not found")
+        elif user.role == 'PATIENT' and not hasattr(user, 'patient_profile'):
+            raise PermissionDenied("Patient profile not found")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_names(self):
         user_role = self.request.user.role
         return [get_template_path('consultation_detail.html', user_role)]
@@ -142,7 +168,7 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
         # Get consultation with all related data
         consultation = get_object_or_404(
             Consultation.objects.select_related(
-                'patient__user',
+                'patient',
                 'doctor',
                 'doctor__doctor_profile',  # Add this line
                 'treatment_instruction',
@@ -153,6 +179,14 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             ),
             pk=self.kwargs['pk']
         )
+        
+        # Check if user has permission to view this consultation
+        user = self.request.user
+        if user.role == 'DOCTOR' and consultation.doctor != user:
+            raise PermissionDenied("Not authorized to view this consultation")
+        elif user.role == 'PATIENT' and consultation.patient != user:
+            raise PermissionDenied("Not authorized to view this consultation")
+            
         return consultation
 
     def get_context_data(self, **kwargs):
@@ -168,39 +202,21 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             'registration_number': consultation.doctor.doctor_profile.registration_number
         }
         
-        # Calculate consultation duration
-        if consultation.date_time:
-            next_consultation = Consultation.objects.filter(
-                date_time__gt=consultation.date_time,
-                patient=consultation.patient
-            ).order_by('date_time').first()
+        if consultation.patient and hasattr(consultation.patient, 'patient_profile'):
+            # Get patient's medical history and other related data
+            patient_profile = consultation.patient.patient_profile
             
-            if next_consultation:
-                duration = next_consultation.date_time - consultation.date_time
-                context['consultation_duration'] = duration.seconds // 60  # in minutes
-
-        # Get patient's medical history
-        context['medical_history'] = consultation.patient.medical_history
-        
-        # Get previous consultations
-        context['previous_consultations'] = Consultation.objects.filter(
-            patient=consultation.patient,
-            date_time__lt=consultation.date_time
-        ).order_by('-date_time')[:5]
-        
-        # Get patient's current medications
-        context['current_medications'] = consultation.patient.medications.filter(
-            end_date__isnull=True
-        )
-        
-        # Get vitiligo assessments
-        context['vitiligo_assessments'] = consultation.patient.vitiligo_assessments.order_by(
-            '-assessment_date'
-        )[:3]
-        
-        # Get treatment plan
-        context['treatment_plans'] = consultation.patient.treatment_plans.order_by(
-            '-created_date'
-        )[:1]
+            context.update({
+                'medical_history': getattr(patient_profile, 'medical_history', None),
+                'current_medications': patient_profile.medications.filter(end_date__isnull=True),
+                'vitiligo_assessments': patient_profile.vitiligo_assessments.order_by('-assessment_date')[:3],
+                'treatment_plans': patient_profile.treatment_plans.order_by('-created_date')[:1],
+            })
+            
+            # Get previous consultations
+            context['previous_consultations'] = Consultation.objects.filter(
+                patient=consultation.patient,
+                date_time__lt=consultation.date_time
+            ).order_by('-date_time')[:5]
         
         return context
