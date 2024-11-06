@@ -17,7 +17,7 @@ class UserNotification(models.Model):
     read_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"Notification for {self.user.username} - {self.message[:20]}"
+        return f"Notification for {self.user.email} - {self.message[:20]}"
 
 class SystemActivityLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
@@ -26,7 +26,7 @@ class SystemActivityLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username if self.user else 'System'} - {self.action} at {self.timestamp}"
+        return f"{self.user.email if self.user else 'System'} - {self.action} at {self.timestamp}"
 
 class UserActivityLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='activity_logs')
@@ -35,7 +35,7 @@ class UserActivityLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.action} at {self.timestamp}"
+        return f"{self.user.email} - {self.action} at {self.timestamp}"
 
 class EmailNotification(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='email_notifications')
@@ -49,7 +49,7 @@ class EmailNotification(models.Model):
     ], default='PENDING')
 
     def __str__(self):
-        return f"Email to {self.user.username} - {self.subject[:20]}"
+        return f"Email to {self.user.email} - {self.subject[:20]}"
 
 class SMSNotification(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sms_notifications')
@@ -77,4 +77,4 @@ class PushNotification(models.Model):
     ], default='PENDING')
 
     def __str__(self):
-        return f"Push notification to {self.user.username} - {self.title[:20]}"
+        return f"Push notification to {self.user.email} - {self.title[:20]}"
