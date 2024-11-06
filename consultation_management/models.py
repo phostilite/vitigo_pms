@@ -42,7 +42,7 @@ class Prescription(models.Model):
     instructions = models.TextField()
 
     def __str__(self):
-        return f"{self.medication.name} for {self.consultation.patient.user.get_full_name()}"
+        return f"{self.medication.name} for {self.consultation.patient.get_full_name()}"
 
 class TreatmentInstruction(models.Model):
     consultation = models.OneToOneField(Consultation, on_delete=models.CASCADE, related_name='treatment_instruction')
@@ -52,7 +52,7 @@ class TreatmentInstruction(models.Model):
     additional_notes = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Treatment Instructions for {self.consultation.patient.user.get_full_name()} on {self.consultation.date_time.date()}"
+        return f"Treatment Instructions for {self.consultation.patient.get_full_name()} on {self.consultation.date_time.date()}"
 
 class ConsultationAttachment(models.Model):
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='attachments')
@@ -61,7 +61,7 @@ class ConsultationAttachment(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Attachment for {self.consultation.patient.user.get_full_name()}'s consultation on {self.consultation.date_time.date()}"
+        return f"Attachment for {self.consultation.patient.get_full_name()}'s consultation on {self.consultation.date_time.date()}"
 
 class FollowUpPlan(models.Model):
     consultation = models.OneToOneField(Consultation, on_delete=models.CASCADE, related_name='follow_up_plan')
@@ -71,4 +71,4 @@ class FollowUpPlan(models.Model):
     additional_notes = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Follow-up Plan for {self.consultation.patient.user.get_full_name()} on {self.follow_up_date}"
+        return f"Follow-up Plan for {self.consultation.patient.get_full_name()} on {self.follow_up_date}"
