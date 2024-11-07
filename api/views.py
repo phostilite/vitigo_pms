@@ -1071,7 +1071,7 @@ class UserQueriesView(APIView):
     def get(self, request):
         user = request.user
         try:
-            queries = Query.objects.filter(patient=user)
+            queries = Query.objects.filter(user=user)
             serializer = QuerySerializer(queries, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
@@ -1086,7 +1086,7 @@ class UserQueriesView(APIView):
     def post(self, request):
         user = request.user
         data = request.data.copy()
-        data['patient'] = user.id  # Set the patient to the current user
+        data['user'] = user.id  # Set the patient to the current user
 
         serializer = QuerySerializer(data=data)
         if serializer.is_valid():
