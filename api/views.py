@@ -571,6 +571,36 @@ class MedicalHistoryAPIView(APIView):
                 'status': 'error',
                 'message': 'An unexpected error occurred'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def delete(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = user.patient_profile
+            medical_history = get_object_or_404(MedicalHistory, patient=patient)
+            
+            medical_history.delete()
+            logger.info(f"Medical history deleted successfully for user {user_id}")
+            
+            return Response({
+                'status': 'success',
+                'message': 'Medical history deleted successfully'
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            logger.error(f"User with id {user_id} not found")
+            raise NotFound('User not found')
+        except Patient.DoesNotExist:
+            logger.error(f"Patient profile for user {user_id} not found")
+            raise NotFound('Patient profile not found')
+        except MedicalHistory.DoesNotExist:
+            logger.error(f"Medical history for patient {user_id} not found")
+            raise NotFound('Medical history not found')
+        except Exception as e:
+            logger.error(f"Error deleting medical history: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'error',
+                'message': 'An unexpected error occurred'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
