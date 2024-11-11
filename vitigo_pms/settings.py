@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'drf_yasg',
     # 'django_ratelimit',
+    'crispy_forms',
+    'crispy_tailwind',
 
     # Custom apps
     'user_management',
@@ -279,3 +281,7 @@ SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
     'JSON_EDITOR': True,
 }
+
+# Crispy Forms Config
+CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
+CRISPY_TEMPLATE_PACK = "tailwind"
