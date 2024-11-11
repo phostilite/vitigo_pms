@@ -3,11 +3,20 @@ from django.http import HttpResponse
 from django.views import View
 from django.db.models import Count, Q
 from django.utils import timezone
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 from .models import Query, QueryTag
+from .forms import QueryCreateForm
 from patient_management.models import Patient
+from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView
+from django.shortcuts import redirect
+from django.http import JsonResponse
+from django.views.generic import View
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_http_methods
 
 def get_template_path(base_template, user_role):
     """
@@ -162,3 +171,112 @@ class QueryDetailView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f"An error occurred: {str(e)}")
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
+
+
+class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff
+        
+    def get(self, request):
+        try:
+            user_role = request.user.role
+            template_path = get_template_path('query_create.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+                
+            form = QueryCreateForm()
+            context = {
+                'form': form
+            }
+            return render(request, template_path, context)
+            
+        except Exception as e:
+            messages.error(request, f"An error occurred: {str(e)}")
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            
+    def post(self, request):
+        try:
+            form = QueryCreateForm(request.POST)
+            if form.is_valid():
+                query = form.save(commit=False)
+                if not form.cleaned_data.get('user'):
+                    query.user = request.user
+                query.save()
+                form.save_m2m()  # Save many-to-many relationships
+                messages.success(request, "Query created successfully")
+                return redirect('query_management')
+                
+            # If form invalid, re-render with errors
+            template_path = get_template_path('query_create.html', request.user.role)
+            return render(request, template_path, {'form': form})
+            
+        except Exception as e:
+            messages.error(request, f"An error occurred: {str(e)}")
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+        
+
+class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff
+        
+    def get(self, request, query_id):
+        try:
+            user_role = request.user.role
+            template_path = get_template_path('query_update.html', user_role)
+            
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
+            
+            query = get_object_or_404(Query, query_id=query_id)
+            form = QueryCreateForm(instance=query)  # Reuse create form
+            
+            context = {
+                'form': form,
+                'query': query
+            }
+            return render(request, template_path, context)
+            
+        except Exception as e:
+            messages.error(request, f"An error occurred: {str(e)}")
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            
+    def post(self, request, query_id):
+        try:
+            query = get_object_or_404(Query, query_id=query_id)
+            form = QueryCreateForm(request.POST, instance=query)
+            
+            if form.is_valid():
+                query = form.save(commit=False)
+                # Check if status changed to resolved
+                if query.status == 'RESOLVED' and not query.resolved_at:
+                    query.resolved_at = timezone.now()
+                query.save()
+                form.save_m2m()
+                messages.success(request, "Query updated successfully")
+                return redirect('query_detail', query_id=query.query_id)
+                
+            template_path = get_template_path('query_update.html', request.user.role)
+            return render(request, template_path, {'form': form, 'query': query})
+            
+        except Exception as e:
+            messages.error(request, f"An error occurred: {str(e)}")
+            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+        
+
+class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def post(self, request, query_id):
+        try:
+            query = get_object_or_404(Query, query_id=query_id)
+            query_number = query.query_id  # Store for message
+            query.delete()
+            
+            messages.success(request, f"Query #{query_number} deleted successfully")
+            return redirect('query_management')
+            
+        except Exception as e:
+            messages.error(request, f"Error deleting query: {str(e)}")
+            return HttpResponse(f"Error deleting query: {str(e)}", status=500)

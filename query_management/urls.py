@@ -1,7 +1,10 @@
 from django.urls import path
-from .views import QueryManagementView, QueryDetailView
+from . import views
 
 urlpatterns = [
-    path('', QueryManagementView.as_view(), name='query_management'),
-    path('<int:query_id>/', QueryDetailView.as_view(), name='query_detail'),
+    path('', views.QueryManagementView.as_view(), name='query_management'),
+    path('create/', views.QueryCreateView.as_view(), name='query_create'),
+    path('<int:query_id>/update/', views.QueryUpdateView.as_view(), name='query_update'),
+    path('<int:query_id>/delete/', views.QueryDeleteView.as_view(), name='query_delete'),
+    path('<int:query_id>/', views.QueryDetailView.as_view(), name='query_detail'),
 ]
