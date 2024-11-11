@@ -8,6 +8,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import DatabaseError
+from django.db.utils import IntegrityError 
 from django.shortcuts import render, get_object_or_404
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -463,6 +464,17 @@ class MedicalHistoryAPIView(APIView):
         try:
             user = get_object_or_404(User, id=user_id)
             patient = user.patient_profile
+            
+            # Check if medical history already exists
+            existing_history = MedicalHistory.objects.filter(patient=patient).exists()
+            if existing_history:
+                logger.warning(f"Medical history already exists for user {user_id}")
+                return Response({
+                    'status': 'error',
+                    'message': 'Medical history already exists for this patient',
+                    'code': 'duplicate_record'
+                }, status=status.HTTP_409_CONFLICT)
+                
             serializer = MedicalHistoryCreateSerializer(
                 data=request.data, 
                 context={'patient': patient, 'request': request}
@@ -482,6 +494,13 @@ class MedicalHistoryAPIView(APIView):
                     'message': 'Creation failed',
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError as e:
+            logger.error(f"Integrity error while creating medical history: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': 'Medical history already exists for this patient',
+                'code': 'duplicate_record'
+            }, status=status.HTTP_409_CONFLICT)
         except Exception as e:
             logger.error(f"Error creating medical history: {str(e)}", exc_info=True)
             return Response({
