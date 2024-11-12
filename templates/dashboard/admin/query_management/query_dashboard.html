@@ -101,37 +101,50 @@
 
         <!-- Filters and Search -->
         <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+            <form method="GET" class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                 <!-- Left side filters -->
                 <div class="flex flex-wrap items-center gap-4">
                     <!-- Priority Filter -->
-                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <select name="priority" 
+                            onchange="this.form.submit()" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                         <option value="">All Priorities</option>
-                        <option value="A">Blue A - High Priority</option>
-                        <option value="B">Green B - Medium Priority</option>
-                        <option value="C">Red C - Low Priority</option>
+                        <option value="A" {% if current_filters.priority == 'A' %}selected{% endif %}>High Priority</option>
+                        <option value="B" {% if current_filters.priority == 'B' %}selected{% endif %}>Medium Priority</option>
+                        <option value="C" {% if current_filters.priority == 'C' %}selected{% endif %}>Low Priority</option>
                     </select>
 
                     <!-- Source Filter -->
-                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <select name="source" 
+                            onchange="this.form.submit()" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                         <option value="">All Sources</option>
-                        <option value="WEBSITE">Website</option>
-                        <option value="CHATBOT">Chatbot</option>
-                        <option value="SOCIAL_MEDIA">Social Media</option>
-                        <option value="PHONE">Phone Call</option>
-                        <option value="EMAIL">Email</option>
-                        <option value="WALK_IN">Walk-in</option>
+                        {% for source, label in source_choices %}
+                        <option value="{{ source }}" {% if current_filters.source == source %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
                     </select>
 
                     <!-- Status Filter -->
-                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <select name="status" 
+                            onchange="this.form.submit()" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                         <option value="">All Statuses</option>
-                        <option value="NEW">New</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="WAITING">Waiting</option>
-                        <option value="RESOLVED">Resolved</option>
-                        <option value="CLOSED">Closed</option>
+                        {% for status, label in status_choices %}
+                        <option value="{{ status }}" {% if current_filters.status == status %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
                     </select>
+
+                    {% if current_filters.priority or current_filters.source or current_filters.status or current_filters.search %}
+                    <a href="{% url 'query_management' %}" 
+                       class="inline-flex items-center text-sm text-red-600 hover:text-red-800">
+                        <i class="fas fa-times-circle mr-1"></i>
+                        Clear Filters
+                    </a>
+                    {% endif %}
                 </div>
 
                 <!-- Search -->
@@ -139,9 +152,13 @@
                     <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                         <i class="fas fa-search text-gray-500"></i>
                     </div>
-                    <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" placeholder="Search queries...">
+                    <input type="text" 
+                           name="search" 
+                           value="{{ current_filters.search }}"
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" 
+                           placeholder="Search queries...">
                 </div>
-            </div>
+            </form>
         </div>
 
         <!-- Query List -->

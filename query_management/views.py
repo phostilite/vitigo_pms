@@ -47,7 +47,7 @@ class QueryManagementView(LoginRequiredMixin, View):
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
 
-            # Get base queryset with all relations - updated from 'patient' to 'user'
+            # Get base queryset
             queryset = Query.objects.select_related(
                 'user', 
                 'assigned_to'
@@ -57,29 +57,35 @@ class QueryManagementView(LoginRequiredMixin, View):
                 'attachments'
             )
             
-            # Apply filters based on GET parameters
-            filters = {}
-            for param in ['priority', 'status', 'source']:
-                if request.GET.get(param):
-                    filters[param] = request.GET.get(param)
-                    
-            # Apply filters to queryset
-            filtered_queries = queryset.filter(**filters)
-            
-            # Updated search functionality to use user instead of patient
+            # Get filter parameters
+            priority = request.GET.get('priority')
+            status = request.GET.get('status')
+            source = request.GET.get('source')
             search_query = request.GET.get('search')
+
+            # Apply filters
+            if priority:
+                queryset = queryset.filter(priority=priority)
+            if status:
+                queryset = queryset.filter(status=status)
+            if source:
+                queryset = queryset.filter(source=source)
+            
+            # Apply search
             if search_query:
-                filtered_queries = filtered_queries.filter(
+                queryset = queryset.filter(
                     Q(subject__icontains=search_query) |
                     Q(description__icontains=search_query) |
+                    Q(query_id__icontains=search_query) |
                     Q(user__first_name__icontains=search_query) |
                     Q(user__last_name__icontains=search_query) |
-                    Q(query_id__icontains=search_query)
+                    Q(contact_email__icontains=search_query) |
+                    Q(contact_phone__icontains=search_query)
                 )
 
             # Pagination
-            paginator = Paginator(filtered_queries, 10)
-            page = request.GET.get('page')
+            paginator = Paginator(queryset, 10)
+            page = request.GET.get('page', 1)
             try:
                 queries = paginator.page(page)
             except PageNotAnInteger:
@@ -87,9 +93,9 @@ class QueryManagementView(LoginRequiredMixin, View):
             except EmptyPage:
                 queries = paginator.page(paginator.num_pages)
 
-            # Get current date for calculations
-            current_date = timezone.now()
-            start_of_month = current_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            # Get choices for dropdowns
+            status_choices = Query.STATUS_CHOICES
+            source_choices = Query.SOURCE_CHOICES
 
             # Get available staff members for assignment
             User = get_user_model()
@@ -98,24 +104,27 @@ class QueryManagementView(LoginRequiredMixin, View):
                 role__in=['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER']
             ).order_by('first_name')
 
-            # Context data
+            # Calculate statistics
+            current_date = timezone.now()
+            start_of_month = current_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            resolved_this_month = Query.objects.filter(resolved_at__gte=start_of_month).count()
+            total_queries = Query.objects.count()
+
             context = {
                 'queries': queries,
-                'total_queries': Query.objects.count(),
+                'total_queries': total_queries,
                 'open_queries': Query.objects.filter(
                     status__in=['NEW', 'IN_PROGRESS', 'WAITING']
                 ).count(),
-                'common_tags': QueryTag.objects.annotate(
-                    query_count=Count('query')
-                ).order_by('-query_count')[:10],
-                'resolved_this_month': Query.objects.filter(
-                    resolved_at__gte=start_of_month
-                ).count(),
+                'resolved_this_month': resolved_this_month,
+                'resolution_rate': round((resolved_this_month / total_queries * 100) if total_queries > 0 else 0, 1),
+                'status_choices': status_choices,
+                'source_choices': source_choices,
                 'current_filters': {
-                    'priority': request.GET.get('priority', ''),
-                    'status': request.GET.get('status', ''),
-                    'source': request.GET.get('source', ''),
-                    'search': request.GET.get('search', ''),
+                    'priority': priority or '',
+                    'status': status or '',
+                    'source': source or '',
+                    'search': search_query or '',
                 },
                 'paginator': paginator,
                 'page_obj': queries,
@@ -123,7 +132,7 @@ class QueryManagementView(LoginRequiredMixin, View):
             }
 
             return render(request, template_path, context)
-
+            
         except Exception as e:
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
 
