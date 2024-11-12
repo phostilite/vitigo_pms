@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
-from .models import Query, QueryTag
+from .models import Query, QueryTag, QueryUpdate
 from .forms import QueryCreateForm
 from patient_management.models import Patient
 from django.urls import reverse_lazy
@@ -17,6 +17,7 @@ from django.views.generic import View
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth import get_user_model
 
 def get_template_path(base_template, user_role):
     """
@@ -90,6 +91,13 @@ class QueryManagementView(LoginRequiredMixin, View):
             current_date = timezone.now()
             start_of_month = current_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+            # Get available staff members for assignment
+            User = get_user_model()
+            available_staff = User.objects.filter(
+                is_active=True,
+                role__in=['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER']
+            ).order_by('first_name')
+
             # Context data
             context = {
                 'queries': queries,
@@ -111,6 +119,7 @@ class QueryManagementView(LoginRequiredMixin, View):
                 },
                 'paginator': paginator,
                 'page_obj': queries,
+                'available_staff': available_staff,
             }
 
             return render(request, template_path, context)
@@ -280,3 +289,35 @@ class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             messages.error(request, f"Error deleting query: {str(e)}")
             return HttpResponse(f"Error deleting query: {str(e)}", status=500)
+
+class QueryAssignView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def post(self, request, query_id):
+        try:
+            query = get_object_or_404(Query, query_id=query_id)
+            staff_id = request.POST.get('assigned_to')
+            
+            if staff_id:
+                User = get_user_model()
+                staff = get_object_or_404(User, id=staff_id)
+                query.assigned_to = staff
+                query.save()
+                
+                # Create a query update to log the assignment
+                QueryUpdate.objects.create(
+                    query=query,
+                    user=request.user,
+                    content=f"Query assigned to {staff.get_full_name()}"
+                )
+                
+                messages.success(request, f"Query #{query.query_id} assigned to {staff.get_full_name()}")
+            else:
+                messages.error(request, "No staff member selected")
+                
+            return redirect('query_management')
+            
+        except Exception as e:
+            messages.error(request, f"Error assigning query: {str(e)}")
+            return redirect('query_management')
