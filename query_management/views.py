@@ -321,3 +321,69 @@ class QueryAssignView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             messages.error(request, f"Error assigning query: {str(e)}")
             return redirect('query_management')
+
+class QueryUpdateStatusView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def post(self, request, query_id):
+        try:
+            query = get_object_or_404(Query, query_id=query_id)
+            update_content = request.POST.get('update_content')
+            new_status = request.POST.get('new_status')
+            
+            if update_content:
+                # Create query update
+                QueryUpdate.objects.create(
+                    query=query,
+                    user=request.user,
+                    content=update_content
+                )
+                
+                # Update query status if provided
+                if new_status and new_status != query.status:
+                    query.status = new_status
+                    if new_status == 'RESOLVED':
+                        query.resolved_at = timezone.now()
+                    query.save()
+                
+                messages.success(request, f"Update added to Query #{query.query_id}")
+            else:
+                messages.error(request, "Update content is required")
+                
+            return redirect('query_management')
+            
+        except Exception as e:
+            messages.error(request, f"Error adding update: {str(e)}")
+            return redirect('query_management')
+
+class QueryResolveView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def post(self, request, query_id):
+        try:
+            query = get_object_or_404(Query, query_id=query_id)
+            
+            # Only allow resolving if query isn't already resolved/closed
+            if query.status not in ['RESOLVED', 'CLOSED']:
+                query.status = 'RESOLVED'
+                query.resolved_at = timezone.now()
+                query.save()
+                
+                # Create a query update to log the resolution
+                QueryUpdate.objects.create(
+                    query=query,
+                    user=request.user,
+                    content=f"Query marked as resolved by {request.user.get_full_name()}"
+                )
+                
+                messages.success(request, f"Query #{query.query_id} has been marked as resolved")
+            else:
+                messages.warning(request, "Query is already resolved or closed")
+                
+            return redirect('query_management')
+            
+        except Exception as e:
+            messages.error(request, f"Error resolving query: {str(e)}")
+            return redirect('query_management')

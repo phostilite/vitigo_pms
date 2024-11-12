@@ -168,6 +168,60 @@
                 </div>
             </div>
 
+            <!-- Add Update Card -->
+            {% if query.status != 'RESOLVED' and query.status != 'CLOSED' %}
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-plus-circle text-blue-500 mr-2"></i>Add Update
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <form action="{% url 'query_update_status' query.query_id %}" method="POST" class="space-y-4">
+                        {% csrf_token %}
+                        
+                        <!-- Status Update -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
+                            <select name="new_status" 
+                                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Keep current status</option>
+                                {% for status, label in query.STATUS_CHOICES %}
+                                <option value="{{ status }}" {% if status == query.status %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <p class="mt-1 text-sm text-gray-500">
+                                Current status: <span class="font-medium">{{ query.get_status_display }}</span>
+                            </p>
+                        </div>
+
+                        <!-- Update Content -->
+                        <div>
+                            <label for="update_content" class="block text-sm font-medium text-gray-700 mb-2">
+                                Update Details
+                            </label>
+                            <textarea id="update_content" 
+                                    name="update_content"
+                                    rows="4"
+                                    required
+                                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                    placeholder="Enter your update details here..."></textarea>
+                        </div>
+
+                        <div class="flex justify-end space-x-3">
+                            <button type="submit" 
+                                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-plus-circle mr-2"></i>
+                                Add Update
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Technical Details -->
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
