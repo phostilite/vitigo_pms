@@ -95,7 +95,7 @@ ROOT_URLCONF = 'vitigo_pms.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
+        'DIRS': [BASE_DIR / 'templates', os.path.join(BASE_DIR, 'templates', 'emails')]
         ,
         'APP_DIRS': True,
         'OPTIONS': {
@@ -169,6 +169,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# File Upload Settings
+# Maximum upload file size: 5MB
+MAX_UPLOAD_SIZE = 5242880  # 5MB in bytes
+
+# Allowed file extensions
+ALLOWED_EXTENSIONS = [
+    '.pdf', '.doc', '.docx', 
+    '.jpg', '.jpeg', '.png', 
+    '.xls', '.xlsx', '.txt'
+]
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -189,19 +200,23 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'user_management.exceptions.custom_exception_handler',
 }
 
-# Logging configuration
+# Enhanced Logging configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
         'simple': {
-            'format': '{levelname} {asctime} {module} {message}',
+            'format': '[{levelname}] {asctime} {module} {message}',
             'style': '{',
         },
+        'email_formatter': {
+            'format': '[EMAIL] {asctime} {message}',
+            'style': '{',
+        }
     },
     'handlers': {
         'file': {
@@ -211,10 +226,21 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'console': {
-            'level': 'DEBUG',  
+            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
+        'email_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'email.log'),
+            'formatter': 'email_formatter',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'verbose',
+        }
     },
     'loggers': {
         'django': {
@@ -222,36 +248,25 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        '': {  
+        'django.server': {
             'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['mail_admins', 'file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.mail': {
+            'handlers': ['email_file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
         },
-    },
-}
-
-# SECURE_SSL_REDIRECT = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
-# SECURE_BROWSER_XSS_FILTER = True
-# SECURE_CONTENT_TYPE_NOSNIFF = True
-
-# RATELIMIT_USE_CACHE = 'default'
-# RATELIMIT_FAIL_OPEN = False
-
-# RATELIMIT_IP_META_KEY = 'HTTP_X_REAL_IP'
-# RATELIMIT_USE_CACHE = 'default'
-
-FRONTEND_URL = os.getenv('FRONTEND_URL')
-
-BASE_URL = os.getenv('BASE_URL')
-
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        'query_management': {
+            'handlers': ['file', 'console', 'email_file'],
+            'level': 'DEBUG',
+            'propagate': True,
         }
     }
 }
@@ -260,15 +275,22 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
-# Email settings for Gmail
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND')
-EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
+# Email settings for Gmail - Change this section
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Remove the DEBUG condition
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
+# Remove or comment out this section
+# if DEBUG:
+#     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+#     EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
+
+# Add email templates directory
+TEMPLATES[0]['DIRS'].append(os.path.join(BASE_DIR, 'templates', 'emails'))
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {

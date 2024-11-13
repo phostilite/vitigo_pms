@@ -1,0 +1,17 @@
+
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Query Status Updated</h2>
+    <p>Query #{{ query.query_id }} status has been updated.</p>
+    <p><strong>Subject:</strong> {{ query.subject }}</p>
+    {% if old_status %}
+    <p><strong>Previous Status:</strong> {{ old_status }}</p>
+    {% endif %}
+    <p><strong>New Status:</strong> {{ query.status }}</p>
+    {% if update_content %}
+    <p><strong>Update Message:</strong> {{ update_content }}</p>
+    {% endif %}
+    <p><strong>Updated By:</strong> {{ query.assigned_to.get_full_name }}</p>
+</body>
+</html>

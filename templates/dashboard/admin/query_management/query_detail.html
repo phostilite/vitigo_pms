@@ -177,7 +177,7 @@
                     </h3>
                 </div>
                 <div class="p-6">
-                    <form action="{% url 'query_update_status' query.query_id %}" method="POST" class="space-y-4">
+                    <form action="{% url 'query_update_status' query.query_id %}" method="POST" class="space-y-4" enctype="multipart/form-data">
                         {% csrf_token %}
                         
                         <!-- Status Update -->
@@ -208,6 +208,24 @@
                                     required
                                     class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                                     placeholder="Enter your update details here..."></textarea>
+                        </div>
+
+                        <!-- File Attachment -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-paperclip mr-2"></i>Attach Files
+                            </label>
+                            <input type="file" 
+                                   name="attachments" 
+                                   multiple
+                                   class="block w-full text-sm text-gray-500
+                                          file:mr-4 file:py-2 file:px-4
+                                          file:rounded-lg file:border-0
+                                          file:text-sm file:font-medium
+                                          file:bg-blue-50 file:text-blue-700
+                                          hover:file:bg-blue-100"
+                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <p class="mt-1 text-sm text-gray-500">Upload one or multiple files (PDF, DOC, Images)</p>
                         </div>
 
                         <div class="flex justify-end space-x-3">

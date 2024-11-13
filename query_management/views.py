@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
-from .models import Query, QueryTag, QueryUpdate
+from .models import Query, QueryTag, QueryUpdate, QueryAttachment
 from .forms import QueryCreateForm
 from patient_management.models import Patient
 from django.urls import reverse_lazy
@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import get_user_model
+from .utils import send_query_notification
 
 def get_template_path(base_template, user_role):
     """
@@ -221,7 +222,11 @@ class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
                 if not form.cleaned_data.get('user'):
                     query.user = request.user
                 query.save()
-                form.save_m2m()  # Save many-to-many relationships
+                form.save_m2m()
+                
+                # Send notification for new query
+                send_query_notification(query, 'created')
+                
                 messages.success(request, "Query created successfully")
                 return redirect('query_management')
                 
@@ -266,14 +271,27 @@ class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
             
             if form.is_valid():
                 query = form.save(commit=False)
+                old_status = query.status
+                
                 # Check if status changed to resolved
                 if query.status == 'RESOLVED' and not query.resolved_at:
                     query.resolved_at = timezone.now()
+                
                 query.save()
                 form.save_m2m()
+                
+                # Notify if status changed
+                if old_status != query.status:
+                    send_query_notification(
+                        query, 
+                        'status_updated',
+                        old_status=old_status,
+                        new_status=query.status
+                    )
+                
                 messages.success(request, "Query updated successfully")
                 return redirect('query_detail', query_id=query.query_id)
-                
+            
             template_path = get_template_path('query_update.html', request.user.role)
             return render(request, template_path, {'form': form, 'query': query})
             
@@ -311,8 +329,35 @@ class QueryAssignView(LoginRequiredMixin, UserPassesTestMixin, View):
             if staff_id:
                 User = get_user_model()
                 staff = get_object_or_404(User, id=staff_id)
+                previous_assignee = query.assigned_to
                 query.assigned_to = staff
                 query.save()
+                
+                # Send notification to newly assigned staff
+                send_query_notification(
+                    query, 
+                    'assigned', 
+                    recipient=staff,
+                    assigned_by=request.user
+                )
+                
+                # Notify query creator if they exist and are different from the assignee
+                if query.user and query.user != staff:
+                    send_query_notification(
+                        query,
+                        'status_updated',
+                        recipient=query.user,
+                        update_content=f"Query assigned to {staff.get_full_name()}"
+                    )
+                
+                # Notify previous assignee if exists and different from new assignee
+                if previous_assignee and previous_assignee != staff:
+                    send_query_notification(
+                        query,
+                        'status_updated',
+                        recipient=previous_assignee,
+                        update_content=f"Query reassigned to {staff.get_full_name()}"
+                    )
                 
                 # Create a query update to log the assignment
                 QueryUpdate.objects.create(
@@ -343,28 +388,58 @@ class QueryUpdateStatusView(LoginRequiredMixin, UserPassesTestMixin, View):
             
             if update_content:
                 # Create query update
-                QueryUpdate.objects.create(
+                update = QueryUpdate.objects.create(
                     query=query,
                     user=request.user,
                     content=update_content
                 )
                 
+                # Handle file attachments
+                files = request.FILES.getlist('attachments')
+                for file in files:
+                    QueryAttachment.objects.create(
+                        query=query,
+                        file=file
+                    )
+                
                 # Update query status if provided
                 if new_status and new_status != query.status:
+                    old_status = query.status
                     query.status = new_status
                     if new_status == 'RESOLVED':
                         query.resolved_at = timezone.now()
+                        # Send resolution notification
+                        send_query_notification(query, 'resolved')
+                    else:
+                        # Send status update notification
+                        send_query_notification(
+                            query, 
+                            'status_updated',
+                            old_status=old_status,
+                            new_status=new_status
+                        )
                     query.save()
                 
+                # Notify query owner about the update
+                if query.user and query.user != request.user:
+                    send_query_notification(
+                        query,
+                        'status_updated',
+                        recipient=query.user,
+                        update_content=update_content
+                    )
+                
                 messages.success(request, f"Update added to Query #{query.query_id}")
+                if files:
+                    messages.info(request, f"{len(files)} file(s) attached successfully")
             else:
                 messages.error(request, "Update content is required")
                 
-            return redirect('query_management')
+            return redirect('query_detail', query_id=query.query_id)
             
         except Exception as e:
             messages.error(request, f"Error adding update: {str(e)}")
-            return redirect('query_management')
+            return redirect('query_detail', query_id=query_id)
 
 class QueryResolveView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
@@ -385,6 +460,13 @@ class QueryResolveView(LoginRequiredMixin, UserPassesTestMixin, View):
                     query=query,
                     user=request.user,
                     content=f"Query marked as resolved by {request.user.get_full_name()}"
+                )
+                
+                # Send resolution notification
+                send_query_notification(
+                    query, 
+                    'resolved',
+                    resolver=request.user.get_full_name()
                 )
                 
                 messages.success(request, f"Query #{query.query_id} has been marked as resolved")
