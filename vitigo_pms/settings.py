@@ -271,10 +271,6 @@ LOGGING = {
     }
 }
 
-# Redis as session backend for better performance
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
-
 # Email settings for Gmail - Change this section
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Remove the DEBUG condition
 EMAIL_HOST = 'smtp.gmail.com'
