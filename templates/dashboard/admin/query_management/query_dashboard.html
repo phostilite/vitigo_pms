@@ -101,6 +101,43 @@
 
         {% include 'dashboard/admin/query_management/query_graphs.html' %}
 
+        <!-- Export Controls -->
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+            <form action="{% url 'query_export' %}" method="GET" class="flex flex-wrap gap-4 items-center">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                    <select name="date_range" class="w-full rounded-lg border-gray-300">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                
+                <div class="flex-1 min-w-[200px] custom-date-range hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Custom Range</label>
+                    <div class="flex gap-2">
+                        <input type="date" name="start_date" class="rounded-lg border-gray-300">
+                        <input type="date" name="end_date" class="rounded-lg border-gray-300">
+                    </div>
+                </div>
+
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Export Format</label>
+                    <select name="format" class="w-full rounded-lg border-gray-300">
+                        <option value="csv">CSV</option>
+                        <option value="pdf">PDF</option>
+                    </select>
+                </div>
+
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                        <i class="fas fa-download mr-2"></i>Export Report
+                    </button>
+                </div>
+            </form>
+        </div>
+
         <!-- Filters and Search -->
         <div class="bg-white p-4 rounded-lg shadow-md mb-6">
             <form method="GET" class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -710,6 +747,15 @@
                 dropdownElement.classList.toggle('hidden');
             });
         });
+    });
+
+    document.querySelector('[name="date_range"]').addEventListener('change', function() {
+        const customRange = document.querySelector('.custom-date-range');
+        if (this.value === 'custom') {
+            customRange.classList.remove('hidden');
+        } else {
+            customRange.classList.add('hidden');
+        }
     });
 </script>
 {% endblock %}

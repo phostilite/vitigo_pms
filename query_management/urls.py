@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     QueryManagementView, QueryDetailView, QueryCreateView, QueryUpdateView,
     QueryDeleteView, QueryAssignView, QueryUpdateStatusView, QueryResolveView,
-    QueryTrendDataView, QueryResponseTimeDataView, QueryStaffPerformanceDataView
+    QueryTrendDataView, QueryResponseTimeDataView, QueryStaffPerformanceDataView,
+    QueryExportView
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('trend-data/', QueryTrendDataView.as_view(), name='query_trend_data'),
     path('response-time-data/', QueryResponseTimeDataView.as_view(), name='query_response_time_data'),
     path('staff-performance-data/', QueryStaffPerformanceDataView.as_view(), name='query_staff_performance_data'),
+    path('export/', QueryExportView.as_view(), name='query_export'),
 ]
