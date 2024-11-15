@@ -19,6 +19,9 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import get_user_model
 from .utils import send_query_notification
+from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, ExtractHour
+from django.db.models import Count, Avg, F, ExpressionWrapper, fields
+from datetime import timedelta, datetime
 
 def get_template_path(base_template, user_role):
     """
@@ -40,6 +43,113 @@ def get_template_path(base_template, user_role):
     return f'dashboard/{role_folder}/query_management/{base_template}'
 
 class QueryManagementView(LoginRequiredMixin, View):
+    def get_query_trend_data(self, queryset, days=30):
+        """Calculate query volume trend data"""
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=days)
+        
+        daily_counts = (queryset
+            .filter(created_at__gte=start_date)
+            .annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(count=Count('query_id'))
+            .order_by('date'))
+
+        dates = []
+        counts = []
+        
+        current = start_date.date()
+        while current <= end_date.date():
+            dates.append(current.strftime('%Y-%m-%d'))
+            count = next((item['count'] for item in daily_counts if item['date'] == current), 0)
+            counts.append(count)
+            current += timedelta(days=1)
+
+        return {
+            'labels': dates,
+            'values': counts
+        }
+
+    def get_status_distribution(self, queryset):
+        """Calculate query status distribution"""
+        status_counts = (queryset
+            .values('status')
+            .annotate(count=Count('query_id'))
+            .order_by('status'))
+
+        status_map = dict(Query.STATUS_CHOICES)
+        return {
+            'labels': [status_map.get(item['status'], item['status']) for item in status_counts],
+            'values': [item['count'] for item in status_counts]
+        }
+
+    def get_response_time_data(self, queryset, period='day'):
+        """Calculate average response times"""
+        if period == 'week':
+            trunc_fn = TruncWeek
+        elif period == 'month':
+            trunc_fn = TruncMonth
+        else:  # day
+            trunc_fn = TruncDate
+
+        data = (queryset
+            .annotate(period=trunc_fn('created_at'))
+            .values('period')
+            .annotate(avg_time=Avg('response_time'))
+            .order_by('period'))
+        
+        return {
+            'labels': [item['period'].strftime('%Y-%m-%d') for item in data],
+            'values': [float(item['avg_time'].total_seconds()/3600) if item['avg_time'] else 0 for item in data]
+        }
+
+    def get_source_distribution(self, queryset):
+        """Calculate query source distribution"""
+        source_counts = (queryset
+            .values('source')
+            .annotate(count=Count('query_id'))
+            .order_by('-count'))
+
+        source_map = dict(Query.SOURCE_CHOICES)
+        return {
+            'labels': [source_map.get(item['source'], item['source']) for item in source_counts],
+            'values': [item['count'] for item in source_counts]
+        }
+
+    def get_staff_performance(self, queryset, days=30):
+        """Calculate staff performance metrics"""
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=days)
+        
+        data = (queryset
+            .filter(created_at__gte=start_date)
+            .values('assigned_to__first_name', 'assigned_to__last_name')
+            .annotate(
+                total_queries=Count('query_id'),
+                resolved_queries=Count('query_id', filter=Q(status='RESOLVED')),
+                avg_response_time=Avg('response_time')
+            )
+            .exclude(assigned_to=None)
+            .order_by('-total_queries'))
+
+        return {
+            'labels': [f"{item['assigned_to__first_name']} {item['assigned_to__last_name']}" for item in data],
+            'total_queries': [item['total_queries'] for item in data],
+            'resolved_queries': [item['resolved_queries'] for item in data]
+        }
+
+    def get_conversion_metrics(self, queryset):
+        """Calculate conversion metrics"""
+        total = queryset.count()
+        converted = queryset.filter(conversion_status=True).count()
+        conversion_rate = (converted / total * 100) if total > 0 else 0
+
+        return {
+            'total_converted': converted,
+            'total_pending': total - converted,
+            'conversion_rate': round(conversion_rate, 1)
+        }
+
     def get(self, request):
         try:
             user_role = request.user.role
@@ -132,10 +242,35 @@ class QueryManagementView(LoginRequiredMixin, View):
                 'available_staff': available_staff,
             }
 
+            # Prepare graph data
+            context.update({
+                'query_trend_data': self.get_query_trend_data(queryset),
+                'status_distribution': self.get_status_distribution(queryset),
+                'response_time_data': self.get_response_time_data(
+                    queryset, 
+                    request.GET.get('response_time_period', 'day')
+                ),
+                'source_distribution': self.get_source_distribution(queryset),
+                'staff_performance': self.get_staff_performance(queryset),
+                'conversion_metrics': self.get_conversion_metrics(queryset)
+            })
+
+            # Error handling for graph data
+            if not any([
+                context['query_trend_data']['values'],
+                context['status_distribution']['values'],
+                context['source_distribution']['values']
+            ]):
+                messages.info(request, "Not enough data available for some visualizations")
+
             return render(request, template_path, context)
             
         except Exception as e:
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            messages.error(request, f"An error occurred while preparing dashboard data: {str(e)}")
+            return render(request, template_path, {
+                'error': True,
+                'error_message': "Unable to load dashboard data. Please try again later."
+            })
 
 class QueryDetailView(LoginRequiredMixin, View):
     def get(self, request, query_id):
@@ -478,3 +613,33 @@ class QueryResolveView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             messages.error(request, f"Error resolving query: {str(e)}")
             return redirect('query_management')
+
+class QueryTrendDataView(LoginRequiredMixin, View):
+    def get(self, request):
+        try:
+            days = int(request.GET.get('days', 30))
+            queryset = Query.objects.all()
+            data = QueryManagementView().get_query_trend_data(queryset, days)
+            return JsonResponse(data)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+class QueryResponseTimeDataView(LoginRequiredMixin, View):
+    def get(self, request):
+        try:
+            period = request.GET.get('period', 'day')
+            queryset = Query.objects.all()
+            data = QueryManagementView().get_response_time_data(queryset, period)
+            return JsonResponse(data)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+class QueryStaffPerformanceDataView(LoginRequiredMixin, View):
+    def get(self, request):
+        try:
+            days = int(request.GET.get('days', 30))
+            queryset = Query.objects.all()
+            data = QueryManagementView().get_staff_performance(queryset, days)
+            return JsonResponse(data)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
