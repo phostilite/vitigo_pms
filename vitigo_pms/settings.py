@@ -180,6 +180,18 @@ ALLOWED_EXTENSIONS = [
     '.xls', '.xlsx', '.txt'
 ]
 
+# Media files configuration
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# File upload settings
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB in bytes
+ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+
+# Create media directories if they don't exist
+PATIENT_IMAGES_DIR = os.path.join(MEDIA_ROOT, 'patient_images')
+os.makedirs(PATIENT_IMAGES_DIR, exist_ok=True)
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 

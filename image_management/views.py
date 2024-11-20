@@ -1,12 +1,24 @@
 # views.py
 
-from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseForbidden
+import logging
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views import View
-from .models import BodyPart, PatientImage, ImageComparison
+from django.views.generic.edit import CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.urls import reverse_lazy
+from .models import BodyPart, PatientImage, ImageComparison, ImageAnnotation
+from .forms import PatientImageUploadForm
 from django.db.models import Sum, Count
 from django.utils import timezone
+from django.core.files.storage import default_storage
+from django.template.defaultfilters import filesizeformat  # Add this import
+import os
+import json
+
+logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, user_role):
     """
@@ -60,6 +72,13 @@ class ImageManagementView(View):
             except EmptyPage:
                 patient_images = paginator.page(paginator.num_pages)
 
+            # Add file size information
+            for image in patient_images:
+                if default_storage.exists(image.image_file.name):
+                    image.file_size_formatted = filesizeformat(default_storage.size(image.image_file.name))
+                else:
+                    image.file_size_formatted = 'N/A'
+
             # Context data to be passed to the template
             context = {
                 'body_parts': body_parts,
@@ -77,3 +96,85 @@ class ImageManagementView(View):
         except Exception as e:
             # Handle any exceptions that occur
             return HttpResponse(f"An error occurred: {str(e)}", status=500)
+
+class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    model = PatientImage
+    form_class = PatientImageUploadForm
+    template_name = 'dashboard/admin/image_management/image_upload.html'
+    success_url = reverse_lazy('image_management')
+
+    def test_func(self):
+        return self.request.user.role in ['ADMIN', 'DOCTOR', 'NURSE']
+
+    def handle_no_permission(self):
+        messages.error(self.request, "You don't have permission to upload images.")
+        return redirect('image_management')
+
+    def form_valid(self, form):
+        try:
+            instance = form.save(commit=False)
+            instance.uploaded_by = self.request.user
+            instance.save()
+            
+            logger.info(
+                f"Image uploaded successfully - Patient: {instance.patient.id}, "
+                f"Uploaded by: {self.request.user.id}, "
+                f"File size: {instance.file_size} bytes"
+            )
+            
+            # Store the image instance in the session for confirmation page
+            self.request.session['uploaded_image_id'] = instance.id
+            return redirect('image_upload_confirmation')
+            
+        except Exception as e:
+            logger.error(f"Image upload failed - Error: {str(e)}", exc_info=True)
+            messages.error(self.request, f'Failed to upload image: {str(e)}')
+            return super().form_invalid(form)
+
+    def form_invalid(self, form):
+        logger.warning(
+            f"Invalid image upload attempt - Errors: {form.errors}, "
+            f"User: {self.request.user.id}"
+        )
+        messages.error(self.request, 'Please correct the errors below.')
+        return super().form_invalid(form)
+
+class ImageUploadConfirmationView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.role in ['ADMIN', 'DOCTOR', 'NURSE']
+
+    def get(self, request):
+        image_id = request.session.get('uploaded_image_id')
+        if not image_id:
+            return redirect('image_management')
+
+        try:
+            image = PatientImage.objects.get(id=image_id)
+            # Clear the session
+            del request.session['uploaded_image_id']
+            
+            return render(request, 'dashboard/admin/image_management/image_upload_confirmation.html', {
+                'image': image
+            })
+        except PatientImage.DoesNotExist:
+            return redirect('image_management')
+
+class GetAnnotationsView(LoginRequiredMixin, View):
+    def get(self, request, image_id):
+        try:
+            annotations = ImageAnnotation.objects.filter(image_id=image_id).select_related('created_by')
+            data = [{
+                'id': ann.id,
+                'x': ann.x_coordinate,
+                'y': ann.y_coordinate,
+                'width': ann.width,
+                'height': ann.height,
+                'text': ann.text,
+                'created_by': ann.created_by.get_full_name(),
+                'created_at': ann.created_at.strftime('%Y-%m-%d %H:%M')
+            } for ann in annotations]
+            return JsonResponse({'annotations': data})
+        except Exception as e:
+            logger.error(f"Failed to fetch annotations: {str(e)}", exc_info=True)
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
