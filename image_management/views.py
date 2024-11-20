@@ -11,7 +11,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from .models import BodyPart, PatientImage, ImageComparison, ImageAnnotation
 from .forms import PatientImageUploadForm
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.template.defaultfilters import filesizeformat  # Add this import
@@ -250,5 +250,44 @@ class DeleteImageView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             logger.error(f"Error deleting image: {str(e)}", exc_info=True)
             messages.error(request, f"Error deleting image: {str(e)}")
+            return redirect('image_management')
+
+class ImageDetailView(LoginRequiredMixin, View):
+    def get(self, request, image_id):
+        try:
+            image = PatientImage.objects.select_related(
+                'patient', 'patient__user', 'body_part', 'uploaded_by'
+            ).get(id=image_id)
+            
+            # Get all images of the same patient
+            related_images = PatientImage.objects.filter(
+                patient=image.patient
+            ).exclude(id=image_id).order_by('-date_taken')[:5]
+            
+            # Get comparisons containing this image
+            comparisons = ImageComparison.objects.filter(
+                images=image
+            ).select_related('created_by')
+            
+            # Get annotations for this image
+            annotations = image.annotations.select_related('created_by').order_by('-created_at')
+            
+            # Get images from same body part
+            similar_images = PatientImage.objects.filter(
+                body_part=image.body_part
+            ).exclude(id=image_id).order_by('-date_taken')[:5]
+            
+            context = {
+                'image': image,
+                'related_images': related_images,
+                'comparisons': comparisons,
+                'annotations': annotations,
+                'similar_images': similar_images,
+            }
+            
+            return render(request, 'dashboard/admin/image_management/image_detail.html', context)
+            
+        except PatientImage.DoesNotExist:
+            messages.error(request, "Image not found")
             return redirect('image_management')
 

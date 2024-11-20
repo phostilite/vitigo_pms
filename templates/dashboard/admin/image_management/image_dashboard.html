@@ -185,6 +185,11 @@
             <div id="dropdownImage{{ image.id }}" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-44">
                 <ul class="py-2 text-sm text-gray-700">
                     <li>
+                        <a href="{% url 'image_detail' image.id %}" class="block px-4 py-2 hover:bg-gray-100">
+                            <i class="fas fa-info-circle mr-2 text-blue-500"></i>View Details
+                        </a>
+                    </li>
+                    <li>
                         <button data-modal-target="imageModal{{ image.id }}" data-modal-toggle="imageModal{{ image.id }}" 
                                 class="w-full text-left px-4 py-2 hover:bg-gray-100">
                             <i class="fas fa-expand-arrows-alt mr-2 text-blue-500"></i>View Full Size
