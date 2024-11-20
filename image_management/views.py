@@ -3,7 +3,7 @@
 import logging
 from django.contrib import messages
 from django.shortcuts import render, redirect
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse, FileResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views import View
 from django.views.generic.edit import CreateView
@@ -17,6 +17,7 @@ from django.core.files.storage import default_storage
 from django.template.defaultfilters import filesizeformat  # Add this import
 import os
 import json
+import mimetypes
 
 logger = logging.getLogger(__name__)
 
@@ -177,4 +178,77 @@ class GetAnnotationsView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Failed to fetch annotations: {str(e)}", exc_info=True)
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+class DownloadImageView(LoginRequiredMixin, View):
+    def get(self, request, image_id):
+        try:
+            image = PatientImage.objects.get(id=image_id)
+            
+            # Check if user has permission to download the image
+            if not request.user.is_staff and image.patient.user != request.user:
+                return HttpResponseForbidden("You don't have permission to download this image")
+
+            # Get the file path
+            file_path = image.image_file.path
+            
+            # Get the original filename
+            filename = os.path.basename(image.image_file.name)
+            
+            # Determine content type
+            content_type, _ = mimetypes.guess_type(file_path)
+            
+            # Open the file in binary mode
+            response = FileResponse(open(file_path, 'rb'), content_type=content_type)
+            
+            # Set content disposition as attachment with original filename
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            return response
+            
+        except PatientImage.DoesNotExist:
+            messages.error(request, "Image not found")
+            return redirect('image_management')
+        except Exception as e:
+            logger.error(f"Error downloading image: {str(e)}", exc_info=True)
+            messages.error(request, "Error downloading image")
+            return redirect('image_management')
+
+class DeleteImageView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.role == 'ADMIN'
+
+    def post(self, request, image_id):
+        try:
+            image = PatientImage.objects.get(id=image_id)
+            
+            # Store image details for logging
+            image_details = {
+                'patient': image.patient.user.get_full_name(),
+                'file_name': image.image_file.name,
+                'uploaded_by': image.uploaded_by.get_full_name() if image.uploaded_by else 'Unknown'
+            }
+            
+            # Delete the image file from storage
+            if default_storage.exists(image.image_file.name):
+                default_storage.delete(image.image_file.name)
+            
+            # Delete the database record
+            image.delete()
+            
+            logger.info(
+                f"Image deleted successfully - Patient: {image_details['patient']}, "
+                f"File: {image_details['file_name']}, "
+                f"Deleted by: {request.user.get_full_name()}"
+            )
+            
+            messages.success(request, "Image deleted successfully")
+            return redirect('image_management')
+            
+        except PatientImage.DoesNotExist:
+            messages.error(request, "Image not found")
+            return redirect('image_management')
+        except Exception as e:
+            logger.error(f"Error deleting image: {str(e)}", exc_info=True)
+            messages.error(request, f"Error deleting image: {str(e)}")
+            return redirect('image_management')
 
