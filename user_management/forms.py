@@ -2,7 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
-from .models import CustomUser
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout
 from access_control.models import Role
 
 User = get_user_model()
@@ -76,19 +77,77 @@ class UserLoginForm(forms.Form):
             raise ValidationError("No account found with this email address.")
         return email
 
-class StaffUserCreationForm(UserCreationForm):
-    role = forms.ModelChoiceField(
-        queryset=Role.objects.exclude(name__in=['PATIENT']),
-        empty_label="Select Role",
-        required=True
+
+class UserCreationForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+        })
     )
-    
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+        })
+    )
+    profile_picture = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'w-full px-3 py-2 border border-gray-300 rounded-md',
+            'accept': 'image/*'
+        })
+    )
+    country_code = forms.CharField(
+        max_length=5,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-3 py-2 border border-gray-300 rounded-md',
+            'placeholder': '+91'
+        })
+    )
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.all(),
+        widget=forms.Select(attrs={
+            'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+        })
+    )
+
     class Meta:
-        model = CustomUser
-        fields = ('email', 'first_name', 'last_name', 'role', 'gender', 
-                 'country_code', 'phone_number', 'is_staff', 'is_active')
-        
+        model = User
+        fields = ['email', 'first_name', 'last_name', 'password', 'confirm_password', 
+                 'role', 'gender', 'country_code', 'phone_number', 'profile_picture', 'is_active']
+        widgets = {
+            'email': forms.EmailInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+            }),
+            'first_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+            }),
+            'gender': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 border-gray-300 rounded'
+            })
+        }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['is_staff'].initial = True
-        self.fields['is_active'].initial = True
+        # Remove the helper and layout configuration since we're using direct form rendering
+        for field in self.fields.values():
+            if not isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs['class'] = 'w-full px-3 py-2 border border-gray-300 rounded-md'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password and confirm_password and password != confirm_password:
+            raise forms.ValidationError("Passwords do not match")
+        return cleaned_data

@@ -3,7 +3,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.views import View
 from django.contrib import messages
 from django.utils.decorators import method_decorator
-from .forms import UserRegistrationForm, UserLoginForm
+from .forms import UserRegistrationForm, UserLoginForm, UserCreationForm
 import logging
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils import timezone
@@ -14,7 +14,6 @@ from doctor_management.models import DoctorProfile, Specialization, TreatmentMet
 from patient_management.models import Patient, MedicalHistory
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.urls import reverse_lazy
-from .forms import StaffUserCreationForm
 from access_control.models import Role
 
 logger = logging.getLogger(__name__)
@@ -142,11 +141,14 @@ class UserManagementView(View):
 
     def get(self, request):
         try:
-            users = CustomUser.objects.all()
+            users = CustomUser.objects.select_related('role').all()  # Add select_related to optimize queries
             
             # Update role-based queries
             patient_role = Role.objects.get(name='PATIENT')
             doctor_role = Role.objects.get(name='DOCTOR')
+            
+            # Get all roles for the filter dropdown
+            roles = Role.objects.all()
             
             total_users = users.filter(is_active=True).count()
             doctor_count = users.filter(role=doctor_role, is_active=True).count()
@@ -170,6 +172,7 @@ class UserManagementView(View):
             # Context data to be passed to the template
             context = {
                 'users': users,
+                'roles': roles,  # Add roles to context
                 'total_users': total_users,
                 'doctor_count': doctor_count,
                 'available_doctors': available_doctors,
@@ -298,19 +301,37 @@ class UserProfileView(View):
             messages.error(request, "An error occurred while saving your profile.")
             return redirect('profile_management')
 
-class StaffUserCreateView(UserPassesTestMixin, View):
-    def test_func(self):
-        admin_role = Role.objects.get(name='ADMIN')
-        return self.request.user.is_authenticated and self.request.user.role == admin_role
+class CreateUserView(View):
+    def get_template_name(self):
+        return get_template_path('create_user.html', self.request.user.role, 'user_management')
 
     def get(self, request):
-        form = StaffUserCreationForm()
-        return render(request, 'user_management/staff_user_create.html', {'form': form})
+        try:
+            form = UserCreationForm()
+            context = {
+                'form': form,
+                'user_role': request.user.role,
+            }
+            return render(request, self.get_template_name(), context)
+        except Exception as e:
+            logger.error(f"Error in CreateUserView GET: {str(e)}")
+            messages.error(request, "An error occurred while loading the form.")
+            return redirect('user_management')
 
     def post(self, request):
-        form = StaffUserCreationForm(request.POST)
-        if form.is_valid():
-            staff_user = form.save()
-            messages.success(request, f'Staff user {staff_user.email} was created successfully.')
-            return redirect('user_management')
-        return render(request, 'user_management/staff_user_create.html', {'form': form})
+        try:
+            form = UserCreationForm(request.POST, request.FILES)
+            if form.is_valid():
+                user = form.save(commit=False)
+                user.set_password(form.cleaned_data['password'])
+                user.save()
+                messages.success(request, f"User {user.email} created successfully.")
+                return redirect('user_management')
+            else:
+                messages.error(request, "Please correct the errors below.")
+                return render(request, self.get_template_name(), {'form': form})
+
+        except Exception as e:
+            logger.error(f"Error in CreateUserView POST: {str(e)}")
+            messages.error(request, "An error occurred while creating the user.")
+            return redirect('create_user')

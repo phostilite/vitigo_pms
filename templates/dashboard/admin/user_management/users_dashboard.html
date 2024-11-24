@@ -9,7 +9,7 @@
             <p class="mt-1 text-sm text-gray-600">Monitor and manage system users and roles</p>
         </div>
         <div class="flex space-x-2">
-            <a href="#" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+            <a href="{% url 'create_user' %}" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
                 <i class="fas fa-user-plus mr-2"></i>
                 Add New User
             </a>
@@ -181,16 +181,16 @@
                         </td>
                         <td class="px-6 py-4">
                             <span class="px-2.5 py-0.5 rounded-full text-xs font-medium
-                                {% if user.role == 'DOCTOR' %}
+                                {% if user.role.name == 'DOCTOR' %}
                                     bg-blue-100 text-blue-800
-                                {% elif user.role == 'PATIENT' %}
+                                {% elif user.role.name == 'PATIENT' %}
                                     bg-green-100 text-green-800
-                                {% elif user.role == 'ADMIN' %}
+                                {% elif user.role.name == 'ADMIN' %}
                                     bg-purple-100 text-purple-800
                                 {% else %}
                                     bg-gray-100 text-gray-800
                                 {% endif %}">
-                                {{ user.get_role_display }}
+                                {{ user.role.display_name }}
                             </span>
                         </td>
                         <td class="px-6 py-4">
