@@ -12,31 +12,28 @@ from django.db.models import F, Count, Sum, Q
 from decimal import Decimal
 from doctor_management.models import DoctorProfile
 from consultation_management.models import Consultation
+from access_control.models import Role
 
 User = get_user_model()
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role):
     """
     Resolves template path based on user role.
-    Example: For 'dashboard.html' and role 'DOCTOR', 
-    returns 'dashboard/doctor/dashboard.html'
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'RECEPTIONIST': 'receptionist',
-        'PHARMACIST': 'pharmacist',
-        'LAB_TECHNICIAN': 'lab',
-        'PATIENT': 'patient'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role, 'admin')
     return f'dashboard/{role_folder}/{base_template}'
 
 @login_required
 def patient_dashboard(request):
-    if request.user.role != 'PATIENT':
+    patient_role = Role.objects.get(name='PATIENT')
+    if request.user.role != patient_role:
         raise PermissionDenied("You do not have permission to access the patient dashboard.")
     
     try:
@@ -56,19 +53,35 @@ def patient_dashboard(request):
             'error_message': "Your patient profile is not created yet. Please create it yourself or contact support.",
         }
     
-    template_name = get_template_path('dashboard.html', 'PATIENT')
+    template_name = get_template_path('dashboard.html', request.user.role)
     return render(request, template_name, context)
 
 @login_required
 def admin_dashboard(request):
-    if request.user.role != 'ADMIN':
+    # Check if user has admin access
+    admin_roles = ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
+    if not request.user.role or request.user.role.name not in admin_roles:
         raise PermissionDenied("You do not have permission to access the admin dashboard.")
     
+    # Get all staff roles (non-admin roles)
+    staff_roles = Role.objects.exclude(name__in=['SUPER_ADMIN', 'ADMIN', 'MANAGER'])
+    
+    # Calculate total staff
+    total_staff = User.objects.filter(role__in=staff_roles).count()
+    
+    # Calculate new staff percentage (e.g., staff added in the last month)
+    one_month_ago = timezone.now() - timedelta(days=30)
+    new_staff = User.objects.filter(
+        role__in=staff_roles,
+        date_joined__gte=one_month_ago
+    ).count()
+    new_staff_percentage = (new_staff / total_staff) * 100 if total_staff > 0 else 0
+
     # Calculate total patients
-    total_patients = User.objects.filter(role='PATIENT').count()
+    patient_role = Role.objects.get(name='PATIENT')
+    total_patients = User.objects.filter(role=patient_role).count()
     
     # Calculate new patients percentage (e.g., patients added in the last month)
-    one_month_ago = timezone.now() - timedelta(days=30)
     new_patients = User.objects.filter(date_joined__gte=one_month_ago).count()
     new_patients_percentage = (new_patients / total_patients) * 100 if total_patients > 0 else 0
 
@@ -86,9 +99,9 @@ def admin_dashboard(request):
     phototherapy_growth = ((weekly_phototherapy_sessions - previous_week_sessions) / previous_week_sessions * 100) if previous_week_sessions > 0 else 0
 
     # Calculate demographics
-    male_count = User.objects.filter(role='PATIENT', gender='M').count()
-    female_count = User.objects.filter(role='PATIENT', gender='F').count()
-    other_count = User.objects.filter(role='PATIENT', gender='O').count()
+    male_count = User.objects.filter(role=patient_role, gender='M').count()
+    female_count = User.objects.filter(role=patient_role, gender='F').count()
+    other_count = User.objects.filter(role=patient_role, gender='O').count()
 
     # Calculate treatment months and progress
     treatment_plans = TreatmentPlan.objects.all()
@@ -100,6 +113,8 @@ def admin_dashboard(request):
 
     # Add any other context data needed for the admin dashboard
     context = {
+        'total_staff': total_staff,
+        'new_staff_percentage': round(new_staff_percentage, 2),
         'total_patients': total_patients,
         'new_patients_percentage': round(new_patients_percentage, 2),
         'todays_appointments': len(todays_appointments),
@@ -115,12 +130,12 @@ def admin_dashboard(request):
         'low_stock_items': low_stock_items,
     }
     
-    template_name = get_template_path('dashboard.html', 'ADMIN')
+    template_name = get_template_path('dashboard.html', request.user.role)
     return render(request, template_name, context)
 
 @login_required
 def doctor_dashboard(request):
-    if request.user.role != 'DOCTOR':
+    if not request.user.role or request.user.role.name != 'DOCTOR':
         raise PermissionDenied("You do not have permission to access the doctor dashboard.")
     
     today = timezone.now().date()
@@ -235,5 +250,86 @@ def doctor_dashboard(request):
             'error_message': "Your doctor profile is not set up. Please contact the administrator."
         }
     
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def nurse_dashboard(request):
+    if not request.user.role or request.user.role.name != 'NURSE':
+        raise PermissionDenied("You do not have permission to access the nurse dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def medical_dashboard(request):
+    if not request.user.role or request.user.role.name != 'MEDICAL_ASSISTANT':
+        raise PermissionDenied("You do not have permission to access the medical dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def reception_dashboard(request):
+    if not request.user.role or request.user.role.name != 'RECEPTIONIST':
+        raise PermissionDenied("You do not have permission to access the reception dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def pharmacy_dashboard(request):
+    if not request.user.role or request.user.role.name != 'PHARMACIST':
+        raise PermissionDenied("You do not have permission to access the pharmacy dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def lab_dashboard(request):
+    if not request.user.role or request.user.role.name != 'LAB_TECHNICIAN':
+        raise PermissionDenied("You do not have permission to access the lab dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def billing_dashboard(request):
+    if not request.user.role or request.user.role.name != 'BILLING_STAFF':
+        raise PermissionDenied("You do not have permission to access the billing dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def inventory_dashboard(request):
+    if not request.user.role or request.user.role.name != 'INVENTORY_MANAGER':
+        raise PermissionDenied("You do not have permission to access the inventory dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def hr_dashboard(request):
+    if not request.user.role or request.user.role.name != 'HR_STAFF':
+        raise PermissionDenied("You do not have permission to access the HR dashboard.")
+    
+    context = {}
+    template_name = get_template_path('dashboard.html', request.user.role)
+    return render(request, template_name, context)
+
+@login_required
+def support_dashboard(request):
+    if not request.user.role or request.user.role.name not in ['SUPPORT_MANAGER', 'SUPPORT_STAFF']:
+        raise PermissionDenied("You do not have permission to access the support dashboard.")
+    
+    context = {}
     template_name = get_template_path('dashboard.html', request.user.role)
     return render(request, template_name, context)

@@ -2,6 +2,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+from access_control.models import Role
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -17,20 +18,9 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault('role', 'ADMIN')
         return self.create_user(email, password, **extra_fields)
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    ROLE_CHOICES = (
-        ('PATIENT', 'Patient'),
-        ('DOCTOR', 'Doctor'),
-        ('NURSE', 'Nurse'),
-        ('RECEPTIONIST', 'Receptionist'),
-        ('PHARMACIST', 'Pharmacist'),
-        ('LAB_TECHNICIAN', 'Lab Technician'),
-        ('ADMIN', 'Administrator'),
-    )
-
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
@@ -46,7 +36,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='PATIENT')
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, related_name='users')
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
 
     objects = CustomUserManager()

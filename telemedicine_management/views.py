@@ -7,31 +7,31 @@ from django.utils import timezone
 from django.http import HttpResponse
 from .models import TeleconsultationSession, TeleconsultationPrescription, TeleconsultationFile, TeleconsultationFeedback, TelemedicinevirtualWaitingRoom
 from django.db.models import Count
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'SUPER_ADMIN': 'admin',
-        'MANAGER': 'admin',
-        'RECEPTIONIST': 'reception',
-        'TELEMEDICINE_STAFF': 'telemedicine'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/telemedicine_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class TelemedicineManagementView(View):
+    def get_template_name(self):
+        return get_template_path('telemedicine_dashboard.html', self.request.user.role, 'telemedicine_management')
+
     def get(self, request):
         try:
-            user_role = request.user.role
-            template_path = get_template_path('telemedicine_dashboard.html', user_role)
+            template_path = self.get_template_name()
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
@@ -74,6 +74,7 @@ class TelemedicineManagementView(View):
                 'total_waiting_rooms': total_waiting_rooms,
                 'paginator': paginator,
                 'page_obj': teleconsultations,
+                'user_role': request.user.role,  # Add user role to context
             }
 
             return render(request, template_path, context)

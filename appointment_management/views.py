@@ -8,24 +8,26 @@ from django.db.models import Q
 from collections import defaultdict
 from patient_management.models import MedicalHistory
 from .models import CancellationReason
+from django.views.generic.edit import CreateView
+from django.urls import reverse_lazy
+from django.contrib import messages
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
-    Example: For 'appointment_dashboard.html' and role 'DOCTOR', 
-    returns 'dashboard/doctor/appointment_management/appointment_dashboard.html'
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'RECEPTIONIST': 'receptionist',
-        'PHARMACIST': 'pharmacist',
-        'LAB_TECHNICIAN': 'lab',
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role, 'admin') 
-    return f'dashboard/{role_folder}/appointment_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class AppointmentDashboardView(LoginRequiredMixin, ListView):
     model = Appointment
@@ -33,8 +35,7 @@ class AppointmentDashboardView(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def get_template_names(self):
-        user_role = self.request.user.role  # Assuming user role is stored in user model
-        return [get_template_path('appointment_dashboard.html', user_role)]
+        return [get_template_path('appointment_dashboard.html', self.request.user.role, 'appointment_management')]
 
     def get_queryset(self):
         queryset = Appointment.objects.select_related(
@@ -102,8 +103,7 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'appointment'
 
     def get_template_names(self):
-        user_role = self.request.user.role
-        return [get_template_path('appointment_detail.html', user_role)]
+        return [get_template_path('appointment_detail.html', self.request.user.role, 'appointment_management')]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

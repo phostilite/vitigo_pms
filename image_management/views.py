@@ -18,39 +18,33 @@ from django.template.defaultfilters import filesizeformat  # Add this import
 import os
 import json
 import mimetypes
+from access_control.models import Role
 
 logger = logging.getLogger(__name__)
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
-    Example: For 'image_dashboard.html' and role 'ACCOUNTANT', 
-    returns 'dashboard/accountant/image_management/image_dashboard.html'
+    Now uses the template_folder from Role model.
     """
-    # Only roles that should have access to image management
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'LAB_TECHNICIAN': 'lab',
-        'TECHNICIAN': 'technician'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/image_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class ImageManagementView(View):
     def get(self, request):
         try:
-            # Get user role from request
-            user_role = request.user.role if hasattr(request.user, 'role') else None
+            template_path = get_template_path('image_dashboard.html', request.user.role, 'image_management')
             
-            # Resolve template path
-            template_path = get_template_path('image_dashboard.html', user_role)
             if not template_path:
-                return HttpResponseForbidden("You don't have permission to access this page")
+                return HttpResponse("Unauthorized access", status=403)
 
             # Fetch all body parts and patient images
             body_parts = BodyPart.objects.all()
@@ -101,8 +95,10 @@ class ImageManagementView(View):
 class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = PatientImage
     form_class = PatientImageUploadForm
-    template_name = 'dashboard/admin/image_management/image_upload.html'
     success_url = reverse_lazy('image_management')
+
+    def get_template_name(self):
+        return get_template_path('image_upload.html', self.request.user.role, 'image_management')
 
     def test_func(self):
         return self.request.user.role in ['ADMIN', 'DOCTOR', 'NURSE']
@@ -140,6 +136,11 @@ class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         messages.error(self.request, 'Please correct the errors below.')
         return super().form_invalid(form)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['template_name'] = self.get_template_name()
+        return context
+
 class ImageUploadConfirmationView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return self.request.user.role in ['ADMIN', 'DOCTOR', 'NURSE']
@@ -154,9 +155,8 @@ class ImageUploadConfirmationView(LoginRequiredMixin, UserPassesTestMixin, View)
             # Clear the session
             del request.session['uploaded_image_id']
             
-            return render(request, 'dashboard/admin/image_management/image_upload_confirmation.html', {
-                'image': image
-            })
+            template_path = get_template_path('image_upload_confirmation.html', request.user.role, 'image_management')
+            return render(request, template_path, {'image': image})
         except PatientImage.DoesNotExist:
             return redirect('image_management')
 
@@ -285,7 +285,8 @@ class ImageDetailView(LoginRequiredMixin, View):
                 'similar_images': similar_images,
             }
             
-            return render(request, 'dashboard/admin/image_management/image_detail.html', context)
+            template_path = get_template_path('image_detail.html', request.user.role, 'image_management')
+            return render(request, template_path, context)
             
         except PatientImage.DoesNotExist:
             messages.error(request, "Image not found")

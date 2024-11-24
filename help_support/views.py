@@ -7,31 +7,31 @@ from django.utils import timezone
 from django.http import HttpResponse
 from .models import SupportTicket, SupportResponse, FAQ, KnowledgeBaseArticle, SupportCategory, SupportRating
 from django.db.models import Count
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'SUPPORT_MANAGER': 'support',
-        'SUPPORT_STAFF': 'support',
-        'DOCTOR': 'doctor',
-        'SUPER_ADMIN': 'admin',
-        'MANAGER': 'admin',
-        'RECEPTIONIST': 'reception'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/help_support/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class HelpSupportManagementView(View):
+    def get_template_name(self):
+        return get_template_path('help_support_dashboard.html', self.request.user.role, 'help_support')
+
     def get(self, request):
         try:
-            user_role = request.user.role
-            template_path = get_template_path('help_support_dashboard.html', user_role)
+            template_path = self.get_template_name()
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
@@ -78,6 +78,7 @@ class HelpSupportManagementView(View):
                 'total_ratings': total_ratings,
                 'paginator': paginator,
                 'page_obj': support_tickets,
+                'user_role': request.user.role,  # Add user role to context
             }
 
             return render(request, template_path, context)

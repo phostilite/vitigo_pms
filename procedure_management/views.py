@@ -5,39 +5,40 @@ from django.http import HttpResponse
 from django.views import View
 from .models import Procedure, ProcedureType
 from django.contrib.auth import get_user_model
+from access_control.models import Role
 
 User = get_user_model()
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
+    Now uses the template_folder from Role model.
     """
-    # Only roles that should have access to procedure management
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'SUPER_ADMIN': 'admin',
-        'MANAGER': 'admin'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/procedure_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class ProcedureManagementView(View):
     def get(self, request):
         try:
-            user_role = request.user.role  # Assuming role is stored in user model
-            template_path = get_template_path('procedure_dashboard.html', user_role)
+            template_path = get_template_path('procedure_dashboard.html', request.user.role, 'procedure_management')
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
 
-            # Fetch all procedure types and patients for filters
+            # Get patient role and users
+            patient_role = Role.objects.get(name='PATIENT')
+            patients = User.objects.filter(role=patient_role)  # Changed from string to Role object
+
+            # Fetch all procedure types
             procedure_types = ProcedureType.objects.all()
-            patients = User.objects.filter(role='PATIENT')  # This ensures we only get users with PATIENT role
 
             # Fetch procedures with optional filtering
             procedures = Procedure.objects.all()
@@ -87,9 +88,7 @@ class ProcedureManagementView(View):
 class ProcedureDetailView(View):
     def get(self, request, procedure_id):
         try:
-            # Check user authorization
-            user_role = request.user.role
-            template_path = get_template_path('procedure_detail.html', user_role)
+            template_path = get_template_path('procedure_detail.html', request.user.role, 'procedure_management')
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
@@ -103,8 +102,11 @@ class ProcedureDetailView(View):
                 'result'
             ).prefetch_related('images'), id=procedure_id)
 
+            # Get patient role for validation
+            patient_role = Role.objects.get(name='PATIENT')
+            
             # Validate that the user is actually a patient
-            if procedure.user and procedure.user.role != 'PATIENT':
+            if procedure.user and procedure.user.role != patient_role:
                 raise ValueError("Invalid patient assignment")
 
             context = {

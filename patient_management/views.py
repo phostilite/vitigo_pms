@@ -13,39 +13,41 @@ from django.views.generic import DetailView
 from .models import Patient, VitiligoAssessment, TreatmentPlan, Medication
 from django.http import Http404
 from django.core.exceptions import ObjectDoesNotExist
+from access_control.models import Role
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
-    Example: For 'patient_list.html' and role 'DOCTOR', 
-    returns 'dashboard/doctor/patient_management/patient_list.html'
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'RECEPTIONIST': 'receptionist',
-        'PHARMACIST': 'pharmacist',
-        'LAB_TECHNICIAN': 'lab',
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role, 'admin')  # default to admin if role not found
-    return f'dashboard/{role_folder}/patient_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class PatientListView(LoginRequiredMixin, View):
     def get_template_name(self):
-        return get_template_path('patient_list.html', self.request.user.role)
+        return get_template_path('patient_list.html', self.request.user.role, 'patient_management')
 
     def get(self, request):
         try:
-            if request.user.role == 'PATIENT':
+            # Get patient role
+            patient_role = Role.objects.get(name='PATIENT')
+            
+            if request.user.role == patient_role:
                 raise PermissionDenied("Patients cannot access this page.")
 
-            # Get all patients with optional filtering
-            patients = User.objects.filter(role='PATIENT')
+            # Get all patients using role object instead of string
+            patients = User.objects.filter(role=patient_role)
             
             # Apply filters
             status = request.GET.get('status')
@@ -72,13 +74,13 @@ class PatientListView(LoginRequiredMixin, View):
                 patients = paginator.page(paginator.num_pages)
 
             # Get metrics
-            total_patients = User.objects.filter(role='PATIENT').count()
-            active_patients = User.objects.filter(role='PATIENT', is_active=True).count()
-            inactive_patients = User.objects.filter(role='PATIENT', is_active=False).count()
+            total_patients = User.objects.filter(role=patient_role).count()
+            active_patients = User.objects.filter(role=patient_role, is_active=True).count()
+            inactive_patients = User.objects.filter(role=patient_role, is_active=False).count()
             
             # Monthly metrics (you might want to adjust this based on your needs)
             new_patients_this_month = User.objects.filter(
-                role='PATIENT',
+                role=patient_role,
                 date_joined__month=timezone.now().month
             ).count()
 
@@ -101,10 +103,8 @@ class PatientListView(LoginRequiredMixin, View):
 
 
 class PatientDetailView(LoginRequiredMixin, DetailView):
-    context_object_name = 'patient'
-    
     def get_template_name(self):
-        return get_template_path('patient_detail.html', self.request.user.role)
+        return get_template_path('patient_detail.html', self.request.user.role, 'patient_management')
 
     def get_template_names(self):
         return [self.get_template_name()]
@@ -112,8 +112,9 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
     def get_object(self):
         try:
             user = get_object_or_404(User, id=self.kwargs.get('user_id'))
+            patient_role = Role.objects.get(name='PATIENT')
             
-            if user.role != 'PATIENT':
+            if user.role != patient_role:
                 raise PermissionDenied("This user is not a patient.")
             
             # Instead of get_object_or_404, use get() with a try-except block

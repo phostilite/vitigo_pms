@@ -12,26 +12,25 @@ from django.http import HttpResponse
 from django.core.exceptions import PermissionDenied
 from doctor_management.models import DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
 from patient_management.models import Patient, MedicalHistory
+from django.contrib.auth.mixins import UserPassesTestMixin
+from django.urls import reverse_lazy
+from .forms import StaffUserCreationForm
+from access_control.models import Role
 
 logger = logging.getLogger(__name__)
 
-def get_template_path(base_template, user_role, module=''):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
-    Example: For 'users_dashboard.html', 'DOCTOR', and module='user_management' 
-    returns 'dashboard/doctor/user_management/users_dashboard.html'
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'RECEPTIONIST': 'receptionist',
-        'PHARMACIST': 'pharmacist',
-        'LAB_TECHNICIAN': 'lab',
-        'PATIENT': 'patient'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role, 'admin')
     if module:
         return f'dashboard/{role_folder}/{module}/{base_template}'
     return f'dashboard/{role_folder}/{base_template}'
@@ -94,13 +93,40 @@ class UserLoginView(View):
         """
         Redirects user to appropriate dashboard based on their role
         """
-        role_redirect_map = {
-            'ADMIN': 'admin_dashboard',
-            'DOCTOR': 'doctor_dashboard',
-            'PATIENT': 'patient_dashboard',
-            # Add other roles as needed
-        }
-        return redirect(role_redirect_map.get(user.role, 'dashboard'))
+        try:
+            # Default fallback dashboard
+            default_dashboard = 'dashboard'
+            
+            # Get role-based redirects
+            role_redirects = {
+                'SUPER_ADMIN': 'admin_dashboard',
+                'ADMIN': 'admin_dashboard',
+                'MANAGER': 'admin_dashboard',
+                'DOCTOR': 'doctor_dashboard',
+                'NURSE': 'nurse_dashboard',
+                'MEDICAL_ASSISTANT': 'medical_dashboard',
+                'RECEPTIONIST': 'reception_dashboard',
+                'PHARMACIST': 'pharmacy_dashboard',
+                'LAB_TECHNICIAN': 'lab_dashboard',
+                'BILLING_STAFF': 'billing_dashboard',
+                'INVENTORY_MANAGER': 'inventory_dashboard',
+                'HR_STAFF': 'hr_dashboard',
+                'SUPPORT_MANAGER': 'support_dashboard',
+                'SUPPORT_STAFF': 'support_dashboard'
+            }
+            
+            # Get the dashboard based on user's role name
+            if user.role and hasattr(user.role, 'name'):
+                return redirect(role_redirects.get(user.role.name, default_dashboard))
+            
+            # Fallback to default dashboard if no role found
+            logger.warning(f"No role found for user {user.email}, redirecting to default dashboard")
+            return redirect(default_dashboard)
+            
+        except Exception as e:
+            logger.error(f"Error in redirect_based_on_role: {str(e)}")
+            messages.error(self.request, "An error occurred during login redirection.")
+            return redirect('login')
 
 def user_logout(request):
     if request.user.is_authenticated:
@@ -116,15 +142,20 @@ class UserManagementView(View):
 
     def get(self, request):
         try:
-            # Fetch all users
             users = CustomUser.objects.all()
-
-            # Calculate statistics
+            
+            # Update role-based queries
+            patient_role = Role.objects.get(name='PATIENT')
+            doctor_role = Role.objects.get(name='DOCTOR')
+            
             total_users = users.filter(is_active=True).count()
-            doctor_count = users.filter(role='DOCTOR', is_active=True).count()
-            available_doctors = doctor_count  # Assuming all active doctors are available today
+            doctor_count = users.filter(role=doctor_role, is_active=True).count()
+            available_doctors = doctor_count
             new_users = users.filter(date_joined__gte=timezone.now().replace(day=1)).count()
-            new_patients = users.filter(role='PATIENT', date_joined__gte=timezone.now().replace(day=1)).count()
+            new_patients = users.filter(
+                role=patient_role, 
+                date_joined__gte=timezone.now().replace(day=1)
+            ).count()
 
             # Pagination for users
             paginator = Paginator(users, 10)  # Show 10 users per page
@@ -165,7 +196,10 @@ class UserProfileView(View):
                 'user_role': request.user.role,
             }
 
-            if request.user.role == 'PATIENT':
+            patient_role = Role.objects.get(name='PATIENT')
+            doctor_role = Role.objects.get(name='DOCTOR')
+
+            if request.user.role == patient_role:
                 try:
                     # Try to fetch patient profile if it exists
                     patient_profile = Patient.objects.get(user=request.user)
@@ -187,7 +221,7 @@ class UserProfileView(View):
                         'error_message': 'Your patient profile has not been created yet. Please fill in the required information below.'
                     })
 
-            elif request.user.role == 'DOCTOR':
+            elif request.user.role == doctor_role:
                 # Existing doctor profile logic
                 try:
                     doctor_profile = DoctorProfile.objects.get(user=request.user)
@@ -263,3 +297,20 @@ class UserProfileView(View):
             logger.error(f"Error in UserProfileView POST: {str(e)}")
             messages.error(request, "An error occurred while saving your profile.")
             return redirect('profile_management')
+
+class StaffUserCreateView(UserPassesTestMixin, View):
+    def test_func(self):
+        admin_role = Role.objects.get(name='ADMIN')
+        return self.request.user.is_authenticated and self.request.user.role == admin_role
+
+    def get(self, request):
+        form = StaffUserCreationForm()
+        return render(request, 'user_management/staff_user_create.html', {'form': form})
+
+    def post(self, request):
+        form = StaffUserCreationForm(request.POST)
+        if form.is_valid():
+            staff_user = form.save()
+            messages.success(request, f'Staff user {staff_user.email} was created successfully.')
+            return redirect('user_management')
+        return render(request, 'user_management/staff_user_create.html', {'form': form})

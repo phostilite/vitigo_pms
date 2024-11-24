@@ -8,24 +8,23 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.detail import DetailView
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
-    Example: For 'consultation_dashboard.html' and role 'DOCTOR', 
-    returns 'dashboard/doctor/consultation_management/consultation_dashboard.html'
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'RECEPTIONIST': 'receptionist',
-        'PHARMACIST': 'pharmacist',
-        'LAB_TECHNICIAN': 'lab',
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role, 'admin') 
-    return f'dashboard/{role_folder}/consultation_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class ConsultationManagementView(LoginRequiredMixin, ListView):
     model = Consultation
@@ -42,8 +41,7 @@ class ConsultationManagementView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
-        user_role = self.request.user.role  # Assuming user role is stored in user model
-        return [get_template_path('consultation_dashboard.html', user_role)]
+        return [get_template_path('consultation_dashboard.html', self.request.user.role, 'consultation_management')]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -161,8 +159,7 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
-        user_role = self.request.user.role
-        return [get_template_path('consultation_detail.html', user_role)]
+        return [get_template_path('consultation_detail.html', self.request.user.role, 'consultation_management')]
 
     def get_object(self, queryset=None):
         # Get consultation with all related data

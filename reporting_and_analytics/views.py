@@ -7,39 +7,33 @@ from django.utils import timezone
 from django.http import HttpResponse
 from .models import Report, ReportExecution, Dashboard, DashboardWidget, AnalyticsLog
 from django.db.models import Count
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
-    Example: For 'reports_analytics_dashboard.html' and role 'ACCOUNTANT', 
-    returns 'dashboard/accountant/reports_analytics/reports_analytics_dashboard.html'
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'RECEPTIONIST': 'receptionist',
-        'PHARMACIST': 'pharmacist',
-        'LAB_TECHNICIAN': 'lab',
-        'ACCOUNTANT': 'accountant',
-        'MANAGER': 'manager',
-        'TECHNICIAN': 'technician',
-        'ASSISTANT': 'assistant',
-        'SUPERVISOR': 'supervisor',
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/reports_analytics/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class ReportsAnalyticsManagementView(View):
+    def get_template_name(self):
+        return get_template_path('reports_analytics_dashboard.html', self.request.user.role, 'reports_analytics')
+
     def get(self, request):
         try:
-            user_role = request.user.role  # Assuming user role is stored in request.user.role
-            template_name = get_template_path('reports_analytics_dashboard.html', user_role)
-            if not template_name:
-                return HttpResponse("User role does not have a corresponding template.", status=403)
+            template_path = self.get_template_name()
+            if not template_path:
+                return HttpResponse("Unauthorized access", status=403)
 
             # Fetch all reports, report executions, dashboards, dashboard widgets, and analytics logs
             reports = Report.objects.all()
@@ -79,10 +73,10 @@ class ReportsAnalyticsManagementView(View):
                 'total_logs': total_logs,
                 'paginator': paginator,
                 'page_obj': reports,
+                'user_role': request.user.role,  # Add user role to context
             }
 
-            return render(request, template_name, context)
+            return render(request, template_path, context)
 
         except Exception as e:
-            # Handle any exceptions that occur
             return HttpResponse(f"An error occurred: {str(e)}", status=500)

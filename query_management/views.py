@@ -28,25 +28,23 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'SUPER_ADMIN': 'admin',
-        'MANAGER': 'admin',
-        'RECEPTIONIST': 'reception',
-        'STAFF': 'staff'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/query_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class QueryManagementView(LoginRequiredMixin, View):
     def get_query_trend_data(self, queryset, days=30):
@@ -158,8 +156,7 @@ class QueryManagementView(LoginRequiredMixin, View):
 
     def get(self, request):
         try:
-            user_role = request.user.role
-            template_path = get_template_path('query_dashboard.html', user_role)
+            template_path = get_template_path('query_dashboard.html', request.user.role, 'query_management')
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
@@ -287,8 +284,7 @@ class QueryManagementView(LoginRequiredMixin, View):
 class QueryDetailView(LoginRequiredMixin, View):
     def get(self, request, query_id):
         try:
-            user_role = request.user.role
-            template_path = get_template_path('query_detail.html', user_role)
+            template_path = get_template_path('query_detail.html', request.user.role, 'query_management')
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
@@ -345,8 +341,7 @@ class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
         
     def get(self, request):
         try:
-            user_role = request.user.role
-            template_path = get_template_path('query_create.html', user_role)
+            template_path = get_template_path('query_create.html', request.user.role, 'query_management')
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
@@ -378,7 +373,7 @@ class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
                 return redirect('query_management')
                 
             # If form invalid, re-render with errors
-            template_path = get_template_path('query_create.html', request.user.role)
+            template_path = get_template_path('query_create.html', request.user.role, 'query_management')
             return render(request, template_path, {'form': form})
             
         except Exception as e:
@@ -392,8 +387,7 @@ class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
         
     def get(self, request, query_id):
         try:
-            user_role = request.user.role
-            template_path = get_template_path('query_update.html', user_role)
+            template_path = get_template_path('query_update.html', request.user.role, 'query_management')
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)
@@ -439,7 +433,7 @@ class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
                 messages.success(request, "Query updated successfully")
                 return redirect('query_detail', query_id=query.query_id)
             
-            template_path = get_template_path('query_update.html', request.user.role)
+            template_path = get_template_path('query_update.html', request.user.role, 'query_management')
             return render(request, template_path, {'form': form, 'query': query})
             
         except Exception as e:

@@ -7,32 +7,28 @@ from django.views import View
 from .models import Medication, MedicationStock, Supplier, PurchaseOrder, Prescription
 from django.db.models import Sum, F
 from django.utils import timezone
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
+    Now uses the template_folder from Role model.
     """
-    # Updated role mappings for pharmacy management access
-    role_template_map = {
-        'ADMIN': 'admin',
-        'DOCTOR': 'doctor',
-        'NURSE': 'nurse',
-        'PHARMACIST': 'pharmacy',
-        'RECEPTIONIST': 'reception',
-        'SUPER_ADMIN': 'admin',
-        'MANAGER': 'admin'
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/pharmacy_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class PharmacyManagementView(View):
     def get(self, request):
         try:
-            user_role = request.user.role  # Assuming role is stored in user model
-            template_path = get_template_path('pharmacy_dashboard.html', user_role)
+            template_path = get_template_path('pharmacy_dashboard.html', request.user.role, 'pharmacy_management')
             
             if not template_path:
                 return HttpResponse("Unauthorized access", status=403)

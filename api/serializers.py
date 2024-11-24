@@ -4,20 +4,44 @@ from django.contrib.auth import get_user_model
 from patient_management.models import Patient
 from subscription_management.models import Subscription
 from appointment_management.models import Appointment
+from user_management.models import CustomUser
+from access_control.models import Role
 
 User = get_user_model()
 
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ('id', 'name', 'display_name')
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        default=lambda: Role.objects.get(name='PATIENT')
+    )
     password = serializers.CharField(write_only=True)
-    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, default='PATIENT')
 
     class Meta:
-        model = User
-        fields = ('email', 'password', 'first_name', 'last_name', 'role')
+        model = CustomUser
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'role')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
+        password = validated_data.pop('password')
+        user = CustomUser(**validated_data)
+        user.set_password(password)
+        user.save()
         return user
+
+class UserSerializer(serializers.ModelSerializer):
+    role = RoleSerializer(read_only=True)
+    
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'is_active')
+        read_only_fields = ('email',)
 
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -91,5 +115,5 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     def validate_new_password(self, value):
         # Add any password validation logic here
         return value
-    
+
 

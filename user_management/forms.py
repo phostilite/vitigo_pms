@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
+from .models import CustomUser
+from access_control.models import Role
 
 User = get_user_model()
 
@@ -73,3 +75,20 @@ class UserLoginForm(forms.Form):
         if not User.objects.filter(email=email).exists():
             raise ValidationError("No account found with this email address.")
         return email
+
+class StaffUserCreationForm(UserCreationForm):
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.exclude(name__in=['PATIENT']),
+        empty_label="Select Role",
+        required=True
+    )
+    
+    class Meta:
+        model = CustomUser
+        fields = ('email', 'first_name', 'last_name', 'role', 'gender', 
+                 'country_code', 'phone_number', 'is_staff', 'is_active')
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['is_staff'].initial = True
+        self.fields['is_active'].initial = True

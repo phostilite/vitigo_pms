@@ -7,37 +7,32 @@ from django.utils import timezone
 from django.http import HttpResponse
 from .models import GSTRate, Invoice, Payment, Expense, TDSEntry, FinancialYear, FinancialReport
 from django.db.models import Sum
+from access_control.models import Role
 
-def get_template_path(base_template, user_role):
+def get_template_path(base_template, role, module=''):
     """
     Resolves template path based on user role.
-    Example: For 'finance_dashboard.html' and role 'ACCOUNTANT', 
-    returns 'dashboard/accountant/finance_management/finance_dashboard.html'
+    Now uses the template_folder from Role model.
     """
-    role_template_map = {
-        'ADMIN': 'admin',
-        'ACCOUNTANT': 'accountant',
-        'MANAGER': 'manager',
-        'DOCTOR': 'doctor',
-    }
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
-    role_folder = role_template_map.get(user_role)
-    if not role_folder:
-        return None
-    return f'dashboard/{role_folder}/finance_management/{base_template}'
+    if module:
+        return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'dashboard/{role_folder}/{base_template}'
 
 class FinanceManagementView(View):
-    def get_template_names(self):
-        user_role = self.request.user.role  # Assuming user role is stored in user model
-        template_path = get_template_path('finance_dashboard.html', user_role)
-        if not template_path:
-            return None
-        return [template_path]
+    def get_template_name(self):
+        return get_template_path('finance_dashboard.html', self.request.user.role, 'finance_management')
 
     def get(self, request):
         try:
-            template_names = self.get_template_names()
-            if not template_names:
+            template_path = self.get_template_name()
+            if not template_path:
                 return HttpResponse("You do not have permission to view this page.", status=403)
 
             # Fetch all invoices, payments, expenses, TDS entries, financial years, and financial reports
@@ -89,9 +84,10 @@ class FinanceManagementView(View):
                 'net_profit': net_profit,
                 'paginator': paginator,
                 'page_obj': invoices,
+                'user_role': request.user.role,  # Add user role to context
             }
 
-            return render(request, template_names, context)
+            return render(request, template_path, context)
 
         except Exception as e:
             # Handle any exceptions that occur
