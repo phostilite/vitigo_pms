@@ -3,6 +3,16 @@
 
 {% block title %}403 Forbidden{% endblock %}
 {% block error_code %}403{% endblock %}
+{% block error_title %}Access Denied{% endblock %}
 {% block error_message %}
-    Sorry, you don't have permission to access this page.
+    <p>You don't have permission to access this page. This could be because:</p>
+    <ul class="mt-4 text-left list-disc list-inside space-y-2">
+        <li>Your user account doesn't have the required permissions</li>
+        <li>You need to log in to access this resource</li>
+        <li>The requested resource is restricted</li>
+    </ul>
+{% endblock %}
+{% block error_help %}
+    If you believe this is an error, please contact your system administrator
+    or reach out to our support team at <a href="mailto:support@vitigo.com" class="text-blue-600">support@vitigo.com</a>
 {% endblock %}

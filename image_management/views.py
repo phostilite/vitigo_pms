@@ -19,46 +19,50 @@ import os
 import json
 import mimetypes
 from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403  # Add this import
 
 logger = logging.getLogger(__name__)
 
-def get_template_path(base_template, role, module=''):
+def get_template_path(base_template, role, module='image_management'):
     """
-    Resolves template path based on user role.
-    Now uses the template_folder from Role model.
+    Simple template path resolver based on user role
     """
     if isinstance(role, Role):
         role_folder = role.template_folder
     else:
-        # Fallback for any legacy code
         role = Role.objects.get(name=role)
         role_folder = role.template_folder
     
-    if module:
-        return f'dashboard/{role_folder}/{module}/{base_template}'
-    return f'dashboard/{role_folder}/{base_template}'
+    return f'dashboard/{role_folder}/{module}/{base_template}'
 
-class ImageManagementView(View):
+class ImageManagementView(LoginRequiredMixin, View):
     def get(self, request):
         try:
-            template_path = get_template_path('image_dashboard.html', request.user.role, 'image_management')
-            
-            if not template_path:
-                return HttpResponse("Unauthorized access", status=403)
+            # Check module access permission
+            if not PermissionManager.check_module_access(request.user, 'image_management'):
+                messages.error(request, "You don't have permission to access Image Management")
+                return handler403(request, exception="Access Denied")
 
-            # Fetch all body parts and patient images
+            # Get template path
+            template_path = get_template_path('image_dashboard.html', request.user.role)
+            logger.info(f"Template path resolved to: {template_path}")
+            
+            # Get data
             body_parts = BodyPart.objects.all()
             patient_images = PatientImage.objects.all()
 
             # Calculate statistics
             total_images = patient_images.count()
-            recent_uploads = patient_images.filter(uploaded_at__gte=timezone.now() - timezone.timedelta(days=7)).count()
+            recent_uploads = patient_images.filter(
+                uploaded_at__gte=timezone.now() - timezone.timedelta(days=7)
+            ).count()
             total_comparisons = ImageComparison.objects.count()
             storage_used = patient_images.aggregate(total_size=Sum('file_size'))['total_size'] or 0
-            storage_used = round(storage_used / (1024 * 1024 * 1024), 2)  # Convert bytes to GB
+            storage_used = round(storage_used / (1024 * 1024 * 1024), 2)  # Convert to GB
 
-            # Pagination for patient images
-            paginator = Paginator(patient_images, 12)  # Show 12 images per page
+            # Setup pagination
+            paginator = Paginator(patient_images, 12)
             page = request.GET.get('page')
             try:
                 patient_images = paginator.page(page)
@@ -70,11 +74,12 @@ class ImageManagementView(View):
             # Add file size information
             for image in patient_images:
                 if default_storage.exists(image.image_file.name):
-                    image.file_size_formatted = filesizeformat(default_storage.size(image.image_file.name))
+                    image.file_size_formatted = filesizeformat(
+                        default_storage.size(image.image_file.name)
+                    )
                 else:
                     image.file_size_formatted = 'N/A'
 
-            # Context data to be passed to the template
             context = {
                 'body_parts': body_parts,
                 'patient_images': patient_images,
@@ -89,8 +94,9 @@ class ImageManagementView(View):
             return render(request, template_path, context)
 
         except Exception as e:
-            # Handle any exceptions that occur
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            logger.error(f"Error in ImageManagementView: {str(e)}", exc_info=True)
+            messages.error(request, f"An error occurred: {str(e)}")
+            return redirect('dashboard')
 
 class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = PatientImage
@@ -103,9 +109,14 @@ class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         return get_template_path('image_upload.html', self.request.user.role, 'image_management')
 
     def test_func(self):
-        # Check if user has an allowed role
-        allowed_roles = ['ADMIN', 'DOCTOR', 'NURSE']
-        return self.request.user.role.name in allowed_roles  # Use role.name instead of role
+        # Replace get_permissions() with check_module_modify()
+        return PermissionManager.check_module_modify(self.request.user, 'image_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to upload images")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         # Override get method to use correct template
@@ -153,7 +164,8 @@ class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
 class ImageUploadConfirmationView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.role in ['ADMIN', 'DOCTOR', 'NURSE']
+        # Replace role string check with proper permission check
+        return PermissionManager.check_module_modify(self.request.user, 'image_management')
 
     def get(self, request):
         image_id = request.session.get('uploaded_image_id')
@@ -172,6 +184,10 @@ class ImageUploadConfirmationView(LoginRequiredMixin, UserPassesTestMixin, View)
 
 class GetAnnotationsView(LoginRequiredMixin, View):
     def get(self, request, image_id):
+        # Add permission check
+        if not PermissionManager.check_module_access(request.user, 'image_management'):
+            return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+
         try:
             annotations = ImageAnnotation.objects.filter(image_id=image_id).select_related('created_by')
             data = [{
@@ -191,6 +207,10 @@ class GetAnnotationsView(LoginRequiredMixin, View):
 
 class DownloadImageView(LoginRequiredMixin, View):
     def get(self, request, image_id):
+        # Add permission check
+        if not PermissionManager.check_module_access(request.user, 'image_management'):
+            return HttpResponseForbidden("You don't have permission to access images")
+
         try:
             image = PatientImage.objects.get(id=image_id)
             
@@ -225,7 +245,14 @@ class DownloadImageView(LoginRequiredMixin, View):
 
 class DeleteImageView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.role == 'ADMIN'
+        # Replace get_permissions() with check_module_delete()
+        return PermissionManager.check_module_delete(self.request.user, 'image_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to delete images")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, image_id):
         try:
@@ -265,6 +292,14 @@ class DeleteImageView(LoginRequiredMixin, UserPassesTestMixin, View):
 class ImageDetailView(LoginRequiredMixin, View):
     def get(self, request, image_id):
         try:
+            # Replace get_permissions() with check_module_access()
+            if not PermissionManager.check_module_access(request.user, 'image_management'):
+                messages.error(request, "You don't have permission to view image details")
+                return handler403(request, exception="Access Denied")
+
+            template_path = get_template_path('image_detail.html', request.user.role)
+            # No need to check template_path existence since get_template_path was simplified
+
             image = PatientImage.objects.select_related(
                 'patient', 'patient__user', 'body_part', 'uploaded_by'
             ).get(id=image_id)
@@ -295,7 +330,6 @@ class ImageDetailView(LoginRequiredMixin, View):
                 'similar_images': similar_images,
             }
             
-            template_path = get_template_path('image_detail.html', request.user.role, 'image_management')
             return render(request, template_path, context)
             
         except PatientImage.DoesNotExist:

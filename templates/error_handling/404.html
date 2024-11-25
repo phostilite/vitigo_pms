@@ -3,6 +3,13 @@
 
 {% block title %}404 Not Found{% endblock %}
 {% block error_code %}404{% endblock %}
+{% block error_title %}Page Not Found{% endblock %}
 {% block error_message %}
-    The page you're looking for couldn't be found.
+    <p>We couldn't find the page you're looking for. The page might have been moved, deleted, or never existed.</p>
+    <p class="mt-4">Here are some helpful links:</p>
+    <ul class="mt-2 space-y-2 text-blue-600">
+        <li><a href="{% url dashboard_url %}">Dashboard Home</a></li>
+        <li><a href="{% url 'profile' %}">Your Profile</a></li>
+        <li><a href="{% url 'support' %}">Help & Support</a></li>
+    </ul>
 {% endblock %}
