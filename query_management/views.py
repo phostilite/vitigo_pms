@@ -732,9 +732,25 @@ class QueryExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         if not duration:
             return "N/A"
         total_seconds = duration.total_seconds()
-        hours = total_seconds // 3600
+        days = total_seconds // 86400
+        hours = (total_seconds % 86400) // 3600
         minutes = (total_seconds % 3600) // 60
-        return f"{int(hours)}h {int(minutes)}m"
+        
+        parts = []
+        if days:
+            parts.append(f"{int(days)}d")
+        if hours:
+            parts.append(f"{int(hours)}h")
+        if minutes:
+            parts.append(f"{int(minutes)}m")
+            
+        return " ".join(parts) if parts else "0m"
+
+    def get_duration_in_hours(self, duration):
+        """Helper method to get duration in hours for statistics"""
+        if not duration:
+            return 0
+        return duration.total_seconds() / 3600
 
     def export_csv(self, queryset):
         response = HttpResponse(content_type='text/csv')
@@ -822,11 +838,14 @@ class QueryExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         elements.append(Spacer(1, 20))
 
         # Statistics summary
+        avg_response_time = queryset.filter(response_time__isnull=False).aggregate(Avg('response_time'))['response_time__avg']
+        avg_response_hours = self.get_duration_in_hours(avg_response_time) if avg_response_time else 0
+
         stats = [
             ['Total Queries:', str(queryset.count())],
             ['Open Queries:', str(queryset.filter(status__in=['NEW', 'IN_PROGRESS', 'WAITING']).count())],
             ['Resolved Queries:', str(queryset.filter(status='RESOLVED').count())],
-            ['Average Response Time:', f"{queryset.filter(response_time__isnull=False).aggregate(Avg('response_time'))['response_time__avg'] or 0:.1f} hours"]
+            ['Average Response Time:', f"{avg_response_hours:.1f} hours"]
         ]
         
         stats_table = Table(stats, colWidths=[150, 200])
