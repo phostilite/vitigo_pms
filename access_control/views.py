@@ -238,3 +238,20 @@ class DeleteRoleView(UserPassesTestMixin, View):
         
         return redirect('access_control_dashboard')
 
+class ModuleListView(UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+
+    def get_template_name(self):
+        return get_template_path('modules.html', self.request.user.role, 'access_control')
+
+    def get(self, request):
+        modules = Module.objects.all().order_by('order', 'display_name')
+        context = {
+            'modules': modules,
+            'total_modules': modules.count(),
+            'active_modules': modules.filter(is_active=True).count(),
+            'inactive_modules': modules.filter(is_active=False).count(),
+        }
+        return render(request, self.get_template_name(), context)
+
