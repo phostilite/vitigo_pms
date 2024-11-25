@@ -2,122 +2,114 @@
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 from django.utils import timezone
+from access_control.models import Role
+from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 import random
 from datetime import timedelta
+from faker import Faker
 
 User = get_user_model()
+fake = Faker()
 
 class Command(BaseCommand):
-    help = 'Populates patient management data for a given user email'
+    help = 'Creates a patient user and populates related patient data'
 
     def add_arguments(self, parser):
-        parser.add_argument('email', type=str, help='The email of the user to populate data for')
+        parser.add_argument('--email', type=str, help='Specify email for the patient user')
+        parser.add_argument('--password', type=str, help='Specify password for the patient user')
+        parser.add_argument('--count', type=int, default=1, help='Number of patients to create')
 
     def handle(self, *args, **options):
-        email = options['email']
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            self.stdout.write(self.style.ERROR(f'User with email {email} does not exist'))
-            return
-
-        if user.role != 'PATIENT':
-            self.stdout.write(self.style.ERROR(f'User with email {email} is not a patient'))
-            return
-
-        self.create_or_update_patient(user)
-        self.stdout.write(self.style.SUCCESS(f'Successfully populated data for patient {email}'))
-
-    def create_or_update_patient(self, user):
-        patient, created = Patient.objects.update_or_create(
-            user=user,
+        count = options['count']
+        
+        # Get or create patient role
+        patient_role, _ = Role.objects.get_or_create(
+            name='PATIENT',
             defaults={
-                'date_of_birth': timezone.now().date() - timedelta(days=365*30),
-                'gender': random.choice(['M', 'F']),
-                'blood_group': random.choice(['A+', 'B+', 'O+', 'AB+']),
-                'address': '123 Sample St, Sample City, 12345',
-                'phone_number': '1234567890',
-                'emergency_contact_name': 'Emergency Contact',
-                'emergency_contact_number': '9876543210',
-                'vitiligo_onset_date': timezone.now().date() - timedelta(days=365*2),
-                'vitiligo_type': random.choice(['Segmental', 'Non-segmental']),
-                'affected_body_areas': 'Hands, Face',
+                'display_name': 'Patient',
+                'template_folder': 'patient'
             }
         )
 
+        for _ in range(count):
+            # Create user with specified or random email
+            email = options['email'] or fake.email()
+            password = options['password'] or 'defaultpass123'
+            
+            # Check if user exists
+            if User.objects.filter(email=email).exists():
+                self.stdout.write(self.style.WARNING(f'User {email} already exists'))
+                continue
+
+            # Create user with patient role
+            user = User.objects.create_user(
+                email=email,
+                password=password,
+                first_name=fake.first_name(),
+                last_name=fake.last_name(),
+                role=patient_role,
+                is_active=True
+            )
+
+            # Create patient profile
+            self.create_patient_profile(user)
+            self.stdout.write(self.style.SUCCESS(f'Successfully created patient user: {email}'))
+
+    def create_patient_profile(self, user):
+        patient = Patient.objects.create(
+            user=user,
+            date_of_birth=fake.date_of_birth(minimum_age=18, maximum_age=90),
+            gender=random.choice(['M', 'F', 'O']),
+            blood_group=random.choice(['A+', 'B+', 'O+', 'AB+', 'A-', 'B-', 'O-', 'AB-']),
+            address=fake.address(),
+            phone_number=fake.phone_number(),
+            emergency_contact_name=fake.name(),
+            emergency_contact_number=fake.phone_number(),
+            vitiligo_onset_date=fake.date_between(start_date='-10y', end_date='today'),
+            vitiligo_type=random.choice(['Segmental', 'Non-segmental', 'Focal', 'Universal']),
+            affected_body_areas=random.choice(['Face', 'Hands', 'Trunk', 'Multiple areas'])
+        )
+
+        # Create related medical records
         self.create_medical_history(patient)
-        self.create_medications(patient)
-        self.create_vitiligo_assessments(patient)
+        self.create_vitiligo_assessment(patient)
         self.create_treatment_plan(patient)
 
     def create_medical_history(self, patient):
-        MedicalHistory.objects.update_or_create(
+        MedicalHistory.objects.create(
             patient=patient,
-            defaults={
-                'allergies': 'Peanuts, Penicillin',
-                'chronic_conditions': 'None',
-                'past_surgeries': 'Appendectomy in 2010',
-                'family_history': 'Father: Hypertension, Mother: Diabetes',
-            }
+            allergies=fake.text(max_nb_chars=100),
+            chronic_conditions=fake.text(max_nb_chars=100),
+            past_surgeries=fake.text(max_nb_chars=100),
+            family_history=fake.text(max_nb_chars=100)
         )
 
-    def create_medications(self, patient):
-        doctor = self.get_random_doctor()
-        medications = [
-            {'name': 'Tacrolimus', 'dosage': '0.1% ointment', 'frequency': 'Twice daily'},
-            {'name': 'Vitamin D3', 'dosage': '1000 IU', 'frequency': 'Once daily'},
-        ]
-        for med in medications:
-            Medication.objects.create(
-                patient=patient,
-                name=med['name'],
-                dosage=med['dosage'],
-                frequency=med['frequency'],
-                start_date=timezone.now().date() - timedelta(days=30),
-                prescribed_by=doctor
-            )
-
-    def create_vitiligo_assessments(self, patient):
-        doctor = self.get_random_doctor()
-        for i in range(3):
-            VitiligoAssessment.objects.create(
-                patient=patient,
-                assessment_date=timezone.now().date() - timedelta(days=30*i),
-                body_surface_area_affected=random.uniform(1, 10),
-                vasi_score=random.uniform(0, 50),
-                treatment_response='Moderate improvement',
-                notes='Patient responding well to current treatment',
-                assessed_by=doctor
-            )
+    def create_vitiligo_assessment(self, patient):
+        VitiligoAssessment.objects.create(
+            patient=patient,
+            assessment_date=timezone.now().date(),
+            body_surface_area_affected=random.uniform(1, 30),
+            vasi_score=random.uniform(1, 100),
+            treatment_response=fake.text(max_nb_chars=100),
+            notes=fake.text(max_nb_chars=200)
+        )
 
     def create_treatment_plan(self, patient):
-        doctor = self.get_random_doctor()
-        TreatmentPlan.objects.create(
+        plan = TreatmentPlan.objects.create(
             patient=patient,
-            treatment_goals='Repigmentation of affected areas',
-            phototherapy_details='NB-UVB therapy, 3 times per week',
-            lifestyle_recommendations='Regular sun protection, stress management',
-            follow_up_frequency='Every 2 months',
-            created_by=doctor
+            treatment_goals=fake.text(max_nb_chars=200),
+            phototherapy_details=fake.text(max_nb_chars=100),
+            lifestyle_recommendations=fake.text(max_nb_chars=200),
+            follow_up_frequency=f'Every {random.randint(1,6)} months'
         )
 
-    def get_random_doctor(self):
-        doctors = User.objects.filter(role='DOCTOR')
-        if doctors.exists():
-            return random.choice(doctors)
-        else:
-            doctor, created = User.objects.get_or_create(
-                email='doctor@example.com',
-                defaults={
-                    'first_name': 'John',
-                    'last_name': 'Doe',
-                    'role': 'DOCTOR',
-                    'is_staff': True
-                }
+        # Create some medications
+        for _ in range(random.randint(1, 3)):
+            Medication.objects.create(
+                patient=patient,
+                name=fake.word(),
+                dosage=f'{random.randint(1,500)}mg',
+                frequency=f'{random.randint(1,3)} times daily',
+                start_date=timezone.now().date() - timedelta(days=random.randint(1, 365))
             )
-            if created:
-                doctor.set_password('password123')  # Set a default password
-                doctor.save()
-            return doctor

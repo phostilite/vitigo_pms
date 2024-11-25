@@ -95,23 +95,34 @@ class ImageManagementView(View):
 class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = PatientImage
     form_class = PatientImageUploadForm
+    template_name = None  # Remove default template_name
     success_url = reverse_lazy('image_management')
 
     def get_template_name(self):
+        # Get correct template path based on user's role
         return get_template_path('image_upload.html', self.request.user.role, 'image_management')
 
     def test_func(self):
-        return self.request.user.role in ['ADMIN', 'DOCTOR', 'NURSE']
+        # Check if user has an allowed role
+        allowed_roles = ['ADMIN', 'DOCTOR', 'NURSE']
+        return self.request.user.role.name in allowed_roles  # Use role.name instead of role
 
-    def handle_no_permission(self):
-        messages.error(self.request, "You don't have permission to upload images.")
-        return redirect('image_management')
+    def get(self, request, *args, **kwargs):
+        # Override get method to use correct template
+        self.template_name = self.get_template_name()
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        # Override post method to use correct template
+        self.template_name = self.get_template_name()
+        return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         try:
             instance = form.save(commit=False)
             instance.uploaded_by = self.request.user
             instance.save()
+            form.save_m2m()  # Save many-to-many relationships if any
             
             logger.info(
                 f"Image uploaded successfully - Patient: {instance.patient.id}, "
@@ -119,14 +130,13 @@ class ImageUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
                 f"File size: {instance.file_size} bytes"
             )
             
-            # Store the image instance in the session for confirmation page
-            self.request.session['uploaded_image_id'] = instance.id
-            return redirect('image_upload_confirmation')
+            messages.success(self.request, 'Image uploaded successfully.')
+            return redirect('image_management')
             
         except Exception as e:
             logger.error(f"Image upload failed - Error: {str(e)}", exc_info=True)
             messages.error(self.request, f'Failed to upload image: {str(e)}')
-            return super().form_invalid(form)
+            return self.form_invalid(form)
 
     def form_invalid(self, form):
         logger.warning(

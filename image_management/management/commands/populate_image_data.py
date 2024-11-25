@@ -12,95 +12,163 @@ from patient_management.models import Patient
 from image_management.models import (
     BodyPart, ImageTag, PatientImage, ImageComparison, ComparisonImage, ImageAnnotation
 )
+from faker import Faker
+from access_control.models import Role
+from django.db import transaction
+
+fake = Faker()
 
 class Command(BaseCommand):
-    help = 'Generate sample image management data'
+    help = 'Generate sample image management data for patients'
+
+    def add_arguments(self, parser):
+        parser.add_argument('--patient_email', type=str, help='Email of specific patient to generate data for')
+        parser.add_argument('--images', type=int, default=5, help='Number of images per patient')
 
     def handle(self, *args, **kwargs):
-        self.stdout.write('Generating sample image management data...')
+        patient_email = kwargs.get('patient_email')
+        images_per_patient = kwargs.get('images')
 
-        # Create sample body parts if they don't exist
+        # Ensure we have necessary roles
+        patient_role, _ = Role.objects.get_or_create(
+            name='PATIENT',
+            defaults={'display_name': 'Patient', 'template_folder': 'patient'}
+        )
+        doctor_role, _ = Role.objects.get_or_create(
+            name='DOCTOR',
+            defaults={'display_name': 'Doctor', 'template_folder': 'doctor'}
+        )
+
+        # Create or get sample body parts and tags
+        self.create_sample_metadata()
+
+        # Get patients to process
+        if patient_email:
+            patients = Patient.objects.filter(user__email=patient_email)
+            if not patients.exists():
+                self.stdout.write(self.style.ERROR(f'No patient found with email {patient_email}'))
+                return
+        else:
+            patients = Patient.objects.all()
+
+        # Create sample images for each patient
+        for patient in patients:
+            self.generate_patient_images(patient, images_per_patient)
+            self.stdout.write(
+                self.style.SUCCESS(f'Generated {images_per_patient} images for patient {patient.user.email}')
+            )
+
+    def create_sample_metadata(self):
+        # Create body parts
         body_parts = [
-            {'name': 'Head', 'description': 'Head region'},
-            {'name': 'Arm', 'description': 'Arm region'},
-            {'name': 'Leg', 'description': 'Leg region'},
+            'Face', 'Neck', 'Chest', 'Back', 'Arms', 'Hands', 
+            'Legs', 'Feet', 'Abdomen', 'Scalp'
         ]
         for part in body_parts:
             BodyPart.objects.get_or_create(
-                name=part['name'],
-                defaults={'description': part['description']}
+                name=part,
+                defaults={'description': f'The {part.lower()} region'}
             )
 
-        # Create sample image tags if they don't exist
-        tags = ['Tag1', 'Tag2', 'Tag3']
+        # Create image tags
+        tags = [
+            'Before Treatment', 'After Treatment', 'Progress', 
+            'Critical Area', 'Improving', 'New Spots'
+        ]
         for tag in tags:
             ImageTag.objects.get_or_create(name=tag)
 
-        # Fetch all body parts, tags, patients, and staff
-        body_parts = BodyPart.objects.all()
-        tags = ImageTag.objects.all()
-        patients = Patient.objects.all()
-        users = CustomUser.objects.all()
+    def generate_patient_images(self, patient, count):
+        # Ensure sample image directory exists
+        sample_dir = os.path.join(settings.MEDIA_ROOT, 'sample_images')
+        os.makedirs(sample_dir, exist_ok=True)
 
-        # Path to the sample image file in the media folder
-        sample_image_dir = os.path.join(settings.MEDIA_ROOT, 'sample_images')
-        sample_image_path = os.path.join(sample_image_dir, 'sample_image.jpg')
+        # Create a sample image if it doesn't exist
+        sample_path = os.path.join(sample_dir, 'vitiligo_sample.jpg')
+        if not os.path.exists(sample_path):
+            img = Image.new('RGB', (800, 600), color='white')
+            img.save(sample_path)
 
-        # Create the sample image file if it doesn't exist
-        if not os.path.exists(sample_image_dir):
-            os.makedirs(sample_image_dir)
-        if not os.path.exists(sample_image_path):
-            image = Image.new('RGB', (100, 100), color = (73, 109, 137))
-            image.save(sample_image_path)
-
-        # Generate sample patient images
-        for _ in range(20):  # Generate 20 sample patient images
-            patient = random.choice(patients)
-            body_part = random.choice(body_parts)
-            uploaded_by = random.choice(users)
-            image_type = random.choice(['CLINIC', 'PATIENT'])
-            date_taken = timezone.now().date() - timezone.timedelta(days=random.randint(0, 365))
-
-            with open(sample_image_path, 'rb') as image_file:
-                patient_image = PatientImage.objects.create(
+        # Get random doctor for assignments
+        doctor = CustomUser.objects.filter(role__name='DOCTOR').first()
+        
+        for _ in range(count):
+            # Create patient image
+            with open(sample_path, 'rb') as img_file:
+                image = PatientImage.objects.create(
                     patient=patient,
-                    image_file=File(image_file, name='sample_images/sample_image.jpg'),
-                    body_part=body_part,
-                    image_type=image_type,
-                    date_taken=date_taken,
-                    uploaded_by=uploaded_by,
+                    image_file=File(img_file, name=f'patient_{patient.id}_image_{_}.jpg'),
+                    body_part=BodyPart.objects.order_by('?').first(),
+                    image_type=random.choice(['CLINIC', 'PATIENT']),
+                    date_taken=fake.date_between(start_date='-1y', end_date='today'),
+                    notes=fake.text(max_nb_chars=200),
+                    uploaded_by=doctor,
                     is_private=random.choice([True, False])
                 )
-                patient_image.tags.set(random.sample(list(tags), random.randint(1, len(tags))))
-                patient_image.save()
 
-        # Generate sample image comparisons
-        for _ in range(5):  # Generate 5 sample image comparisons
-            created_by = random.choice(users)
-            comparison = ImageComparison.objects.create(
-                title=f"Comparison {_ + 1}",
-                description='Sample comparison description',
-                created_by=created_by
+            # Add random tags
+            tags = ImageTag.objects.order_by('?')[:random.randint(1, 3)]
+            image.tags.set(tags)
+
+            # Create annotations
+            self.create_annotations(image, doctor)
+
+        # Create image comparison
+        self.create_image_comparison(patient, doctor)
+
+    def create_annotations(self, image, doctor):
+        for _ in range(random.randint(1, 3)):
+            # Generate coordinates that ensure annotation stays within bounds
+            width = random.uniform(5, 15)  # Reduced max width
+            height = random.uniform(5, 15)  # Reduced max height
+            x_coordinate = random.uniform(0, 100 - width)  # Ensure x + width <= 100
+            y_coordinate = random.uniform(0, 100 - height)  # Ensure y + height <= 100
+            
+            ImageAnnotation.objects.create(
+                image=image,
+                x_coordinate=x_coordinate,
+                y_coordinate=y_coordinate,
+                width=width,
+                height=height,
+                text=fake.sentence(),
+                created_by=doctor
             )
-            images = random.sample(list(PatientImage.objects.all()), random.randint(2, 5))
-            for order, image in enumerate(images, start=1):
-                ComparisonImage.objects.create(
-                    comparison=comparison,
-                    image=image,
-                    order=order
+
+    def create_image_comparison(self, patient, doctor):
+        # Get existing images for this patient
+        patient_images = PatientImage.objects.filter(patient=patient)
+        if patient_images.count() < 2:
+            return  # Skip if not enough images
+            
+        # Select two random images
+        selected_images = list(patient_images.order_by('?')[:2])
+        
+        try:
+            with transaction.atomic():
+                # Create comparison
+                comparison = ImageComparison.objects.create(
+                    title=f"Progress Comparison - {fake.date()}", 
+                    description=fake.text(),
+                    created_by=doctor
                 )
 
-        # Generate sample image annotations
-        for image in PatientImage.objects.all():
-            for _ in range(random.randint(1, 3)):  # Add 1 to 3 annotations to each image
-                ImageAnnotation.objects.create(
-                    image=image,
-                    x_coordinate=random.uniform(0, 1),
-                    y_coordinate=random.uniform(0, 1),
-                    width=random.uniform(0.1, 0.5),
-                    height=random.uniform(0.1, 0.5),
-                    text='Sample annotation text',
-                    created_by=random.choice(users)
+                # Add the images through the through model
+                for idx, image in enumerate(selected_images, 1):
+                    ComparisonImage.objects.create(
+                        comparison=comparison,
+                        image=image,
+                        order=idx
+                    )
+                
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Created comparison for patient {patient.user.email}'
+                    )
                 )
 
-        self.stdout.write(self.style.SUCCESS('Successfully generated sample image management data'))
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(
+                    f'Failed to create comparison for {patient.user.email}: {str(e)}'
+                )
+            )

@@ -57,7 +57,7 @@ class PatientImage(models.Model):
         # Validate file extension
         ext = os.path.splitext(self.image_file.name)[1].lower()
         if ext not in ['.jpg', '.jpeg', '.png']:
-            raise ValidationError('Only JPG and PNG files are allowed.')
+            raise ValidationError('Only JPG, JPEG and PNG files are allowed.')
 
     def extract_metadata(self):
         if self.image_file:
