@@ -211,11 +211,12 @@ class QueryManagementView(LoginRequiredMixin, View):
             status_choices = Query.STATUS_CHOICES
             source_choices = Query.SOURCE_CHOICES
 
-            # Get available staff members for assignment
+            # Get available staff members for assignment - Updated to use Role model correctly
             User = get_user_model()
+            staff_roles = Role.objects.filter(name__in=['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER'])
             available_staff = User.objects.filter(
                 is_active=True,
-                role__in=['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER']
+                role__in=staff_roles
             ).order_by('first_name')
 
             # Calculate statistics
@@ -337,7 +338,7 @@ class QueryDetailView(LoginRequiredMixin, View):
 
 class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_staff
+        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER']
         
     def get(self, request):
         try:
@@ -383,7 +384,7 @@ class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
 
 class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_staff
+        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER']
         
     def get(self, request, query_id):
         try:
@@ -443,7 +444,7 @@ class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
 
 class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_staff
+        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'MANAGER']
 
     def post(self, request, query_id):
         try:
@@ -460,7 +461,7 @@ class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
 
 class QueryAssignView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_staff
+        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'MANAGER']
 
     def post(self, request, query_id):
         try:
