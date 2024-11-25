@@ -1,27 +1,31 @@
-# views.py
-
+# Python Standard Library imports
+import json
 import logging
+import mimetypes
+import os
+
+# Django core imports
 from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse, FileResponse
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.files.storage import default_storage
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Sum, Count, Q
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse, FileResponse
+from django.shortcuts import render, redirect
+from django.template.defaultfilters import filesizeformat
+from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.generic.edit import CreateView
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.urls import reverse_lazy
-from .models import BodyPart, PatientImage, ImageComparison, ImageAnnotation
-from .forms import PatientImageUploadForm
-from django.db.models import Sum, Count, Q
-from django.utils import timezone
-from django.core.files.storage import default_storage
-from django.template.defaultfilters import filesizeformat  # Add this import
-import os
-import json
-import mimetypes
+
+# Local application imports
 from access_control.models import Role
 from access_control.permissions import PermissionManager
-from error_handling.views import handler403  # Add this import
+from error_handling.views import handler403
+from .forms import PatientImageUploadForm
+from .models import BodyPart, PatientImage, ImageComparison, ImageAnnotation
 
+# Logger configuration
 logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module='image_management'):

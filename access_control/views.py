@@ -1,16 +1,21 @@
-from django.shortcuts import render, redirect
-from django.views import View
-from django.contrib.auth.mixins import UserPassesTestMixin
+# Python Standard Library imports
+from datetime import datetime
+import mimetypes
+
+# Django core imports
 from django.contrib import messages
-from django.urls import reverse
-from .models import Role, Module, ModulePermission
 from django.contrib.auth import get_user_model
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Prefetch
 from django.http import HttpResponse
+from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.utils.text import slugify
+from django.views import View
+
+# Local application imports
+from .models import Role, Module, ModulePermission
 from .utils import generate_csv, generate_pdf
-import mimetypes
-from datetime import datetime
 
 def get_template_path(base_template, role, module=''):
     """

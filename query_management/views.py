@@ -1,34 +1,43 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
-from django.views import View
-from django.db.models import Count, Q
-from django.utils import timezone
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.contrib import messages
-from .models import Query, QueryTag, QueryUpdate, QueryAttachment
-from .forms import QueryCreateForm
-from patient_management.models import Patient
-from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView
-from django.shortcuts import redirect
-from django.http import JsonResponse
-from django.views.generic import View
-from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth import get_user_model
-from .utils import send_query_notification
-from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, ExtractHour
-from django.db.models import Count, Avg, F, ExpressionWrapper, fields
-from datetime import timedelta, datetime
+# Python Standard Library imports
 import csv
-from reportlab.pdfgen import canvas
+import logging
+from datetime import datetime, timedelta
+
+# Third-party imports
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+# Django core imports
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.db.models import Avg, Count, ExpressionWrapper, F, Q, fields
+from django.db.models.functions import ExtractHour, TruncDate, TruncMonth, TruncWeek
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.http import require_http_methods
+from django.views.generic import View
+from django.views.generic.edit import CreateView
+
+# Local application imports
 from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403, handler404, handler500
+from patient_management.models import Patient
+from .forms import QueryCreateForm
+from .models import Query, QueryAttachment, QueryTag, QueryUpdate
+from .utils import send_query_notification
+
+# Logger configuration
+logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module=''):
     """
@@ -156,6 +165,11 @@ class QueryManagementView(LoginRequiredMixin, View):
 
     def get(self, request):
         try:
+            # Check module access permission
+            if not PermissionManager.check_module_access(request.user, 'query_management'):
+                messages.error(request, "You don't have permission to access Query Management")
+                return handler403(request, exception="Access Denied")
+
             template_path = get_template_path('query_dashboard.html', request.user.role, 'query_management')
             
             if not template_path:
@@ -276,15 +290,17 @@ class QueryManagementView(LoginRequiredMixin, View):
             return render(request, template_path, context)
             
         except Exception as e:
-            messages.error(request, f"An error occurred while preparing dashboard data: {str(e)}")
-            return render(request, template_path, {
-                'error': True,
-                'error_message': "Unable to load dashboard data. Please try again later."
-            })
+            logger.error(f"Error in QueryManagementView: {str(e)}", exc_info=True)
+            return handler500(request, exception=str(e))
 
 class QueryDetailView(LoginRequiredMixin, View):
     def get(self, request, query_id):
         try:
+            if not PermissionManager.check_module_access(request.user, 'query_management'):
+                messages.error(request, "You don't have permission to view query details")
+                return handler403(request, exception="Access Denied")
+
+            query = get_object_or_404(Query, query_id=query_id)
             template_path = get_template_path('query_detail.html', request.user.role, 'query_management')
             
             if not template_path:
@@ -331,14 +347,20 @@ class QueryDetailView(LoginRequiredMixin, View):
 
             return render(request, template_path, context)
 
+        except Query.DoesNotExist:
+            return handler404(request, exception="Query not found")
         except Exception as e:
-            messages.error(request, f"An error occurred: {str(e)}")
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
-
+            return handler500(request, exception=str(e))
 
 class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER']
+        return PermissionManager.check_module_modify(self.request.user, 'query_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to create queries")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
         
     def get(self, request):
         try:
@@ -383,8 +405,11 @@ class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
         
 
 class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
-    def test_func(self):
-        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'DOCTOR', 'NURSE', 'STAFF', 'MANAGER']
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_modify(self.request.user, 'query_management'):
+            messages.error(request, "You don't have permission to update queries")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
         
     def get(self, request, query_id):
         try:
@@ -443,8 +468,11 @@ class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
         
 
 class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
-    def test_func(self):
-        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'MANAGER']
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_delete(self.request.user, 'query_management'):
+            messages.error(request, "You don't have permission to delete queries")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, query_id):
         try:
@@ -460,8 +488,11 @@ class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
             return HttpResponse(f"Error deleting query: {str(e)}", status=500)
 
 class QueryAssignView(LoginRequiredMixin, UserPassesTestMixin, View):
-    def test_func(self):
-        return hasattr(self.request.user, 'role') and self.request.user.role.name in ['ADMIN', 'MANAGER']
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_modify(self.request.user, 'query_management'):
+            messages.error(request, "You don't have permission to assign queries")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, query_id):
         try:
@@ -652,8 +683,11 @@ class QueryStaffPerformanceDataView(LoginRequiredMixin, View):
             return JsonResponse({'error': str(e)}, status=400)
 
 class QueryExportView(LoginRequiredMixin, UserPassesTestMixin, View):
-    def test_func(self):
-        return self.request.user.is_staff
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(self.request.user, 'query_management'):
+            messages.error(request, "You don't have permission to export queries")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
         try:

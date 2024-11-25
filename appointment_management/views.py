@@ -1,17 +1,27 @@
-from django.views.generic import ListView, DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count
-from django.utils import timezone
-from datetime import timedelta
-from .models import Appointment
-from django.db.models import Q
+# Python Standard Library imports
 from collections import defaultdict
-from patient_management.models import MedicalHistory
-from .models import CancellationReason
-from django.views.generic.edit import CreateView
-from django.urls import reverse_lazy
+from datetime import timedelta
+import logging
+
+# Django core imports
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Q
+from django.shortcuts import redirect
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic import ListView, DetailView
+from django.views.generic.edit import CreateView
+
+# Local application imports
 from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403, handler404, handler500
+from patient_management.models import MedicalHistory
+from .models import Appointment, CancellationReason
+
+# Logger configuration
+logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module=''):
     """
@@ -33,6 +43,12 @@ class AppointmentDashboardView(LoginRequiredMixin, ListView):
     model = Appointment
     context_object_name = 'appointments'
     paginate_by = 10
+
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'appointment_management'):
+            messages.error(request, "You don't have permission to access Appointments")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
         return [get_template_path('appointment_dashboard.html', self.request.user.role, 'appointment_management')]
@@ -102,6 +118,12 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
     model = Appointment
     context_object_name = 'appointment'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'appointment_management'):
+            messages.error(request, "You don't have permission to view appointment details")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_names(self):
         return [get_template_path('appointment_detail.html', self.request.user.role, 'appointment_management')]
 
@@ -139,3 +161,8 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
         
         return context
 
+    def get_object(self, queryset=None):
+        try:
+            return super().get_object(queryset)
+        except self.model.DoesNotExist:
+            return handler404(self.request, exception="Appointment not found")

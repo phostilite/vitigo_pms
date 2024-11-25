@@ -210,14 +210,12 @@
                             <i class="fas fa-download mr-2 text-gray-500"></i>Download
                         </a>
                     </li>
-                    {% if user.role == 'ADMIN' %}
                     <li>
                         <button data-modal-target="deleteModal{{ image.id }}" data-modal-toggle="deleteModal{{ image.id }}" 
                                 class="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600">
                             <i class="fas fa-trash-alt mr-2"></i>Delete Image
                         </button>
                     </li>
-                    {% endif %}
                 </ul>
             </div>
 
