@@ -8,6 +8,7 @@ from .views import (
     ModuleListView,
     ManageRolesView,  # Add this import
     BulkUpdateView,
+    ExportDataView,
 )
 
 urlpatterns = [
@@ -19,4 +20,5 @@ urlpatterns = [
     path('modules/', ModuleListView.as_view(), name='module_list'),
     path('roles/manage/', ManageRolesView.as_view(), name='manage_roles'),
     path('roles/bulk-update/', BulkUpdateView.as_view(), name='bulk_update'),
+    path('export/', ExportDataView.as_view(), name='export_data'),
 ]

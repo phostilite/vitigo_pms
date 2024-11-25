@@ -6,6 +6,11 @@ from django.urls import reverse
 from .models import Role, Module, ModulePermission
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
+from django.http import HttpResponse
+from django.utils.text import slugify
+from .utils import generate_csv, generate_pdf
+import mimetypes
+from datetime import datetime
 
 def get_template_path(base_template, role, module=''):
     """
@@ -316,4 +321,32 @@ class BulkUpdateView(UserPassesTestMixin, View):
         except Exception as e:
             messages.error(request, f'Error updating roles: {str(e)}')
             return redirect('bulk_update')
+
+class ExportDataView(UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+
+    def get(self, request):
+        export_format = request.GET.get('format', 'csv')
+        
+        # Get all roles and modules
+        roles = Role.objects.prefetch_related('users', 'modulepermission_set').all()
+        modules = Module.objects.filter(is_active=True)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if export_format == 'csv':
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="access_control_{timestamp}.csv"'
+            response.write(generate_csv(roles, modules))
+            
+        elif export_format == 'pdf':
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="access_control_{timestamp}.pdf"'
+            response.write(generate_pdf(roles, modules))
+            
+        else:
+            return HttpResponse('Invalid format specified', status=400)
+            
+        return response
 

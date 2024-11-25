@@ -13,10 +13,28 @@
                 <i class="fas fa-plus-circle mr-2"></i>
                 New Role
             </a>
-            <button class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
-                <i class="fas fa-file-export mr-2"></i>
-                Export Data
-            </button>
+            <!-- Replace the button with dropdown -->
+            <div class="relative">
+                <button id="exportDropdown" 
+                        data-dropdown-toggle="exportOptions"
+                        class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                    <i class="fas fa-file-export mr-2"></i>
+                    Export Data
+                </button>
+                <!-- Dropdown menu -->
+                <div id="exportOptions" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                    <div class="py-1">
+                        <a href="{% url 'export_data' %}?format=csv" 
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-file-csv mr-2"></i> Export as CSV
+                        </a>
+                        <a href="{% url 'export_data' %}?format=pdf" 
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-file-pdf mr-2"></i> Export as PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
