@@ -248,7 +248,7 @@
                 </div>
 
                 <!-- Actions -->
-                <form action="#" method="POST" class="flex justify-center space-x-4">
+                <form action="{% url 'delete_role' role.id %}" method="POST" class="flex justify-center space-x-4">
                     {% csrf_token %}
                     <button type="button" 
                             data-modal-hide="delete-modal{{ role.id }}" 

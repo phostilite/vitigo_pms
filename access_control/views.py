@@ -210,3 +210,31 @@ class EditRoleView(UserPassesTestMixin, View):
         
         return redirect('edit_role', role_id=role_id)
 
+class DeleteRoleView(UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+
+    def post(self, request, role_id):
+        try:
+            role = Role.objects.get(id=role_id)
+            
+            # Don't allow deletion of SUPER_ADMIN or ADMIN roles
+            if role.name in ['SUPER_ADMIN', 'ADMIN']:
+                messages.error(request, 'Cannot delete system roles.')
+                return redirect('access_control_dashboard')
+            
+            # Store role name for success message
+            role_name = role.display_name
+            
+            # Delete the role (this will cascade delete associated permissions)
+            role.delete()
+            
+            messages.success(request, f'Role "{role_name}" has been deleted successfully.')
+            
+        except Role.DoesNotExist:
+            messages.error(request, 'Role not found.')
+        except Exception as e:
+            messages.error(request, f'Error deleting role: {str(e)}')
+        
+        return redirect('access_control_dashboard')
+
