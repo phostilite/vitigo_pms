@@ -4,6 +4,8 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib import messages
 from django.urls import reverse
 from .models import Role, Module, ModulePermission
+from django.contrib.auth import get_user_model
+from django.db.models import Prefetch
 
 def get_template_path(base_template, role, module=''):
     """
@@ -81,3 +83,59 @@ class CreateRoleView(UserPassesTestMixin, View):
         except Exception as e:
             messages.error(request, f'Error creating role: {str(e)}')
             return redirect('create_role')
+
+class RoleDetailView(UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+
+    def get_template_name(self):
+        return get_template_path('role_detail.html', self.request.user.role, 'access_control')
+
+    def get(self, request, role_id):
+        try:
+            # Optimize queries with select_related and prefetch_related
+            role = Role.objects.prefetch_related(
+                'users',
+                'modulepermission_set__module',
+                Prefetch(
+                    'users',
+                    queryset=get_user_model().objects.select_related('role').order_by('-date_joined')[:5],
+                    to_attr='recent_users_list'
+                )
+            ).get(id=role_id)
+
+            # Get all modules with permissions
+            modules_with_permissions = []
+            module_permissions = {mp.module_id: mp for mp in role.modulepermission_set.all()}
+            
+            for module in Module.objects.all():
+                perm = module_permissions.get(module.id)
+                if perm:
+                    modules_with_permissions.append({
+                        'module': module,
+                        'has_access': perm.can_access,
+                        'can_modify': perm.can_modify,
+                        'can_delete': perm.can_delete,
+                        'last_updated': perm.updated_at
+                    })
+
+            # Calculate permission stats
+            total_modifiable = len([m for m in modules_with_permissions if m['can_modify']])
+            total_deletable = len([m for m in modules_with_permissions if m['can_delete']])
+            total_accessible = len([m for m in modules_with_permissions if m['has_access']])
+
+            context = {
+                'role': role,
+                'modules_with_permissions': modules_with_permissions,
+                'total_users': role.users.count(),
+                'recent_users': role.recent_users_list,
+                'total_modules': total_accessible,
+                'total_modifiable': total_modifiable,
+                'total_deletable': total_deletable,
+            }
+            return render(request, self.get_template_name(), context)
+            
+        except Role.DoesNotExist:
+            messages.error(request, 'Role not found.')
+            return redirect('access_control_dashboard')
+
