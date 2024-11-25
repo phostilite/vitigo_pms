@@ -139,3 +139,74 @@ class RoleDetailView(UserPassesTestMixin, View):
             messages.error(request, 'Role not found.')
             return redirect('access_control_dashboard')
 
+class EditRoleView(UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+
+    def get_template_name(self):
+        return get_template_path('edit_role.html', self.request.user.role, 'access_control')
+
+    def get(self, request, role_id):
+        try:
+            role = Role.objects.prefetch_related('modulepermission_set').get(id=role_id)
+            
+            # Get modules and attach their permissions
+            modules = Module.objects.filter(is_active=True).order_by('order', 'display_name')
+            permissions_dict = {
+                mp.module_id: mp for mp in role.modulepermission_set.all()
+            }
+            
+            # Attach permissions to each module
+            for module in modules:
+                module.permission = permissions_dict.get(module.id, ModulePermission(
+                    can_access=False,
+                    can_modify=False,
+                    can_delete=False
+                ))
+            
+            context = {
+                'role': role,
+                'modules': modules,
+            }
+            return render(request, self.get_template_name(), context)
+        except Role.DoesNotExist:
+            messages.error(request, 'Role not found.')
+            return redirect('access_control_dashboard')
+
+    def post(self, request, role_id):
+        try:
+            role = Role.objects.get(id=role_id)
+            
+            # Update basic role information
+            role.display_name = request.POST['display_name']
+            role.template_folder = request.POST['template_folder']
+            role.description = request.POST['description']
+            role.save()
+
+            # Update module permissions
+            for module in Module.objects.filter(is_active=True):
+                permission, created = ModulePermission.objects.get_or_create(
+                    module=module,
+                    role=role,
+                    defaults={
+                        'can_access': False,
+                        'can_modify': False,
+                        'can_delete': False
+                    }
+                )
+                
+                permission.can_access = request.POST.get(f'permissions_{module.id}_access') == 'on'
+                permission.can_modify = request.POST.get(f'permissions_{module.id}_modify') == 'on'
+                permission.can_delete = request.POST.get(f'permissions_{module.id}_delete') == 'on'
+                permission.save()
+
+            messages.success(request, 'Role updated successfully.')
+            return redirect('role_detail', role_id=role.id)
+            
+        except Role.DoesNotExist:
+            messages.error(request, 'Role not found.')
+        except Exception as e:
+            messages.error(request, f'Error updating role: {str(e)}')
+        
+        return redirect('edit_role', role_id=role_id)
+
