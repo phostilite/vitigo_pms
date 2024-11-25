@@ -5,7 +5,8 @@ from .views import (
     RoleDetailView,
     EditRoleView, 
     DeleteRoleView,
-    ModuleListView
+    ModuleListView,
+    ManageRolesView  # Add this import
 )
 
 urlpatterns = [
@@ -15,4 +16,5 @@ urlpatterns = [
     path('role/<int:role_id>/edit/', EditRoleView.as_view(), name='edit_role'),
     path('role/<int:role_id>/delete/', DeleteRoleView.as_view(), name='delete_role'),
     path('modules/', ModuleListView.as_view(), name='module_list'),
+    path('roles/manage/', ManageRolesView.as_view(), name='manage_roles'),
 ]

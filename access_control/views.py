@@ -255,3 +255,16 @@ class ModuleListView(UserPassesTestMixin, View):
         }
         return render(request, self.get_template_name(), context)
 
+class ManageRolesView(UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+
+    def get_template_name(self):
+        return get_template_path('manage_roles.html', self.request.user.role, 'access_control')
+
+    def get(self, request):
+        context = {
+            'roles': Role.objects.prefetch_related('users', 'modulepermission_set').all()
+        }
+        return render(request, self.get_template_name(), context)
+
