@@ -268,3 +268,52 @@ class ManageRolesView(UserPassesTestMixin, View):
         }
         return render(request, self.get_template_name(), context)
 
+class BulkUpdateView(UserPassesTestMixin, View):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+
+    def get_template_name(self):
+        return get_template_path('bulk_update.html', self.request.user.role, 'access_control')
+
+    def get(self, request):
+        context = {
+            'roles': Role.objects.exclude(name__in=['SUPER_ADMIN', 'ADMIN']),
+            'modules': Module.objects.filter(is_active=True).order_by('order', 'display_name')
+        }
+        return render(request, self.get_template_name(), context)
+
+    def post(self, request):
+        try:
+            selected_roles = request.POST.getlist('selected_roles')
+            if not selected_roles:
+                messages.error(request, 'Please select at least one role to update.')
+                return redirect('bulk_update')
+
+            roles = Role.objects.filter(id__in=selected_roles)
+            modules = Module.objects.filter(is_active=True)
+
+            # Update permissions for each role
+            for role in roles:
+                for module in modules:
+                    permission, created = ModulePermission.objects.get_or_create(
+                        module=module,
+                        role=role,
+                        defaults={
+                            'can_access': False,
+                            'can_modify': False,
+                            'can_delete': False
+                        }
+                    )
+                    
+                    permission.can_access = request.POST.get(f'permissions_{module.id}_access') == 'on'
+                    permission.can_modify = request.POST.get(f'permissions_{module.id}_modify') == 'on'
+                    permission.can_delete = request.POST.get(f'permissions_{module.id}_delete') == 'on'
+                    permission.save()
+
+            messages.success(request, f'Successfully updated permissions for {len(roles)} roles.')
+            return redirect('access_control_dashboard')
+
+        except Exception as e:
+            messages.error(request, f'Error updating roles: {str(e)}')
+            return redirect('bulk_update')
+

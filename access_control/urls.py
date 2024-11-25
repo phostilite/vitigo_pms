@@ -6,7 +6,8 @@ from .views import (
     EditRoleView, 
     DeleteRoleView,
     ModuleListView,
-    ManageRolesView  # Add this import
+    ManageRolesView,  # Add this import
+    BulkUpdateView,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('role/<int:role_id>/delete/', DeleteRoleView.as_view(), name='delete_role'),
     path('modules/', ModuleListView.as_view(), name='module_list'),
     path('roles/manage/', ManageRolesView.as_view(), name='manage_roles'),
+    path('roles/bulk-update/', BulkUpdateView.as_view(), name='bulk_update'),
 ]
