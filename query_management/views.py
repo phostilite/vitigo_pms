@@ -468,6 +468,9 @@ class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
         
 
 class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'query_management')
+        
     def dispatch(self, request, *args, **kwargs):
         if not PermissionManager.check_module_delete(self.request.user, 'query_management'):
             messages.error(request, "You don't have permission to delete queries")

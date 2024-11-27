@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from access_control.models import Role
 from doctor_management.models import (
     Specialization,
     TreatmentMethodSpecialization,
@@ -58,7 +59,16 @@ class Command(BaseCommand):
         self.stdout.write('Clearing existing data...')
         DoctorAvailability.objects.all().delete()
         DoctorProfile.objects.all().delete()
-        User.objects.filter(role='DOCTOR').delete()
+        
+        # Get doctor role
+        try:
+            doctor_role = Role.objects.get(name='DOCTOR')
+        except Role.DoesNotExist:
+            self.stdout.write(self.style.ERROR('Doctor role does not exist. Please create it first.'))
+            return
+            
+        # Updated user deletion query
+        User.objects.filter(role=doctor_role).delete()
         Specialization.objects.all().delete()
         TreatmentMethodSpecialization.objects.all().delete()
         BodyAreaSpecialization.objects.all().delete()
@@ -157,13 +167,13 @@ class Command(BaseCommand):
         self.stdout.write('Creating doctors...')
         for doctor_data in doctors_data:
             try:
-                # Create user
+                # Create user with role object
                 user = User.objects.create_user(
                     email=doctor_data['email'],
                     password='password123',
                     first_name=doctor_data['first_name'],
                     last_name=doctor_data['last_name'],
-                    role='DOCTOR',
+                    role=doctor_role,
                     is_active=True
                 )
 
