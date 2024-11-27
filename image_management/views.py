@@ -3,6 +3,8 @@ import json
 import logging
 import mimetypes
 import os
+import csv
+from io import StringIO
 
 # Django core imports
 from django.contrib import messages
@@ -346,7 +348,7 @@ class ImageDetailView(LoginRequiredMixin, View):
             # Get all images of the same patient
             related_images = PatientImage.objects.filter(
                 patient=image.patient
-            ).exclude(id=image_id).order_by('-date_taken')[:5]
+            ).exclude(id=image_id).order_by('-date_taken')
             
             # Get comparisons containing this image
             comparisons = ImageComparison.objects.filter(
@@ -441,4 +443,146 @@ class ImageComparisonResultView(LoginRequiredMixin, View):
             logger.error(f"Error in image comparison result view: {str(e)}", exc_info=True)
             messages.error(request, f"An error occurred: {str(e)}")
             return redirect('image_comparison')
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+class ImageExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'image_management')
+
+    def get(self, request):
+        try:
+            export_format = request.GET.get('format', 'csv')
+            date_from = request.GET.get('date_from')
+            date_to = request.GET.get('date_to')
+
+            # Get filtered queryset
+            queryset = PatientImage.objects.select_related(
+                'patient', 'patient__user', 'body_part', 'uploaded_by'
+            ).order_by('-date_taken')
+
+            if date_from:
+                queryset = queryset.filter(date_taken__gte=date_from)
+            if date_to:
+                queryset = queryset.filter(date_taken__lte=date_to)
+
+            if export_format == 'csv':
+                return self.export_csv(queryset)
+            elif export_format == 'pdf':
+                return self.export_pdf(queryset)
+            else:
+                messages.error(request, "Invalid export format")
+                return redirect('image_management')
+
+        except Exception as e:
+            logger.error(f"Export failed: {str(e)}", exc_info=True)
+            messages.error(request, f"Export failed: {str(e)}")
+            return redirect('image_management')
+
+    def export_csv(self, queryset):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="image_report_{timezone.now().strftime("%Y%m%d")}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'Image ID', 'Patient Name', 'Body Part', 'Type', 'Date Taken',
+            'Upload Date', 'Uploaded By', 'Private', 'Size (bytes)',
+            'Dimensions', 'Tags', 'Notes'
+        ])
+
+        for image in queryset:
+            writer.writerow([
+                image.id,
+                image.patient.user.get_full_name(),
+                image.body_part.name if image.body_part else 'N/A',
+                image.get_image_type_display(),
+                image.date_taken.strftime('%Y-%m-%d'),
+                image.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
+                image.uploaded_by.get_full_name() if image.uploaded_by else 'N/A',
+                'Yes' if image.is_private else 'No',
+                image.file_size or 'N/A',
+                f'{image.width}x{image.height}' if image.width and image.height else 'N/A',
+                ', '.join(tag.name for tag in image.tags.all()),
+                image.notes[:100] + '...' if len(image.notes) > 100 else image.notes
+            ])
+
+        return response
+
+    def export_pdf(self, queryset):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="image_report_{timezone.now().strftime("%Y%m%d")}.pdf"'
+
+        doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        elements = []
+
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30
+        )
+
+        # Title
+        elements.append(Paragraph('Image Management Report', title_style))
+        elements.append(Spacer(1, 20))
+
+        # Summary statistics
+        total_images = queryset.count()
+        total_size = sum(image.file_size or 0 for image in queryset)
+        private_count = queryset.filter(is_private=True).count()
+
+        stats = [
+            ['Total Images:', str(total_images)],
+            ['Total Storage:', f'{total_size / (1024*1024):.2f} MB'],
+            ['Private Images:', str(private_count)],
+            ['Date Range:', f"{queryset.last().date_taken if queryset.exists() else 'N/A'} to {queryset.first().date_taken if queryset.exists() else 'N/A'}"]
+        ]
+
+        stats_table = Table(stats, colWidths=[100, 150])
+        stats_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.grey),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(stats_table)
+        elements.append(Spacer(1, 20))
+
+        # Image list
+        data = [['Patient', 'Body Part', 'Type', 'Date Taken', 'Size', 'Private']]
+        for image in queryset:
+            data.append([
+                image.patient.user.get_full_name(),
+                image.body_part.name if image.body_part else 'N/A',
+                image.get_image_type_display(),
+                image.date_taken.strftime('%Y-%m-%d'),
+                f'{image.file_size/1024:.1f} KB' if image.file_size else 'N/A',
+                'Yes' if image.is_private else 'No'
+            ])
+
+        table = Table(data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        elements.append(table)
+
+        doc.build(elements)
+        return response
 
