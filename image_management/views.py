@@ -52,9 +52,37 @@ class ImageManagementView(LoginRequiredMixin, View):
             template_path = get_template_path('image_dashboard.html', request.user.role)
             logger.info(f"Template path resolved to: {template_path}")
             
-            # Get data
-            body_parts = BodyPart.objects.all()
-            patient_images = PatientImage.objects.all()
+            # Get filter parameters
+            image_type = request.GET.get('image_type', '')
+            body_part = request.GET.get('body_part', '')
+            date_from = request.GET.get('date_from', '')
+            date_to = request.GET.get('date_to', '')
+            search_query = request.GET.get('search', '')
+
+            # Get all body parts for filter dropdown
+            body_parts = BodyPart.objects.all().order_by('name')
+
+            # Base queryset
+            patient_images = PatientImage.objects.select_related(
+                'patient', 'patient__user', 'body_part'
+            ).order_by('-date_taken')
+
+            # Apply filters
+            if image_type:
+                patient_images = patient_images.filter(image_type=image_type)
+            if body_part:
+                patient_images = patient_images.filter(body_part_id=body_part)
+            if date_from:
+                patient_images = patient_images.filter(date_taken__gte=date_from)
+            if date_to:
+                patient_images = patient_images.filter(date_taken__lte=date_to)
+            if search_query:
+                patient_images = patient_images.filter(
+                    Q(patient__user__first_name__icontains=search_query) |
+                    Q(patient__user__last_name__icontains=search_query) |
+                    Q(body_part__name__icontains=search_query) |
+                    Q(notes__icontains=search_query)
+                )
 
             # Calculate statistics
             total_images = patient_images.count()
@@ -93,6 +121,13 @@ class ImageManagementView(LoginRequiredMixin, View):
                 'storage_used': storage_used,
                 'paginator': paginator,
                 'page_obj': patient_images,
+                'current_filters': {
+                    'image_type': image_type,
+                    'body_part': body_part,
+                    'date_from': date_from,
+                    'date_to': date_to,
+                    'search': search_query,
+                }
             }
 
             return render(request, template_path, context)

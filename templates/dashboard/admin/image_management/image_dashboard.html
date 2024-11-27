@@ -103,25 +103,51 @@
 
     <!-- Filters and Search -->
     <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <form method="GET" id="filterForm" class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
             <div class="flex flex-wrap items-center gap-4">
                 <!-- Image Type Filter -->
-                <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                <select name="image_type" 
+                        onchange="this.form.submit()"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                     <option value="">All Types</option>
-                    <option value="CLINIC">Clinic Taken</option>
-                    <option value="PATIENT">Patient Uploaded</option>
+                    <option value="CLINIC" {% if current_filters.image_type == 'CLINIC' %}selected{% endif %}>Clinic Taken</option>
+                    <option value="PATIENT" {% if current_filters.image_type == 'PATIENT' %}selected{% endif %}>Patient Uploaded</option>
                 </select>
 
                 <!-- Body Part Filter -->
-                <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                <select name="body_part" 
+                        onchange="this.form.submit()"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                     <option value="">All Body Parts</option>
                     {% for body_part in body_parts %}
-                    <option value="{{ body_part.id }}">{{ body_part.name }}</option>
+                    <option value="{{ body_part.id }}" {% if current_filters.body_part == body_part.id|stringformat:"s" %}selected{% endif %}>
+                        {{ body_part.name }}
+                    </option>
                     {% endfor %}
                 </select>
 
                 <!-- Date Range -->
-                <input type="date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                <div class="flex items-center gap-2">
+                    <input type="date" 
+                           name="date_from" 
+                           value="{{ current_filters.date_from }}"
+                           onchange="this.form.submit()"
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <span class="text-gray-500">to</span>
+                    <input type="date" 
+                           name="date_to" 
+                           value="{{ current_filters.date_to }}"
+                           onchange="this.form.submit()"
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                </div>
+
+                {% if current_filters.image_type or current_filters.body_part or current_filters.date_from or current_filters.date_to or current_filters.search %}
+                <a href="{% url 'image_management' %}" 
+                   class="inline-flex items-center text-sm text-red-600 hover:text-red-800">
+                    <i class="fas fa-times-circle mr-1"></i>
+                    Clear Filters
+                </a>
+                {% endif %}
             </div>
 
             <!-- Search -->
@@ -129,9 +155,14 @@
                 <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                     <i class="fas fa-search text-gray-500"></i>
                 </div>
-                <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" placeholder="Search images or patients...">
+                <input type="text" 
+                       name="search" 
+                       value="{{ current_filters.search }}"
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" 
+                       placeholder="Search images or patients..."
+                       oninput="handleSearch(this)">
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Image Grid -->
@@ -381,5 +412,23 @@
             overlay?.classList.remove('opacity-0');
         });
     });
+
+    // Debounce function for search
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Handle search with debounce
+    const handleSearch = debounce(function(input) {
+        document.getElementById('filterForm').submit();
+    }, 500);
 </script>
 {% endblock %}
