@@ -1,0 +1,157 @@
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Image Comparison</h1>
+            <p class="mt-1 text-sm text-gray-600">Compare multiple patient images side by side</p>
+        </div>
+    </div>
+
+    <!-- Image Selection Form -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <form id="comparisonForm" method="get" class="space-y-4">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Images to Compare</label>
+                    <select id="imageSelector" class="w-full border-gray-300 rounded-lg shadow-sm" multiple>
+                        {% for image in available_images %}
+                        <option value="{{ image.id }}" 
+                                {% if image in selected_images %}selected{% endif %}
+                                class="p-2 hover:bg-gray-100">
+                            {{ image.patient.user.get_full_name }} - {{ image.body_part.name }} ({{ image.date_taken|date:"M d, Y" }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex-none mt-6">
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                        Compare Selected Images
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_images %}
+    <!-- Comparison Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {% for image in selected_images %}
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <!-- Image Header -->
+            <div class="p-4 border-b">
+                <h3 class="font-semibold text-gray-800">{{ image.patient.user.get_full_name }}</h3>
+                <div class="flex items-center justify-between mt-2 text-sm text-gray-600">
+                    <span>{{ image.body_part.name }}</span>
+                    <span>{{ image.date_taken|date:"M d, Y" }}</span>
+                </div>
+            </div>
+
+            <!-- Image Display -->
+            <div class="relative aspect-w-4 aspect-h-3">
+                <img src="{{ image.image_file.url }}" 
+                     alt="Patient image" 
+                     class="object-contain w-full h-full p-4 {% if image.is_private %}blur-lg hover:blur-none transition-all duration-300{% endif %}">
+                {% if image.is_private %}
+                <div class="absolute top-2 right-2">
+                    <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                        <i class="fas fa-lock mr-1"></i>Private
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Image Details -->
+            <div class="p-4 border-t bg-gray-50">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-600">Dimensions</p>
+                        <p class="font-medium">{{ image.width }}×{{ image.height }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Type</p>
+                        <p class="font-medium">{{ image.get_image_type_display }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Upload Date</p>
+                        <p class="font-medium">{{ image.uploaded_at|date:"M d, Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">File Size</p>
+                        <p class="font-medium">{{ image.file_size|filesizeformat }}</p>
+                    </div>
+                </div>
+
+                <!-- Annotation Count -->
+                {% with annotation_count=image.annotations.count %}
+                {% if annotation_count > 0 %}
+                <div class="mt-4 pt-4 border-t">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        <i class="fas fa-comment-medical mr-1"></i>
+                        {{ annotation_count }} annotation{{ annotation_count|pluralize }}
+                    </span>
+                </div>
+                {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Actions -->
+            <div class="p-4 border-t flex justify-end space-x-2">
+                <a href="{% url 'image_detail' image.id %}" 
+                   class="text-sm text-blue-600 hover:text-blue-800">
+                    View Details
+                </a>
+                <a href="{% url 'download_image' image.id %}" 
+                   class="text-sm text-gray-600 hover:text-gray-800">
+                    Download
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize TomSelect with pre-selected values
+    const tomSelect = new TomSelect('#imageSelector', {
+        maxItems: 6,
+        plugins: ['remove_button'],
+        items: {{ selected_ids|safe }},  // Pre-select items from URL parameters
+        onItemAdd: function() {
+            document.querySelector('#comparisonForm button[type="submit"]').disabled = this.items.length === 0;
+        },
+        onItemRemove: function() {
+            document.querySelector('#comparisonForm button[type="submit"]').disabled = this.items.length === 0;
+        },
+        render: {
+            item: function(data, escape) {
+                return '<div>' + escape(data.text) + '</div>';
+            }
+        }
+    });
+
+    // Initial button state
+    document.querySelector('#comparisonForm button[type="submit"]').disabled = tomSelect.items.length === 0;
+
+    // Form submission handler
+    document.getElementById('comparisonForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const selectedImages = tomSelect.getValue();
+        if (selectedImages && selectedImages.length > 0) {
+            const queryParams = new URLSearchParams();
+            selectedImages.forEach(id => queryParams.append('images', id));
+            window.location.href = `${window.location.pathname}?${queryParams.toString()}`;
+        } else {
+            alert('Please select at least one image to compare');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (ImageManagementView, ImageUploadView, ImageUploadConfirmationView, 
-                   GetAnnotationsView, DownloadImageView, DeleteImageView, ImageDetailView)
+                   GetAnnotationsView, DownloadImageView, DeleteImageView, ImageDetailView,
+                   ImageComparisonView, ImageComparisonResultView)
 
 urlpatterns = [
     path('', ImageManagementView.as_view(), name='image_management'),
@@ -10,4 +11,6 @@ urlpatterns = [
     path('image/<int:image_id>/download/', DownloadImageView.as_view(), name='download_image'),
     path('image/<int:image_id>/delete/', DeleteImageView.as_view(), name='delete_image'),
     path('image/<int:image_id>/details/', ImageDetailView.as_view(), name='image_detail'),
+    path('compare/', ImageComparisonView.as_view(), name='image_comparison'),
+    path('compare/result/', ImageComparisonResultView.as_view(), name='image_comparison_result'),
 ]

@@ -340,3 +340,70 @@ class ImageDetailView(LoginRequiredMixin, View):
             messages.error(request, "Image not found")
             return redirect('image_management')
 
+class ImageComparisonView(LoginRequiredMixin, View):
+    def get(self, request):
+        if not PermissionManager.check_module_access(request.user, 'image_management'):
+            messages.error(request, "You don't have permission to access Image Comparison")
+            return handler403(request, exception="Access Denied")
+
+        template_path = get_template_path('image_comparison_select.html', request.user.role)
+        
+        try:
+            # Get all available images for selection
+            available_images = PatientImage.objects.select_related(
+                'patient', 'patient__user', 'body_part'
+            ).order_by('-date_taken')
+            
+            context = {
+                'available_images': available_images,
+            }
+            
+            return render(request, template_path, context)
+            
+        except Exception as e:
+            logger.error(f"Error in image comparison view: {str(e)}", exc_info=True)
+            messages.error(request, f"An error occurred while loading images: {str(e)}")
+            return redirect('image_management')
+
+class ImageComparisonResultView(LoginRequiredMixin, View):
+    def get(self, request):
+        if not PermissionManager.check_module_access(request.user, 'image_management'):
+            messages.error(request, "You don't have permission to access Image Comparison")
+            return handler403(request, exception="Access Denied")
+
+        try:
+            selected_ids = request.GET.getlist('images', [])
+            if not selected_ids:
+                messages.warning(request, "Please select images to compare")
+                return redirect('image_comparison')
+
+            selected_images = PatientImage.objects.select_related(
+                'patient', 'patient__user', 'body_part'
+            ).filter(id__in=selected_ids)
+
+            if not selected_images.exists():
+                messages.error(request, "No valid images selected")
+                return redirect('image_comparison')
+
+            # Add file size formatted for each image
+            for image in selected_images:
+                if default_storage.exists(image.image_file.name):
+                    image.file_size_formatted = filesizeformat(
+                        default_storage.size(image.image_file.name)
+                    )
+                else:
+                    image.file_size_formatted = 'N/A'
+
+            template_path = get_template_path('image_comparison_result.html', request.user.role)
+            context = {
+                'selected_images': selected_images,
+                'comparison_date': timezone.now(),
+            }
+            
+            return render(request, template_path, context)
+
+        except Exception as e:
+            logger.error(f"Error in image comparison result view: {str(e)}", exc_info=True)
+            messages.error(request, f"An error occurred: {str(e)}")
+            return redirect('image_comparison')
+

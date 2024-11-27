@@ -1,0 +1,69 @@
+
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Image Comparison Result</h1>
+            <p class="mt-1 text-sm text-gray-600">
+                Comparing {{ selected_images.count }} images • {{ comparison_date|date:"F j, Y g:i A" }}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'image_comparison' %}" class="text-gray-600 hover:text-gray-900">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Selection
+            </a>
+        </div>
+    </div>
+
+    <!-- Comparison Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for image in selected_images %}
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Patient Info -->
+            <div class="p-4 border-b bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-semibold text-gray-800">{{ image.patient.user.get_full_name }}</h3>
+                        <p class="text-sm text-gray-600">{{ image.body_part.name }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-gray-800">{{ image.date_taken|date:"M d, Y" }}</p>
+                        <p class="text-xs text-gray-600">{{ image.get_image_type_display }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image -->
+            <div class="aspect-w-16 aspect-h-12 bg-gray-100">
+                <img 
+                    src="{{ image.image_file.url }}" 
+                    alt="Patient Image" 
+                    class="object-contain w-full h-full p-2"
+                >
+            </div>
+
+            <!-- Metadata -->
+            <div class="p-4 border-t">
+                <div class="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-600">Dimensions</p>
+                        <p class="font-medium">{{ image.width }}×{{ image.height }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">File Size</p>
+                        <p class="font-medium">{{ image.file_size_formatted }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Annotations</p>
+                        <p class="font-medium">{{ image.annotations.count }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
