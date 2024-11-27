@@ -686,6 +686,12 @@ class QueryStaffPerformanceDataView(LoginRequiredMixin, View):
             return JsonResponse({'error': str(e)}, status=400)
 
 class QueryExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        """
+        Verify if the user has permission to export queries
+        """
+        return PermissionManager.check_module_access(self.request.user, 'query_management')
+
     def dispatch(self, request, *args, **kwargs):
         if not PermissionManager.check_module_access(self.request.user, 'query_management'):
             messages.error(request, "You don't have permission to export queries")
