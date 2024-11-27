@@ -24,7 +24,7 @@ from django.views.generic.edit import CreateView
 from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403
-from .forms import PatientImageUploadForm
+from .forms import PatientImageUploadForm, AnnotationForm
 from .models import BodyPart, PatientImage, ImageComparison, ImageAnnotation
 
 # Logger configuration
@@ -585,4 +585,39 @@ class ImageExportView(LoginRequiredMixin, UserPassesTestMixin, View):
 
         doc.build(elements)
         return response
+
+class CreateAnnotationView(LoginRequiredMixin, View):
+    def post(self, request, image_id):
+        if not PermissionManager.check_module_modify(request.user, 'image_management'):
+            return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+
+        try:
+            image = PatientImage.objects.get(id=image_id)
+            form = AnnotationForm(request.POST)
+            
+            if form.is_valid():
+                annotation = form.save(commit=False)  # Fixed syntax error here
+                annotation.image = image
+                annotation.created_by = request.user
+                annotation.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'annotation': {
+                        'id': annotation.id,
+                        'x': annotation.x_coordinate,
+                        'y': annotation.y_coordinate,
+                        'width': annotation.width,
+                        'height': annotation.height,
+                        'text': annotation.text,
+                        'created_by': request.user.get_full_name(),
+                        'created_at': annotation.created_at.strftime('%Y-%m-%d %H:%M')
+                    }
+                })
+            else:
+                return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+                
+        except Exception as e:
+            logger.error(f"Error creating annotation: {str(e)}", exc_info=True)
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 

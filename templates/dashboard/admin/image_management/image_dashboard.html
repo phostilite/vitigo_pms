@@ -256,9 +256,11 @@
                         </button>
                     </li>
                     <li>
-                        <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                        <button data-modal-target="annotationModal{{ image.id }}" 
+                                data-modal-toggle="annotationModal{{ image.id }}"
+                                class="block w-full text-left px-4 py-2 hover:bg-gray-100">
                             <i class="fas fa-pencil-alt mr-2 text-green-500"></i>Add Annotation
-                        </a>
+                        </button>
                     </li>
                     <li>
                         <a href="{% url 'download_image' image.id %}" class="block px-4 py-2 hover:bg-gray-100">
@@ -331,7 +333,9 @@
                                     <i class="fas fa-clone"></i>
                                     <span>Add to Comparison</span>
                                 </button>
-                                <button class="flex items-center space-x-2 text-gray-600 hover:text-green-600">
+                                <button data-modal-target="annotationModal{{ image.id }}" 
+                                        data-modal-toggle="annotationModal{{ image.id }}"
+                                        class="flex items-center space-x-2 text-gray-600 hover:text-green-600">
                                     <i class="fas fa-pencil-alt"></i>
                                     <span>Add Annotation</span>
                                 </button>
@@ -366,6 +370,70 @@
                                     Cancel
                                 </button>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Annotation Modal -->
+            <div id="annotationModal{{ image.id }}" 
+                 data-modal-backdrop="static"
+                 tabindex="-1" 
+                 aria-hidden="true" 
+                 class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative w-full max-w-4xl max-h-full">
+                    <div class="relative bg-white rounded-lg shadow">
+                        <!-- Modal header -->
+                        <div class="flex items-center justify-between p-4 border-b">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                Add Annotation
+                            </h3>
+                            <button type="button" 
+                                    data-modal-hide="annotationModal{{ image.id }}"
+                                    class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <!-- Modal body -->
+                        <div class="p-6">
+                            <div class="grid grid-cols-2 gap-6">
+                                <!-- Canvas Container -->
+                                <div class="relative border rounded-lg" id="canvasContainer{{ image.id }}">
+                                    <!-- Original image (hidden) -->
+                                    <img src="{{ image.image_file.url }}" 
+                                         id="sourceImage{{ image.id }}"
+                                         class="hidden"
+                                         crossorigin="anonymous">
+                                    <!-- Canvas -->
+                                    <canvas id="annotationCanvas{{ image.id }}" class="w-full rounded-lg"></canvas>
+                                </div>
+                                <!-- Annotation Form -->
+                                <div>
+                                    <form id="annotationForm{{ image.id }}" class="space-y-4">
+                                        {% csrf_token %}
+                                        <div class="hidden">
+                                            <input type="number" name="x_coordinate" id="x_coordinate{{ image.id }}">
+                                            <input type="number" name="y_coordinate" id="y_coordinate{{ image.id }}">
+                                            <input type="number" name="width" id="width{{ image.id }}">
+                                            <input type="number" name="height" id="height{{ image.id }}">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Annotation Text</label>
+                                            <textarea name="text" rows="3" class="w-full rounded-lg border-gray-300" required></textarea>
+                                        </div>
+                                        <div class="flex justify-end space-x-3">
+                                            <button type="button" 
+                                                    data-modal-hide="annotationModal{{ image.id }}"
+                                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                                                Cancel
+                                            </button>
+                                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                                                Save Annotation
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -423,36 +491,356 @@
 {% block scripts %}
 {{ block.super }}
 <script>
-    // Add hover effect for private images
-    document.querySelectorAll('.blur-lg').forEach(img => {
-        const container = img.closest('.relative');
-        const overlay = container.querySelector('.bg-black');
-        
-        container.addEventListener('mouseover', () => {
-            overlay?.classList.add('opacity-0');
+    // Add CSRF token to all AJAX requests
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+
+    // Set up CSRF token for all AJAX requests
+    function setUpAjaxCSRF() {
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
         });
+    }
+
+    // Initialize when document is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        setUpAjaxCSRF();
         
-        container.addEventListener('mouseout', () => {
-            overlay?.classList.remove('opacity-0');
+        // Add hover effect for private images
+        document.querySelectorAll('.blur-lg').forEach(img => {
+            const container = img.closest('.relative');
+            const overlay = container.querySelector('.bg-black');
+            
+            container.addEventListener('mouseover', () => {
+                overlay?.classList.add('opacity-0');
+            });
+            
+            container.addEventListener('mouseout', () => {
+                overlay?.classList.remove('opacity-0');
+            });
+        });
+
+        // Debounce function for search
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Handle search with debounce
+        const handleSearch = debounce(function(input) {
+            document.getElementById('filterForm').submit();
+        }, 500);
+
+        // Initialize drawing when any annotation modal is shown
+        const modals = document.querySelectorAll('[id^="annotationModal"]');
+        modals.forEach(modal => {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.target.classList.contains('hidden')) {
+                        // Modal was hidden
+                        return;
+                    }
+                    // Modal was shown - initialize drawing
+                    const imageId = modal.id.replace('annotationModal', '');
+                    initializeAnnotationDrawing(imageId);
+                });
+            });
+
+            observer.observe(modal, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
         });
     });
 
-    // Debounce function for search
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
+    function initializeAnnotationDrawing(imageId) {
+        const container = document.getElementById(`annotationContainer${imageId}`);
+        const overlay = document.getElementById(`annotationOverlay${imageId}`);
+        let isDrawing = false;
+        let startX, startY;
+        let currentBox = null;
+
+        // Clear any existing event listeners
+        overlay.removeEventListener('mousedown', startDrawing);
+        overlay.removeEventListener('mousemove', draw);
+        overlay.removeEventListener('mouseup', endDrawing);
+        
+        // Make sure overlay is properly positioned
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.right = '0';
+        overlay.style.bottom = '0';
+        overlay.style.cursor = 'crosshair';
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = container.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+
+            if (currentBox) currentBox.remove();
+            currentBox = document.createElement('div');
+            currentBox.className = 'absolute border-2 border-blue-500 bg-blue-100 bg-opacity-20';
+            overlay.appendChild(currentBox);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault(); // Prevent text selection while drawing
+
+            const rect = container.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            const width = Math.abs(currentX - startX);
+            const height = Math.abs(currentY - startY);
+            const left = Math.min(currentX, startX);
+            const top = Math.min(currentY, startY);
+
+            currentBox.style.left = `${left}px`;
+            currentBox.style.top = `${top}px`;
+            currentBox.style.width = `${width}px`;
+            currentBox.style.height = `${height}px`;
+
+            // Update form values as percentages
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+            
+            document.getElementById(`x_coordinate${imageId}`).value = (left / containerWidth * 100).toFixed(2);
+            document.getElementById(`y_coordinate${imageId}`).value = (top / containerHeight * 100).toFixed(2);
+            document.getElementById(`width${imageId}`).value = (width / containerWidth * 100).toFixed(2);
+            document.getElementById(`height${imageId}`).value = (height / containerHeight * 100).toFixed(2);
+        }
+
+        function endDrawing() {
+            isDrawing = false;
+        }
+
+        // Add event listeners
+        overlay.addEventListener('mousedown', startDrawing);
+        overlay.addEventListener('mousemove', draw);
+        overlay.addEventListener('mouseup', endDrawing);
+        document.addEventListener('mouseup', endDrawing); // Handle mouse up outside overlay
+
+        // Handle form submission
+        const form = document.getElementById(`annotationForm${imageId}`);
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(`/image/${imageId}/annotations/create/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert('Error creating annotation: ' + JSON.stringify(data.errors));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating annotation');
+            }
+        });
     }
 
-    // Handle search with debounce
-    const handleSearch = debounce(function(input) {
-        document.getElementById('filterForm').submit();
-    }, 500);
+    const canvases = {};
+    let currentMode = 'rectangle';
+    
+    function initializeCanvas(imageId) {
+        const sourceImage = document.getElementById(`sourceImage${imageId}`);
+        const canvas = new fabric.Canvas(`annotationCanvas${imageId}`, {
+            selection: false
+        });
+
+        // Wait for image to load
+        sourceImage.onload = function() {
+            // Set canvas size to match container width while maintaining aspect ratio
+            const container = document.getElementById(`canvasContainer${imageId}`);
+            const containerWidth = container.clientWidth;
+            const scale = containerWidth / sourceImage.width;
+            canvas.setWidth(containerWidth);
+            canvas.setHeight(sourceImage.height * scale);
+
+            // Load the image
+            fabric.Image.fromURL(sourceImage.src, function(img) {
+                img.scaleToWidth(containerWidth);
+                img.selectable = false;
+                canvas.add(img);
+                canvas.renderAll();
+                
+                // Store canvas reference
+                canvases[imageId] = {
+                    canvas: canvas,
+                    image: img,
+                    isDrawing: false,
+                    startX: 0,
+                    startY: 0,
+                    currentRect: null
+                };
+            }, { crossOrigin: 'anonymous' });
+        };
+
+        // Force load event if image is cached
+        if (sourceImage.complete) {
+            sourceImage.dispatchEvent(new Event('load'));
+        }
+
+        // Add drawing handlers
+        canvas.on('mouse:down', function(o) {
+            handleMouseDown(imageId, o);
+        });
+        canvas.on('mouse:move', function(o) {
+            handleMouseMove(imageId, o);
+        });
+        canvas.on('mouse:up', function(o) {
+            handleMouseUp(imageId, o);
+        });
+    }
+
+    function handleMouseDown(imageId, o) {
+        const canvasData = canvases[imageId];
+        if (!canvasData || currentMode !== 'rectangle') return;
+
+        canvasData.isDrawing = true;
+        const pointer = canvasData.canvas.getPointer(o.e);
+        canvasData.startX = pointer.x;
+        canvasData.startY = pointer.y;
+
+        const rect = new fabric.Rect({
+            left: pointer.x,
+            top: pointer.y,
+            width: 0,
+            height: 0,
+            fill: 'rgba(0,0,255,0.2)',
+            stroke: 'blue',
+            strokeWidth: 2
+        });
+
+        canvasData.currentRect = rect;
+        canvasData.canvas.add(rect);
+    }
+
+    function handleMouseMove(imageId, o) {
+        const canvasData = canvases[imageId];
+        if (!canvasData?.isDrawing) return;
+
+        const pointer = canvasData.canvas.getPointer(o.e);
+        const rect = canvasData.currentRect;
+
+        if (rect) {
+            rect.set({
+                width: Math.abs(pointer.x - canvasData.startX),
+                height: Math.abs(pointer.y - canvasData.startY),
+                left: Math.min(pointer.x, canvasData.startX),
+                top: Math.min(pointer.y, canvasData.startY)
+            });
+            canvasData.canvas.renderAll();
+        }
+    }
+
+    function handleMouseUp(imageId, o) {
+        const canvasData = canvases[imageId];
+        if (!canvasData) return;
+
+        canvasData.isDrawing = false;
+        updateFormCoordinates(imageId);
+    }
+
+    function updateFormCoordinates(imageId) {
+        const canvasData = canvases[imageId];
+        if (!canvasData?.currentRect) return;
+
+        const rect = canvasData.currentRect;
+        const canvas = canvasData.canvas;
+
+        // Convert to percentages
+        const x = (rect.left / canvas.width) * 100;
+        const y = (rect.top / canvas.height) * 100;
+        const width = (rect.width / canvas.width) * 100;
+        const height = (rect.height / canvas.height) * 100;
+
+        document.getElementById(`x_coordinate${imageId}`).value = x.toFixed(2);
+        document.getElementById(`y_coordinate${imageId}`).value = y.toFixed(2);
+        document.getElementById(`width${imageId}`).value = width.toFixed(2);
+        document.getElementById(`height${imageId}`).value = height.toFixed(2);
+    }
+
+    function setMode(imageId, mode) {
+        currentMode = mode;
+    }
+
+    function clearCanvas(imageId) {
+        const canvasData = canvases[imageId];
+        if (!canvasData) return;
+
+        const canvas = canvasData.canvas;
+        canvas.getObjects().forEach(obj => {
+            if (obj !== canvasData.image) {
+                canvas.remove(obj);
+            }
+        });
+        canvas.renderAll();
+        canvasData.currentRect = null;
+    }
+
+    // Initialize canvas when modal is shown
+    document.addEventListener('DOMContentLoaded', function() {
+        const modals = document.querySelectorAll('[id^="annotationModal"]');
+        modals.forEach(modal => {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (!mutation.target.classList.contains('hidden')) {
+                        const imageId = modal.id.replace('annotationModal', '');
+                        if (!canvases[imageId]) {
+                            initializeCanvas(imageId);
+                        }
+                    }
+                });
+            });
+
+            observer.observe(modal, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        });
+    });
+
 </script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 {% endblock %}

@@ -32,3 +32,15 @@ class ImageAnnotationForm(forms.ModelForm):
         widgets = {
             'text': forms.Textarea(attrs={'rows': 3, 'class': 'rounded-lg'}),
         }
+
+class AnnotationForm(forms.ModelForm):
+    class Meta:
+        model = ImageAnnotation
+        fields = ['x_coordinate', 'y_coordinate', 'width', 'height', 'text']
+        widgets = {
+            'text': forms.Textarea(attrs={
+                'rows': 3,
+                'class': 'rounded-lg w-full',
+                'placeholder': 'Enter annotation details...'
+            })
+        }
