@@ -1,7 +1,7 @@
 from django.core.mail import send_mail, get_connection
 from django.template.loader import render_to_string
 from django.conf import settings
-from notifications.models import UserNotification, EmailNotification
+from notifications.models import UserNotification, EmailNotification, NotificationType
 from django.utils import timezone
 import logging
 
@@ -20,7 +20,24 @@ def send_query_notification(query, notification_type, recipient=None, **kwargs):
         # Log notification attempt
         logger.info(f"Preparing notification for query #{query.query_id}, type: {notification_type}")
 
-        # Create in-app notification
+        # Map notification types to NotificationType names
+        notification_type_mapping = {
+            'created': 'QUERY_CREATED',
+            'assigned': 'QUERY_ASSIGNED',
+            'status_updated': 'QUERY_STATUS_UPDATED',
+            'resolved': 'QUERY_RESOLVED',
+        }
+
+        # Get the NotificationType instance
+        try:
+            notification_type_obj = NotificationType.objects.get(
+                name=notification_type_mapping.get(notification_type, 'QUERY_STATUS_UPDATED')
+            )
+        except NotificationType.DoesNotExist:
+            logger.error(f"NotificationType not found for {notification_type}")
+            return
+
+        # Create notification message
         notification_messages = {
             'created': f'New query #{query.query_id} has been created: {query.subject}',
             'assigned': f'Query #{query.query_id} has been assigned to you',
@@ -30,9 +47,10 @@ def send_query_notification(query, notification_type, recipient=None, **kwargs):
 
         message = notification_messages.get(notification_type, '')
         
+        # Create the notification with proper notification type
         UserNotification.objects.create(
             user=recipient,
-            notification_type_id=1,  # Assuming you have created NotificationType for queries
+            notification_type=notification_type_obj,
             message=message
         )
 
