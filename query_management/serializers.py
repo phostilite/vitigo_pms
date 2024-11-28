@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Query, QueryTag, QueryAttachment
+from django.contrib.auth import get_user_model
 
 class ChoiceSerializer(serializers.Serializer):
     value = serializers.CharField()
@@ -34,24 +35,38 @@ class QuerySerializer(serializers.ModelSerializer):
 class SimpleQuerySerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
 
     class Meta:
         model = Query
-        fields = ['first_name', 'last_name']
+        fields = ['first_name', 'last_name', 'email']
 
     def create(self, validated_data):
-        # Extract first_name and last_name
+        # Extract user data
         first_name = validated_data.pop('first_name')
         last_name = validated_data.pop('last_name')
+        email = validated_data.pop('email')
 
-        # Create query with default values
+        # Get or create user
+        User = get_user_model()
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                'first_name': first_name,
+                'last_name': last_name,
+                'is_active': True
+            }
+        )
+
+        # Create query with user
         query = Query.objects.create(
+            user=user,
             subject=f"Query from {first_name} {last_name}",
             description=f"Automatically created query for {first_name} {last_name}",
-            source='WEBSITE',  # Default source
-            priority='B',      # Default priority (Medium)
-            status='NEW',      # Default status
-            contact_email=f"{first_name.lower()}.{last_name.lower()}@example.com",  # Sample email
+            source='WEBSITE',
+            priority='B',
+            status='NEW',
+            contact_email=email,
             is_anonymous=False
         )
         return query

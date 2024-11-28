@@ -1,4 +1,3 @@
-
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,7 +12,9 @@ class SimpleQueryCreateAPI(APIView):
             return Response({
                 'status': 'success',
                 'message': 'Query created successfully',
-                'query_id': query.query_id
+                'query_id': query.query_id,
+                'user_email': query.user.email,
+                'is_new_user': not bool(query.user.date_joined)  # Check if user was just created
             }, status=status.HTTP_201_CREATED)
         return Response({
             'status': 'error',
