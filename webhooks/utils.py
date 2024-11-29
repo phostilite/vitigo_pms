@@ -83,3 +83,58 @@ def send_whatsapp_response(to_number, message):
     except requests.exceptions.RequestException as e:
         logger.error(f"WhatsApp API request failed: {str(e)}", exc_info=True)
         raise
+
+def send_messenger_response(psid, message_text):
+    """Send Facebook Messenger message"""
+    logger.info(f"Sending Messenger message to {psid}")
+    logger.debug(f"Message content: {message_text[:100]}...")
+    
+    url = f"https://graph.facebook.com/{settings.FACEBOOK_API_VERSION}/{settings.FACEBOOK_PAGE_ID}/messages"
+    
+    try:
+        response = requests.post(url, json={
+            "recipient": {"id": psid},
+            "messaging_type": "RESPONSE",
+            "message": {"text": message_text}
+        }, headers={
+            "Authorization": f"Bearer {settings.FACEBOOK_PAGE_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        
+        response_data = response.json()
+        if response.status_code != 200:
+            logger.error(f"Messenger API error: {response_data}")
+        else:
+            logger.debug(f"Messenger API response: {response_data}")
+        return response_data
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Messenger API request failed: {str(e)}", exc_info=True)
+        raise
+
+def send_messenger_media(psid, media_url, media_type='image'):
+    """Send media attachment via Messenger"""
+    logger.info(f"Sending Messenger {media_type} to {psid}")
+    
+    url = f"https://graph.facebook.com/{settings.FACEBOOK_API_VERSION}/{settings.FACEBOOK_PAGE_ID}/messages"
+    
+    try:
+        response = requests.post(url, json={
+            "recipient": {"id": psid},
+            "message": {
+                "attachment": {
+                    "type": media_type,
+                    "payload": {
+                        "url": media_url,
+                        "is_reusable": True
+                    }
+                }
+            }
+        }, headers={
+            "Authorization": f"Bearer {settings.FACEBOOK_PAGE_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Messenger media send failed: {str(e)}", exc_info=True)
+        raise

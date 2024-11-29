@@ -4,8 +4,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from query_management.models import Query
 import json
-from .models import WhatsAppWebhook
-from .utils import get_or_create_user, get_latest_state, get_user_queries, format_query_status, send_whatsapp_response, MENU_TEXT
+from .models import WhatsAppWebhook, FacebookMessengerWebhook
+from .utils import get_or_create_user, get_latest_state, get_user_queries, format_query_status, send_whatsapp_response, MENU_TEXT, send_messenger_response
 from django.conf import settings
 import logging
 
@@ -153,4 +153,55 @@ Reply 0 for main menu, 3 to exit
             return HttpResponse('Invalid JSON payload', status=400)
         except Exception as e:
             logger.error(f"Unexpected error processing webhook: {str(e)}", exc_info=True)
+            return HttpResponse('Error processing webhook', status=500)
+
+@csrf_exempt
+def messenger_webhook(request):
+    if request.method == 'GET':
+        logger.info("Received Messenger verification request")
+        mode = request.GET.get('hub.mode')
+        token = request.GET.get('hub.verify_token')
+        challenge = request.GET.get('hub.challenge')
+        
+        if mode and token and mode == 'subscribe' and token == settings.FACEBOOK_VERIFY_TOKEN:
+            logger.info("Messenger webhook verified successfully")
+            return HttpResponse(challenge, content_type='text/plain')
+        logger.warning(f"Invalid Messenger verification attempt with token: {token}")
+        return HttpResponse('Invalid verification token', status=403)
+
+    if request.method == 'POST':
+        logger.info("Received Messenger webhook POST request")
+        try:
+            data = json.loads(request.body)
+            logger.debug(f"Messenger webhook payload: {data}")
+            
+            for entry in data['entry']:
+                for messaging_event in entry['messaging']:
+                    sender_psid = messaging_event['sender']['id']
+                    
+                    if 'message' in messaging_event:
+                        message_text = messaging_event['message'].get('text', '')
+                        message_id = messaging_event['message']['mid']
+                        
+                        # Check for duplicate message
+                        if FacebookMessengerWebhook.objects.filter(message_id=message_id).exists():
+                            logger.warning(f"Duplicate Messenger message received: {message_id}")
+                            continue
+                            
+                        # Process message
+                        webhook = FacebookMessengerWebhook.objects.create(
+                            psid=sender_psid,
+                            message_id=message_id,
+                            message_body=message_text,
+                            timestamp=timezone.now(),
+                            status='RECEIVED'
+                        )
+                        
+                        # Handle message (implement your logic here)
+                        send_messenger_response(sender_psid, "Thanks for your message! We'll get back to you soon.")
+            
+            return HttpResponse('OK', status=200)
+            
+        except Exception as e:
+            logger.error(f"Error processing Messenger webhook: {str(e)}", exc_info=True)
             return HttpResponse('Error processing webhook', status=500)
