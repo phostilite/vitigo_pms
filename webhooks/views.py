@@ -5,7 +5,7 @@ from django.utils import timezone
 from query_management.models import Query
 import json
 from .models import WhatsAppWebhook, FacebookMessengerWebhook
-from .utils import get_or_create_user, get_latest_state, get_user_queries, format_query_status, send_whatsapp_response, MENU_TEXT, send_messenger_response
+from .utils import get_or_create_user, get_latest_state, get_user_queries, format_query_status, send_whatsapp_response, MENU_TEXT, send_messenger_response, MESSENGER_MENU_TEXT, get_messenger_queries, get_messenger_latest_state
 from django.conf import settings
 import logging
 
@@ -187,18 +187,88 @@ def messenger_webhook(request):
                         if FacebookMessengerWebhook.objects.filter(message_id=message_id).exists():
                             logger.warning(f"Duplicate Messenger message received: {message_id}")
                             continue
-                            
-                        # Process message
+                        
+                        # Get or create user
+                        user = get_or_create_user(sender_psid)
+                        
+                        # Get latest state
+                        last_webhook = get_messenger_latest_state(sender_psid)
+                        current_state = last_webhook.conversation_state if last_webhook else 'MENU'
+                        
+                        # Create webhook record
                         webhook = FacebookMessengerWebhook.objects.create(
                             psid=sender_psid,
                             message_id=message_id,
                             message_body=message_text,
                             timestamp=timezone.now(),
-                            status='RECEIVED'
+                            status='RECEIVED',
+                            user=user,
+                            conversation_state=current_state
                         )
-                        
-                        # Handle message (implement your logic here)
-                        send_messenger_response(sender_psid, "Thanks for your message! We'll get back to you soon.")
+
+                        # Handle conversation states
+                        if message_text == '3':  # Exit
+                            send_messenger_response(sender_psid, "Thank you for using VitiGo Query Management. Goodbye!")
+                            webhook.conversation_state = 'MENU'
+                            webhook.save()
+                            continue
+
+                        if current_state == 'MENU' or message_text == '0':
+                            if message_text == '1':
+                                webhook.conversation_state = 'AWAITING_SUBJECT'
+                                webhook.save()
+                                send_messenger_response(sender_psid, "Please enter the subject for your query:")
+                            
+                            elif message_text == '2':
+                                queries = get_messenger_queries(sender_psid)
+                                if queries:
+                                    response = "Your recent queries:\n\n"
+                                    response += "\n".join(format_query_status(q) for q in queries)
+                                    response += "\n\nType 0 for main menu, 3 to exit"
+                                else:
+                                    response = "You have no queries yet.\n\nType 0 for main menu, 3 to exit"
+                                send_messenger_response(sender_psid, response)
+                            
+                            else:
+                                send_messenger_response(sender_psid, MESSENGER_MENU_TEXT)
+
+                        elif current_state == 'AWAITING_SUBJECT':
+                            webhook.temp_data = {'subject': message_text}
+                            webhook.conversation_state = 'AWAITING_DESCRIPTION'
+                            webhook.save()
+                            send_messenger_response(sender_psid, "Please provide details for your query:")
+
+                        elif current_state == 'AWAITING_DESCRIPTION':
+                            last_webhook = FacebookMessengerWebhook.objects.filter(
+                                psid=sender_psid,
+                                conversation_state='AWAITING_DESCRIPTION'
+                            ).exclude(id=webhook.id).last()
+
+                            if not last_webhook or 'subject' not in last_webhook.temp_data:
+                                send_messenger_response(sender_psid, "Sorry, there was an error. Please start over.\n\n" + MESSENGER_MENU_TEXT)
+                                webhook.conversation_state = 'MENU'
+                                webhook.save()
+                                continue
+
+                            # Create new query
+                            query = Query.objects.create(
+                                user=user,
+                                subject=last_webhook.temp_data['subject'],
+                                description=message_text,
+                                source='MESSENGER',
+                                status='NEW'
+                            )
+                            
+                            webhook.conversation_state = 'MENU'
+                            webhook.save()
+                            
+                            response = """
+Your query has been submitted successfully! 
+Our team will review it and get back to you.
+
+Type 0 for main menu, 3 to exit
+"""
+                            send_messenger_response(sender_psid, response)
             
             return HttpResponse('OK', status=200)
             

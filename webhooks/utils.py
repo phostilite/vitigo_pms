@@ -2,7 +2,7 @@
 import re
 from django.contrib.auth import get_user_model
 from query_management.models import Query
-from .models import WhatsAppWebhook
+from .models import WhatsAppWebhook, FacebookMessengerWebhook
 from django.conf import settings
 import requests
 import logging
@@ -16,6 +16,15 @@ Welcome to VitiGo Query Management!
 3. Exit
 
 Reply with a number to continue.
+"""
+
+MESSENGER_MENU_TEXT = """
+Welcome to VitiGo Query Management!
+1. Create new query
+2. View my queries
+3. Exit
+
+Type a number to continue.
 """
 
 def get_or_create_user(phone_number):
@@ -40,12 +49,26 @@ def get_latest_state(phone_number):
         from_number=phone_number
     ).order_by('-created_at').first()
 
+def get_messenger_latest_state(psid):
+    """Get user's latest messenger conversation state"""
+    logger.debug(f"Fetching latest messenger state for PSID: {psid}")
+    return FacebookMessengerWebhook.objects.filter(
+        psid=psid
+    ).order_by('-created_at').first()
+
 def get_user_queries(phone_number):
     """Get queries for a phone number"""
     logger.debug(f"Fetching queries for phone: {phone_number}")
     return Query.objects.filter(
         contact_phone=phone_number
     ).order_by('-created_at')[:5]
+
+def get_messenger_queries(psid):
+    """Get queries for a PSID"""
+    user = get_user_model().objects.filter(facebook_psid=psid).first()
+    if not user:
+        return []
+    return Query.objects.filter(user=user).order_by('-created_at')[:5]
 
 def format_query_status(query):
     """Format query status for WhatsApp message"""
