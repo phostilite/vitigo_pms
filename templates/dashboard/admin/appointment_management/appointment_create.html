@@ -1,0 +1,160 @@
+{% extends '../base.html' %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <div class="max-w-2xl mx-auto">
+        <!-- Page Header -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-semibold text-gray-800">Create New Appointment</h1>
+            <p class="mt-1 text-sm text-gray-600">Schedule a new appointment for a patient</p>
+        </div>
+
+        <!-- Appointment Form -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Please correct the following errors:</h3>
+                            {{ form.errors }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Patient Selection -->
+                <div>
+                    <label for="{{ form.patient.id_for_label }}" class="block text-sm font-medium text-gray-700">Select Patient</label>
+                    {{ form.patient }}
+                    {% if form.patient.errors %}
+                        <p class="mt-1 text-sm text-red-500">{{ form.patient.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Doctor Selection -->
+                <div>
+                    <label for="{{ form.doctor.id_for_label }}" class="block text-sm font-medium text-gray-700">Select Doctor</label>
+                    {{ form.doctor }}
+                    {% if form.doctor.errors %}
+                        <p class="mt-1 text-sm text-red-500">{{ form.doctor.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Appointment Type -->
+                <div>
+                    <label for="{{ form.appointment_type.id_for_label }}" class="block text-sm font-medium text-gray-700">Appointment Type</label>
+                    {{ form.appointment_type }}
+                </div>
+
+                <!-- Date -->
+                <div>
+                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">Date</label>
+                    {{ form.date }}
+                </div>
+
+                <!-- Priority -->
+                <div>
+                    <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-gray-700">Priority</label>
+                    {{ form.priority }}
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700">Notes</label>
+                    {{ form.notes }}
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end space-x-4">
+                    <a href="{% url 'appointment_dashboard' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </a>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Create Appointment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize searchable dropdowns
+        new TomSelect('#{{ form.patient.id_for_label }}', {
+            create: false,
+            sortField: {
+                field: "text",
+                direction: "asc"
+            }
+        });
+
+        const doctorSelect = new TomSelect('#{{ form.doctor.id_for_label }}', {
+            create: false,
+            sortField: {
+                field: "text",
+                direction: "asc"
+            }
+        });
+
+        // Handle specialization filtering
+        const specializationSelect = document.getElementById('specialization-select');
+        specializationSelect.addEventListener('change', function() {
+            const specializationId = this.value;
+            
+            // Fetch filtered doctors based on specialization
+            fetch(`/api/doctors-by-specialization/${specializationId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear and update doctor select options
+                    doctorSelect.clear();
+                    doctorSelect.clearOptions();
+                    
+                    data.doctors.forEach(doctor => {
+                        doctorSelect.addOption({
+                            value: doctor.id,
+                            text: `${doctor.first_name} ${doctor.last_name} - ${doctor.specializations.join(', ')}`
+                        });
+                    });
+                });
+        });
+
+        // Initialize doctor availability check when date or doctor changes
+        const doctorSelectElement = document.getElementById('{{ form.doctor.id_for_label }}');
+        const dateInput = document.getElementById('{{ form.date.id_for_label }}');
+        
+        function checkDoctorAvailability() {
+            const doctorId = doctorSelectElement.value;
+            const date = dateInput.value;
+            
+            if (doctorId && date) {
+                // Add AJAX call here to check doctor availability
+                fetch(`/api/doctor-availability/${doctorId}/${date}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Handle the availability data
+                        console.log(data);
+                    });
+            }
+        }
+
+        doctorSelectElement.addEventListener('change', checkDoctorAvailability);
+        dateInput.addEventListener('change', checkDoctorAvailability);
+    });
+</script>
+{% endblock %}

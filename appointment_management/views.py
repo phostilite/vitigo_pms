@@ -25,6 +25,8 @@ from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 from patient_management.models import MedicalHistory
 from .models import Appointment, CancellationReason, DoctorProfile, DoctorTimeSlot
+from .forms import AppointmentCreateForm
+from doctor_management.models import DoctorProfile
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -175,4 +177,19 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
             return super().get_object(queryset)
         except self.model.DoesNotExist:
             return handler404(self.request, exception="Appointment not found")
+
+class AppointmentCreateView(LoginRequiredMixin, CreateView):
+    model = Appointment
+    form_class = AppointmentCreateForm
+    template_name = 'dashboard/admin/appointment_management/appointment_create.html'
+    success_url = reverse_lazy('appointment_dashboard')
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Appointment created successfully!')
+        return response
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'Error creating appointment. Please check the form.')
+        return super().form_invalid(form)
 

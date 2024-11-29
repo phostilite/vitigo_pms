@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'help_support',
     'settings',
     'access_control',
+    'webhooks',
 ]
 
 MIDDLEWARE = [
@@ -316,3 +317,9 @@ SWAGGER_SETTINGS = {
 # Crispy Forms Config
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
+
+
+WHATSAPP_API_VERSION = os.getenv('WHATSAPP_API_VERSION', 'v1.0')
+WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN')
+WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN')
