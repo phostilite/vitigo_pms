@@ -15,19 +15,24 @@ logger = logging.getLogger('query_management')
 @csrf_exempt 
 def whatsapp_webhook(request):
     if request.method == 'GET':
+        logger.info("Received WhatsApp verification request")
         # Verification logic remains same
         mode = request.GET.get('hub.mode')
         token = request.GET.get('hub.verify_token')
         challenge = request.GET.get('hub.challenge')
         
         if mode and token and mode == 'subscribe' and token == settings.WHATSAPP_VERIFY_TOKEN:
+            logger.info("WhatsApp webhook verified successfully")
             return HttpResponse(challenge, content_type='text/plain')
+        logger.warning(f"Invalid verification attempt with token: {token}")
         return HttpResponse('Invalid verification token', status=403)
 
     if request.method == 'POST':
-        data = json.loads(request.body)
-        
+        logger.info("Received WhatsApp webhook POST request")
         try:
+            data = json.loads(request.body)
+            logger.debug(f"Webhook payload: {data}")
+            
             entry = data['entry'][0]
             changes = entry['changes'][0]
             value = changes['value']
@@ -36,12 +41,16 @@ def whatsapp_webhook(request):
             phone_number = message['from']
             message_text = message['text']['body'].strip()
             
+            logger.info(f"Processing message from {phone_number}: {message_text[:50]}...")
+            
             # Get or create user
             user = get_or_create_user(phone_number)
+            logger.debug(f"User retrieved/created: {user.id}")
             
             # Get latest state
             last_webhook = get_latest_state(phone_number)
             current_state = last_webhook.conversation_state if last_webhook else 'MENU'
+            logger.debug(f"Current conversation state: {current_state}")
             
             # Create webhook record
             webhook = WhatsAppWebhook.objects.create(
@@ -53,15 +62,18 @@ def whatsapp_webhook(request):
                 user=user,
                 conversation_state=current_state
             )
+            logger.info(f"Created webhook record: {webhook.id}")
 
             # Handle conversation states
             if message_text == '3':  # Exit
+                logger.info(f"User {phone_number} exiting conversation")
                 send_whatsapp_response(phone_number, "Thank you for using VitiGo Query Management. Goodbye!")
                 webhook.conversation_state = 'MENU'
                 webhook.save()
                 return HttpResponse('OK', status=200)
 
             if current_state == 'MENU' or message_text == '0':
+                logger.debug(f"Processing menu option: {message_text}")
                 if message_text == '1':
                     webhook.conversation_state = 'AWAITING_SUBJECT'
                     webhook.save()
@@ -81,14 +93,16 @@ def whatsapp_webhook(request):
                     send_whatsapp_response(phone_number, MENU_TEXT)
 
             elif current_state == 'AWAITING_SUBJECT':
+                logger.debug(f"Processing subject input: {message_text[:50]}...")
                 webhook.temp_data['subject'] = message_text
                 webhook.conversation_state = 'AWAITING_DESCRIPTION'
                 webhook.save()
                 send_whatsapp_response(phone_number, "Please provide details for your query:")
 
             elif current_state == 'AWAITING_DESCRIPTION':
+                logger.debug(f"Processing query description: {message_text[:50]}...")
                 # Create new query
-                Query.objects.create(
+                query = Query.objects.create(
                     user=user,
                     subject=webhook.temp_data['subject'],
                     description=message_text,
@@ -96,6 +110,7 @@ def whatsapp_webhook(request):
                     status='NEW',
                     contact_phone=phone_number
                 )
+                logger.info(f"Created new query: {query.query_id}")
                 
                 webhook.conversation_state = 'MENU'
                 webhook.save()
@@ -110,6 +125,12 @@ Reply 0 for main menu, 3 to exit
             
             return HttpResponse('OK', status=200)
             
+        except KeyError as e:
+            logger.error(f"Invalid webhook payload structure: {str(e)}", exc_info=True)
+            return HttpResponse('Invalid webhook payload', status=400)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in webhook: {str(e)}", exc_info=True)
+            return HttpResponse('Invalid JSON payload', status=400)
         except Exception as e:
-            logger.error(f"Error processing WhatsApp webhook: {str(e)}")
+            logger.error(f"Unexpected error processing webhook: {str(e)}", exc_info=True)
             return HttpResponse('Error processing webhook', status=500)

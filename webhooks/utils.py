@@ -5,6 +5,9 @@ from query_management.models import Query
 from .models import WhatsAppWebhook
 from django.conf import settings
 import requests
+import logging
+
+logger = logging.getLogger('query_management')
 
 MENU_TEXT = """
 Welcome to VitiGo Query Management!
@@ -17,10 +20,11 @@ Reply with a number to continue.
 
 def get_or_create_user(phone_number):
     """Get or create user based on phone number"""
+    logger.debug(f"Getting/creating user for phone: {phone_number}")
     User = get_user_model()
     user = User.objects.filter(phone_number=phone_number).first()
     if not user:
-        # Create temp user with phone number
+        logger.info(f"Creating new user for phone: {phone_number}")
         email = f"whatsapp_{phone_number}@temp.com"
         user = User.objects.create(
             email=email,
@@ -31,12 +35,14 @@ def get_or_create_user(phone_number):
 
 def get_latest_state(phone_number):
     """Get user's latest conversation state"""
+    logger.debug(f"Fetching latest state for phone: {phone_number}")
     return WhatsAppWebhook.objects.filter(
         from_number=phone_number
     ).order_by('-created_at').first()
 
 def get_user_queries(phone_number):
     """Get queries for a phone number"""
+    logger.debug(f"Fetching queries for phone: {phone_number}")
     return Query.objects.filter(
         contact_phone=phone_number
     ).order_by('-created_at')[:5]
@@ -52,19 +58,28 @@ Created: {query.created_at.strftime('%Y-%m-%d %H:%M')}
 
 def send_whatsapp_response(to_number, message):
     """Send WhatsApp message"""
+    logger.info(f"Sending WhatsApp message to {to_number}")
+    logger.debug(f"Message content: {message[:100]}...")
+    
     url = f"https://graph.facebook.com/{settings.WHATSAPP_API_VERSION}/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
     
-    headers = {
-        "Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "messaging_product": "whatsapp",
-        "to": to_number,
-        "type": "text",
-        "text": {"body": message}
-    }
-    
-    response = requests.post(url, json=data, headers=headers)
-    return response.json()
+    try:
+        response = requests.post(url, json={
+            "messaging_product": "whatsapp",
+            "to": to_number,
+            "type": "text",
+            "text": {"body": message}
+        }, headers={
+            "Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        
+        response_data = response.json()
+        if response.status_code != 200:
+            logger.error(f"WhatsApp API error: {response_data}")
+        else:
+            logger.debug(f"WhatsApp API response: {response_data}")
+        return response_data
+    except requests.exceptions.RequestException as e:
+        logger.error(f"WhatsApp API request failed: {str(e)}", exc_info=True)
+        raise

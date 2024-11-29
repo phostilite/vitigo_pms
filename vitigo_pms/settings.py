@@ -220,69 +220,29 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
-        'simple': {
-            'format': '[{levelname}] {asctime} {module} {message}',
-            'style': '{',
-        },
-        'email_formatter': {
-            'format': '[EMAIL] {asctime} {message}',
-            'style': '{',
-        }
     },
     'handlers': {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'filename': 'debug.log',
             'formatter': 'verbose',
         },
         'console': {
-            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'email_file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'email.log'),
-            'formatter': 'email_formatter',
-        },
-        'mail_admins': {
-            'level': 'ERROR',
-            'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'verbose',
-        }
+        },
     },
     'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django.server': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['mail_admins', 'file'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-        'django.mail': {
-            'handlers': ['email_file', 'console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
         'query_management': {
-            'handlers': ['file', 'console', 'email_file'],
+            'handlers': ['file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
-        }
-    }
+        },
+    },
 }
 
 # Email settings for Gmail - Change this section
