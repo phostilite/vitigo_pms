@@ -37,6 +37,12 @@ def whatsapp_webhook(request):
             changes = entry['changes'][0]
             value = changes['value']
             message = value['messages'][0]
+            message_id = message['id']
+            
+            # Check if message already processed
+            if WhatsAppWebhook.objects.filter(message_id=message_id).exists():
+                logger.warning(f"Duplicate message received: {message_id}")
+                return HttpResponse('OK', status=200)
             
             phone_number = message['from']
             message_text = message['text']['body'].strip()
@@ -52,7 +58,7 @@ def whatsapp_webhook(request):
             current_state = last_webhook.conversation_state if last_webhook else 'MENU'
             logger.debug(f"Current conversation state: {current_state}")
             
-            # Create webhook record
+            # Create webhook record with initialized temp_data
             webhook = WhatsAppWebhook.objects.create(
                 message_id=message['id'],
                 from_number=phone_number,
@@ -60,7 +66,8 @@ def whatsapp_webhook(request):
                 timestamp=timezone.now(),
                 status='RECEIVED',
                 user=user,
-                conversation_state=current_state
+                conversation_state=current_state,
+                temp_data={}  # Initialize empty dict
             )
             logger.info(f"Created webhook record: {webhook.id}")
 
@@ -94,17 +101,30 @@ def whatsapp_webhook(request):
 
             elif current_state == 'AWAITING_SUBJECT':
                 logger.debug(f"Processing subject input: {message_text[:50]}...")
-                webhook.temp_data['subject'] = message_text
+                webhook.temp_data = {'subject': message_text}  # Create new dict
                 webhook.conversation_state = 'AWAITING_DESCRIPTION'
                 webhook.save()
                 send_whatsapp_response(phone_number, "Please provide details for your query:")
 
             elif current_state == 'AWAITING_DESCRIPTION':
                 logger.debug(f"Processing query description: {message_text[:50]}...")
+                # Get last webhook with subject
+                last_webhook = WhatsAppWebhook.objects.filter(
+                    from_number=phone_number,
+                    conversation_state='AWAITING_DESCRIPTION'
+                ).exclude(id=webhook.id).last()
+                
+                if not last_webhook or 'subject' not in last_webhook.temp_data:
+                    logger.error("Subject not found in conversation flow")
+                    send_whatsapp_response(phone_number, "Sorry, there was an error. Please start over.\n\n" + MENU_TEXT)
+                    webhook.conversation_state = 'MENU'
+                    webhook.save()
+                    return HttpResponse('OK', status=200)
+
                 # Create new query
                 query = Query.objects.create(
                     user=user,
-                    subject=webhook.temp_data['subject'],
+                    subject=last_webhook.temp_data['subject'],
                     description=message_text,
                     source='WHATSAPP',
                     status='NEW',
