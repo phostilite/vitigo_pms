@@ -2,6 +2,8 @@ from django import forms
 from .models import Appointment, DoctorTimeSlot, ReminderTemplate, ReminderConfiguration
 from django.contrib.auth import get_user_model
 from access_control.models import Role
+from django.utils import timezone
+from datetime import datetime
 
 User = get_user_model()
 
@@ -47,6 +49,46 @@ class AppointmentCreateForm(forms.ModelForm):
             print(f"Error loading roles: {e}")
             self.fields['patient'].queryset = User.objects.none()
             self.fields['doctor'].queryset = User.objects.none()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        date = cleaned_data.get('date')
+        timeslot_id = cleaned_data.get('timeslot_id')
+
+        if date and timeslot_id:
+            try:
+                time_slot = DoctorTimeSlot.objects.get(id=timeslot_id)
+                current_datetime = timezone.now()
+                
+                # Create datetime object for the appointment
+                appointment_datetime = timezone.make_aware(
+                    datetime.combine(date, time_slot.start_time)
+                )
+
+                # Check if appointment datetime is in the past
+                if appointment_datetime < current_datetime:
+                    raise forms.ValidationError(
+                        "Cannot create appointments for past time slots."
+                    )
+
+                # Check if time slot matches the selected date
+                if time_slot.date != date:
+                    raise forms.ValidationError(
+                        "Selected time slot does not match the appointment date."
+                    )
+
+                # Check if time slot is still available
+                if not time_slot.is_available:
+                    raise forms.ValidationError(
+                        "This time slot is no longer available."
+                    )
+
+            except DoctorTimeSlot.DoesNotExist:
+                raise forms.ValidationError(
+                    "Invalid time slot selected."
+                )
+
+        return cleaned_data
 
 class ReminderTemplateForm(forms.ModelForm):
     class Meta:

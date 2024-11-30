@@ -239,21 +239,31 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
             with transaction.atomic():
                 appointment = form.save(commit=False)
                 
-                # Get the selected timeslot ID
+                # Get the selected timeslot
                 timeslot_id = form.cleaned_data.get('timeslot_id')
                 if not timeslot_id:
-                    form.add_error(None, 'Time slot selection is required')
+                    messages.error(self.request, 'Time slot selection is required')
                     return self.form_invalid(form)
 
                 try:
                     timeslot = DoctorTimeSlot.objects.get(id=timeslot_id)
                 except DoctorTimeSlot.DoesNotExist:
-                    form.add_error(None, 'Selected time slot is invalid')
+                    messages.error(self.request, 'Selected time slot is invalid')
+                    return self.form_invalid(form)
+
+                # Additional validation for past time slots
+                current_datetime = timezone.now()
+                appointment_datetime = timezone.make_aware(
+                    datetime.combine(appointment.date, timeslot.start_time)
+                )
+
+                if appointment_datetime < current_datetime:
+                    messages.error(self.request, 'Cannot create appointments for past time slots')
                     return self.form_invalid(form)
 
                 # Verify timeslot is still available
                 if not timeslot.is_available:
-                    form.add_error(None, 'This time slot is no longer available')
+                    messages.error(self.request, 'This time slot is no longer available')
                     return self.form_invalid(form)
 
                 # Set the timeslot and mark it as unavailable
@@ -265,6 +275,9 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
                 messages.success(self.request, 'Appointment created successfully!')
                 return super().form_valid(form)
                 
+        except ValidationError as e:
+            messages.error(self.request, str(e))
+            return self.form_invalid(form)
         except Exception as e:
             logger.error(f"Error creating appointment: {str(e)}")
             messages.error(self.request, 'Error creating appointment. Please try again.')
@@ -337,20 +350,35 @@ def get_doctor_timeslots(request):
             )
 
         # Get all timeslots for the doctor on the specified date
+        current_datetime = timezone.now()
         timeslots = DoctorTimeSlot.objects.filter(
             doctor=doctor_profile,
             date=date
         ).order_by('start_time')
 
-        # Serialize the timeslots
-        timeslots_data = [{
-            'id': slot.id,
-            'start_time': slot.start_time.strftime('%H:%M'),
-            'end_time': slot.end_time.strftime('%H:%M'),
-            'is_available': slot.is_available
-        } for slot in timeslots]
+        # Filter out past time slots
+        timeslots_data = []
+        for slot in timeslots:
+            slot_datetime = timezone.make_aware(
+                datetime.combine(date, slot.start_time)
+            )
+            
+            if slot_datetime > current_datetime:
+                timeslots_data.append({
+                    'id': slot.id,
+                    'start_time': slot.start_time.strftime('%H:%M'),
+                    'end_time': slot.end_time.strftime('%H:%M'),
+                    'is_available': slot.is_available
+                })
 
-        logger.info(f"Successfully retrieved {len(timeslots_data)} timeslots for doctor {user_id}")
+        if not timeslots_data:
+            return Response({
+                'doctor_name': user.get_full_name(),
+                'date': date_str,
+                'timeslots': [],
+                'message': 'No available time slots found for this date.'
+            })
+
         return Response({
             'doctor_name': user.get_full_name(),
             'date': date_str,
