@@ -6,6 +6,7 @@ from access_control.models import Role
 User = get_user_model()
 
 class AppointmentCreateForm(forms.ModelForm):
+    timeslot_id = forms.CharField(widget=forms.HiddenInput(), required=True)
     date = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
         help_text='Select appointment date'
@@ -13,7 +14,7 @@ class AppointmentCreateForm(forms.ModelForm):
 
     class Meta:
         model = Appointment
-        fields = ['patient', 'doctor', 'appointment_type', 'date', 'priority', 'notes']
+        fields = ['patient', 'doctor', 'appointment_type', 'date', 'priority', 'notes', 'timeslot_id']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select'}),
             'doctor': forms.Select(attrs={'class': 'form-select'}),

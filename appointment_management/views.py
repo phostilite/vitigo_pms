@@ -19,6 +19,11 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from datetime import datetime
+
 # Local application imports
 from access_control.models import Role
 from access_control.permissions import PermissionManager
@@ -197,18 +202,27 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
             with transaction.atomic():
                 appointment = form.save(commit=False)
                 
-                # Get the selected timeslot
-                timeslot = form.cleaned_data.get('time_slot')
-                if timeslot:
-                    # Verify timeslot is still available
-                    if not timeslot.is_available:
-                        form.add_error('time_slot', 'This time slot is no longer available')
-                        return self.form_invalid(form)
-                    
-                    # Set the timeslot and mark it as unavailable
-                    appointment.time_slot = timeslot
-                    timeslot.is_available = False
-                    timeslot.save()
+                # Get the selected timeslot ID
+                timeslot_id = form.cleaned_data.get('timeslot_id')
+                if not timeslot_id:
+                    form.add_error(None, 'Time slot selection is required')
+                    return self.form_invalid(form)
+
+                try:
+                    timeslot = DoctorTimeSlot.objects.get(id=timeslot_id)
+                except DoctorTimeSlot.DoesNotExist:
+                    form.add_error(None, 'Selected time slot is invalid')
+                    return self.form_invalid(form)
+
+                # Verify timeslot is still available
+                if not timeslot.is_available:
+                    form.add_error(None, 'This time slot is no longer available')
+                    return self.form_invalid(form)
+
+                # Set the timeslot and mark it as unavailable
+                appointment.time_slot = timeslot
+                timeslot.is_available = False
+                timeslot.save()
                 
                 appointment.save()
                 messages.success(self.request, 'Appointment created successfully!')
@@ -217,12 +231,7 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
         except Exception as e:
             logger.error(f"Error creating appointment: {str(e)}")
             messages.error(self.request, 'Error creating appointment. Please try again.')
-            return super().form_invalid(form)
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from datetime import datetime
+            return self.form_invalid(form)
 
 @api_view(['GET'])
 def get_doctor_timeslots(request):
