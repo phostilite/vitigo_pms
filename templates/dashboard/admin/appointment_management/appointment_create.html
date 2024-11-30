@@ -1,87 +1,107 @@
 {% extends '../base.html' %}
 
-{% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
-{% endblock %}
-
 {% block content %}
 <div class="p-4 mt-14 sm:ml-64">
-    <div class="max-w-2xl mx-auto">
-        <!-- Page Header -->
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
         <div class="mb-6">
             <h1 class="text-2xl font-semibold text-gray-800">Create New Appointment</h1>
             <p class="mt-1 text-sm text-gray-600">Schedule a new appointment for a patient</p>
         </div>
 
         <!-- Appointment Form -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <form method="post" class="space-y-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <form method="post" id="appointmentForm" class="space-y-6">
                 {% csrf_token %}
 
+                <!-- Form Errors -->
                 {% if form.errors %}
                 <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
                     <div class="flex">
                         <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                            </svg>
+                            <i class="fas fa-exclamation-circle text-red-500"></i>
                         </div>
                         <div class="ml-3">
-                            <h3 class="text-sm font-medium text-red-800">Please correct the following errors:</h3>
-                            {{ form.errors }}
+                            <p class="text-sm text-red-700">
+                                Please correct the errors below.
+                            </p>
                         </div>
                     </div>
                 </div>
                 {% endif %}
 
-                <!-- Patient Selection -->
-                <div>
-                    <label for="{{ form.patient.id_for_label }}" class="block text-sm font-medium text-gray-700">Select Patient</label>
-                    {{ form.patient }}
-                    {% if form.patient.errors %}
-                        <p class="mt-1 text-sm text-red-500">{{ form.patient.errors.0 }}</p>
-                    {% endif %}
-                </div>
+                <!-- Two Column Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Patient Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Patient</label>
+                        {{ form.patient }}
+                        {% if form.patient.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.patient.errors.0 }}</p>
+                        {% endif %}
+                    </div>
 
-                <!-- Doctor Selection -->
-                <div>
-                    <label for="{{ form.doctor.id_for_label }}" class="block text-sm font-medium text-gray-700">Select Doctor</label>
-                    {{ form.doctor }}
-                    {% if form.doctor.errors %}
-                        <p class="mt-1 text-sm text-red-500">{{ form.doctor.errors.0 }}</p>
-                    {% endif %}
-                </div>
+                    <!-- Doctor Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Doctor</label>
+                        {{ form.doctor }}
+                        {% if form.doctor.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.doctor.errors.0 }}</p>
+                        {% endif %}
+                    </div>
 
-                <!-- Appointment Type -->
-                <div>
-                    <label for="{{ form.appointment_type.id_for_label }}" class="block text-sm font-medium text-gray-700">Appointment Type</label>
-                    {{ form.appointment_type }}
-                </div>
+                    <!-- Appointment Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Appointment Type</label>
+                        {{ form.appointment_type }}
+                        {% if form.appointment_type.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.appointment_type.errors.0 }}</p>
+                        {% endif %}
+                    </div>
 
-                <!-- Date -->
-                <div>
-                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">Date</label>
-                    {{ form.date }}
-                </div>
+                    <!-- Priority -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Priority</label>
+                        {{ form.priority }}
+                        {% if form.priority.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.priority.errors.0 }}</p>
+                        {% endif %}
+                    </div>
 
-                <!-- Priority -->
-                <div>
-                    <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-gray-700">Priority</label>
-                    {{ form.priority }}
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Date</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <!-- Notes -->
                 <div>
-                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700">Notes</label>
+                    <label class="block text-sm font-medium text-gray-700">Notes</label>
                     {{ form.notes }}
+                    {% if form.notes.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
-                <!-- Submit Button -->
-                <div class="flex justify-end space-x-4">
-                    <a href="{% url 'appointment_dashboard' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <!-- Timeslots -->
+                <div id="timeslotsContainer" class="mt-6">
+                    <h2 class="text-lg font-medium text-gray-700">Available Time Slots</h2>
+                    <div id="timeslots" class="grid grid-cols-2 gap-4 mt-4"></div>
+                </div>
+
+                <!-- Selected Slot -->
+                <input type="hidden" id="selectedTimeslotId" name="timeslot_id">
+
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3">
+                    <a href="{% url 'appointment_dashboard' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none">
                         Cancel
                     </a>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button type="submit" id="submitAppointment" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none">
                         Create Appointment
                     </button>
                 </div>
@@ -89,72 +109,93 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize searchable dropdowns
-        new TomSelect('#{{ form.patient.id_for_label }}', {
-            create: false,
-            sortField: {
-                field: "text",
-                direction: "asc"
-            }
-        });
+    document.addEventListener('DOMContentLoaded', () => {
+        const doctorField = document.querySelector('#id_doctor');
+        const dateField = document.querySelector('#id_date');
+        const timeslotsContainer = document.getElementById('timeslots');
+        const selectedTimeslotId = document.getElementById('selectedTimeslotId');
+        const form = document.getElementById('appointmentForm');
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value; 
 
-        const doctorSelect = new TomSelect('#{{ form.doctor.id_for_label }}', {
-            create: false,
-            sortField: {
-                field: "text",
-                direction: "asc"
-            }
-        });
+        async function fetchTimeSlots(doctorId, date) {
+            const url = `http://127.0.0.1:8000/appointments/doctor-timeslots/?user_id=${doctorId}&date=${date}`;
+            const response = await fetch(url);
+            const data = await response.json();
 
-        // Handle specialization filtering
-        const specializationSelect = document.getElementById('specialization-select');
-        specializationSelect.addEventListener('change', function() {
-            const specializationId = this.value;
-            
-            // Fetch filtered doctors based on specialization
-            fetch(`/api/doctors-by-specialization/${specializationId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    // Clear and update doctor select options
-                    doctorSelect.clear();
-                    doctorSelect.clearOptions();
-                    
-                    data.doctors.forEach(doctor => {
-                        doctorSelect.addOption({
-                            value: doctor.id,
-                            text: `${doctor.first_name} ${doctor.last_name} - ${doctor.specializations.join(', ')}`
-                        });
+            // Clear previous timeslots
+            timeslotsContainer.innerHTML = '';
+
+            // Render timeslots
+            data.timeslots.forEach(slot => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = `p-2 rounded-md text-center cursor-pointer ${
+                    slot.is_available ? 'bg-green-200 hover:bg-green-300' : 'bg-red-200'
+                }`;
+                slotDiv.textContent = `${slot.start_time} - ${slot.end_time}`;
+                if (slot.is_available) {
+                    slotDiv.addEventListener('click', () => {
+                        document.querySelectorAll('#timeslots div').forEach(div => div.classList.remove('border-blue-500'));
+                        slotDiv.classList.add('border-2', 'border-blue-500');
+                        selectedTimeslotId.value = slot.id; // Save selected slot ID
                     });
-                });
-        });
+                }
+                timeslotsContainer.appendChild(slotDiv);
+            });
+        }
 
-        // Initialize doctor availability check when date or doctor changes
-        const doctorSelectElement = document.getElementById('{{ form.doctor.id_for_label }}');
-        const dateInput = document.getElementById('{{ form.date.id_for_label }}');
-        
-        function checkDoctorAvailability() {
-            const doctorId = doctorSelectElement.value;
-            const date = dateInput.value;
-            
-            if (doctorId && date) {
-                // Add AJAX call here to check doctor availability
-                fetch(`/api/doctor-availability/${doctorId}/${date}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Handle the availability data
-                        console.log(data);
-                    });
+        async function updateTimeslotAvailability(timeslotId) {
+            const url = `http://127.0.0.1:8000/appointments/doctor-timeslots/${timeslotId}/`;
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken, // Include CSRF token
+                },
+                body: JSON.stringify({ is_available: false })
+            });
+            if (!response.ok) {
+                console.error('Failed to update timeslot availability.');
             }
         }
 
-        doctorSelectElement.addEventListener('change', checkDoctorAvailability);
-        dateInput.addEventListener('change', checkDoctorAvailability);
+        // Trigger fetch on doctor or date change
+        doctorField.addEventListener('change', () => {
+            const doctorId = doctorField.value;
+            const date = dateField.value;
+            if (doctorId && date) {
+                fetchTimeSlots(doctorId, date);
+            }
+        });
+
+        dateField.addEventListener('change', () => {
+            const doctorId = doctorField.value;
+            const date = dateField.value;
+            if (doctorId && date) {
+                fetchTimeSlots(doctorId, date);
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const timeslotId = selectedTimeslotId.value;
+            if (timeslotId) {
+                const response = await fetch(form.action, {
+                    method: form.method,
+                    body: new FormData(form),
+                });
+                if (response.ok) {
+                    await updateTimeslotAvailability(timeslotId);
+                    window.location.href = '{% url "appointment_dashboard" %}';
+                } else {
+                    console.error('Failed to submit form.');
+                }
+            } else {
+                alert('Please select a time slot.');
+            }
+        });
     });
 </script>
 {% endblock %}

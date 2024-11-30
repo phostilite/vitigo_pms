@@ -25,8 +25,8 @@ from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 from patient_management.models import MedicalHistory
 from .models import Appointment, CancellationReason, DoctorProfile, DoctorTimeSlot
-from .forms import AppointmentCreateForm
 from doctor_management.models import DoctorProfile
+from .forms import AppointmentCreateForm
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -181,15 +181,284 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
 class AppointmentCreateView(LoginRequiredMixin, CreateView):
     model = Appointment
     form_class = AppointmentCreateForm
-    template_name = 'dashboard/admin/appointment_management/appointment_create.html'
     success_url = reverse_lazy('appointment_dashboard')
 
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        messages.success(self.request, 'Appointment created successfully!')
-        return response
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'appointment_management'):
+            messages.error(request, "You don't have permission to create appointments")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
 
-    def form_invalid(self, form):
-        messages.error(self.request, 'Error creating appointment. Please check the form.')
-        return super().form_invalid(form)
+    def get_template_names(self):
+        return [get_template_path('appointment_create.html', self.request.user.role, 'appointment_management')]
+
+    def form_valid(self, form):
+        try:
+            with transaction.atomic():
+                appointment = form.save(commit=False)
+                
+                # Get the selected timeslot
+                timeslot = form.cleaned_data.get('time_slot')
+                if timeslot:
+                    # Verify timeslot is still available
+                    if not timeslot.is_available:
+                        form.add_error('time_slot', 'This time slot is no longer available')
+                        return self.form_invalid(form)
+                    
+                    # Set the timeslot and mark it as unavailable
+                    appointment.time_slot = timeslot
+                    timeslot.is_available = False
+                    timeslot.save()
+                
+                appointment.save()
+                messages.success(self.request, 'Appointment created successfully!')
+                return super().form_valid(form)
+                
+        except Exception as e:
+            logger.error(f"Error creating appointment: {str(e)}")
+            messages.error(self.request, 'Error creating appointment. Please try again.')
+            return super().form_invalid(form)
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from datetime import datetime
+
+@api_view(['GET'])
+def get_doctor_timeslots(request):
+    """
+    Get all timeslots for a doctor on a specific date.
+    Required query parameters:
+    - user_id: ID of the doctor
+    - date: Date in YYYY-MM-DD format
+    """
+    logger.info("Fetching doctor timeslots")
+    
+    try:
+        # Get and validate user_id
+        user_id = request.GET.get('user_id')
+        if not user_id:
+            logger.error("No user_id provided")
+            return Response(
+                {"error": "user_id is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get and validate date
+        date_str = request.GET.get('date')
+        if not date_str:
+            logger.error("No date provided")
+            return Response(
+                {"error": "date is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError as e:
+            logger.error(f"Invalid date format: {e}")
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the user
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            logger.error(f"User with id {user_id} not found")
+            return Response(
+                {"error": "User not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if user is a doctor
+        if not user.role.name == 'DOCTOR':
+            logger.error(f"User {user_id} is not a doctor")
+            return Response(
+                {"error": "User is not a doctor"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get doctor profile
+        try:
+            doctor_profile = user.doctor_profile
+        except DoctorProfile.DoesNotExist:
+            logger.error(f"Doctor profile not found for user {user_id}")
+            return Response(
+                {"error": "Doctor profile not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get all timeslots for the doctor on the specified date
+        timeslots = DoctorTimeSlot.objects.filter(
+            doctor=doctor_profile,
+            date=date
+        ).order_by('start_time')
+
+        # Serialize the timeslots
+        timeslots_data = [{
+            'id': slot.id,
+            'start_time': slot.start_time.strftime('%H:%M'),
+            'end_time': slot.end_time.strftime('%H:%M'),
+            'is_available': slot.is_available
+        } for slot in timeslots]
+
+        logger.info(f"Successfully retrieved {len(timeslots_data)} timeslots for doctor {user_id}")
+        return Response({
+            'doctor_name': user.get_full_name(),
+            'date': date_str,
+            'timeslots': timeslots_data
+        })
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in get_doctor_timeslots: {str(e)}")
+        return Response(
+            {"error": "An unexpected error occurred"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PUT'])
+def update_doctor_timeslot(request, timeslot_id):
+    """
+    Update a doctor's timeslot availability
+    Required path parameter:
+    - timeslot_id: ID of the timeslot to update
+    Required body parameter:
+    - is_available: boolean
+    """
+    logger.info(f"Updating doctor timeslot {timeslot_id}")
+    
+    try:
+        # Get the timeslot
+        try:
+            timeslot = DoctorTimeSlot.objects.get(id=timeslot_id)
+        except DoctorTimeSlot.DoesNotExist:
+            logger.error(f"Timeslot with id {timeslot_id} not found")
+            return Response(
+                {"error": "Timeslot not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get and validate is_available from request body
+        is_available = request.data.get('is_available')
+        if is_available is None:
+            logger.error("No is_available value provided")
+            return Response(
+                {"error": "is_available is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update the timeslot
+        timeslot.is_available = is_available
+        timeslot.save()
+
+        # Return updated timeslot data
+        response_data = {
+            'id': timeslot.id,
+            'doctor_name': timeslot.doctor.user.get_full_name(),
+            'date': timeslot.date,
+            'start_time': timeslot.start_time.strftime('%H:%M'),
+            'end_time': timeslot.end_time.strftime('%H:%M'),
+            'is_available': timeslot.is_available
+        }
+
+        logger.info(f"Successfully updated timeslot {timeslot_id}")
+        return Response(response_data)
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in update_doctor_timeslot: {str(e)}")
+        return Response(
+            {"error": "An unexpected error occurred"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PUT'])
+def update_appointment_timeslot(request, appointment_id):
+    """
+    Update an appointment's time slot
+    Required path parameter:
+    - appointment_id: ID of the appointment to update
+    Required body parameter:
+    - timeslot_id: ID of the new timeslot
+    """
+    logger.info(f"Updating appointment {appointment_id} time slot")
+    
+    try:
+        # Get the appointment
+        try:
+            appointment = Appointment.objects.get(id=appointment_id)
+        except Appointment.DoesNotExist:
+            logger.error(f"Appointment with id {appointment_id} not found")
+            return Response(
+                {"error": "Appointment not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get and validate timeslot_id from request body
+        timeslot_id = request.data.get('timeslot_id')
+        if timeslot_id is None:
+            logger.error("No timeslot_id provided")
+            return Response(
+                {"error": "timeslot_id is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the timeslot
+        try:
+            timeslot = DoctorTimeSlot.objects.get(id=timeslot_id)
+        except DoctorTimeSlot.DoesNotExist:
+            logger.error(f"TimeSlot with id {timeslot_id} not found")
+            return Response(
+                {"error": "TimeSlot not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Verify timeslot is available
+        if not timeslot.is_available:
+            logger.error(f"TimeSlot {timeslot_id} is not available")
+            return Response(
+                {"error": "TimeSlot is not available"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update the appointment
+        with transaction.atomic():
+            # Make old timeslot available if it exists
+            if appointment.time_slot:
+                old_timeslot = appointment.time_slot
+                old_timeslot.is_available = True
+                old_timeslot.save()
+
+            # Update appointment with new timeslot
+            appointment.time_slot = timeslot
+            appointment.save()
+
+            # Mark new timeslot as unavailable
+            timeslot.is_available = False
+            timeslot.save()
+
+        # Return updated appointment data
+        response_data = {
+            'id': appointment.id,
+            'patient_name': appointment.patient.get_full_name(),
+            'doctor_name': appointment.doctor.get_full_name(),
+            'date': appointment.date,
+            'timeslot': {
+                'id': timeslot.id,
+                'start_time': timeslot.start_time.strftime('%H:%M'),
+                'end_time': timeslot.end_time.strftime('%H:%M')
+            }
+        }
+
+        logger.info(f"Successfully updated appointment {appointment_id} time slot")
+        return Response(response_data)
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in update_appointment_timeslot: {str(e)}")
+        return Response(
+            {"error": "An unexpected error occurred"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 

@@ -49,7 +49,6 @@ class DoctorTimeSlot(models.Model):
             raise ValidationError("Time slot is outside doctor's availability hours")
 
 
-
 class Appointment(models.Model):
     APPOINTMENT_TYPES = [
         ('CONSULTATION', 'Consultation'),
@@ -73,12 +72,22 @@ class Appointment(models.Model):
         ('C', 'Low'),
     ]
 
-    patient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='appointments', limit_choices_to={'role': 'PATIENT'})
-    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor_appointments',
-                               limit_choices_to={'role': 'DOCTOR'})
+    # Update these ForeignKey fields to use Role-based filtering
+    patient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='appointments',
+        limit_choices_to={'role__name': 'PATIENT'}  # Changed from role to role__name
+    )
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='doctor_appointments',
+        limit_choices_to={'role__name': 'DOCTOR'}   # Changed from role to role__name
+    )
     appointment_type = models.CharField(max_length=20, choices=APPOINTMENT_TYPES, default='CONSULTATION')
     date = models.DateField()
-    time_slot = models.ForeignKey(DoctorTimeSlot, on_delete=models.CASCADE)
+    time_slot = models.ForeignKey(DoctorTimeSlot, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     priority = models.CharField(max_length=1, choices=PRIORITY_CHOICES, default='B')
     notes = models.TextField(blank=True)
