@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:appointment_id>/status/', views.update_appointment_status, name='update_appointment_status'),
     path('<int:appointment_id>/delete/', views.AppointmentDeleteView.as_view(), name='appointment_delete'),
     path('export/', views.AppointmentExportView.as_view(), name='appointment_export'),
+    path('export/<int:appointment_id>/', views.AppointmentExportSingleView.as_view(), name='appointment_export_single'),
     path('reminders/', views.AppointmentReminderView.as_view(), name='appointment_reminders'),
     path('reminders/create-template/', views.CreateReminderTemplateView.as_view(), name='create_reminder_template'),
     path('reminders/configure/', views.ConfigureReminderSettingsView.as_view(), name='configure_reminder_settings'),

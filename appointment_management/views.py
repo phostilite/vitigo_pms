@@ -1023,3 +1023,136 @@ class EditReminderConfigurationView(LoginRequiredMixin, View):
             logger.error(f"Error updating reminder configuration: {str(e)}")
             messages.error(request, 'Failed to update configuration.')
             return redirect('appointment_reminders')
+
+class AppointmentExportSingleView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'appointment_management')
+
+    def get(self, request, appointment_id):
+        try:
+            appointment = get_object_or_404(Appointment, id=appointment_id)
+            export_format = request.GET.get('format', 'csv')
+
+            if export_format == 'csv':
+                return self.export_csv(appointment)
+            elif export_format == 'pdf':
+                return self.export_pdf(appointment)
+            else:
+                messages.error(request, "Invalid export format")
+                return redirect('appointment_dashboard')
+
+        except Exception as e:
+            messages.error(request, f"Export failed: {str(e)}")
+            return redirect('appointment_dashboard')
+
+    def export_csv(self, appointment):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="appointment_{appointment.id}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'Appointment ID',
+            'Patient Name',
+            'Doctor Name',
+            'Date',
+            'Time',
+            'Type',
+            'Status',
+            'Priority',
+            'Notes',
+            'Created At',
+            'Last Updated',
+            'Cancellation Reason'
+        ])
+
+        # Get cancellation reason if exists
+        cancellation_reason = appointment.cancellation_reason.reason if hasattr(appointment, 'cancellation_reason') else 'N/A'
+
+        writer.writerow([
+            appointment.id,
+            appointment.patient.get_full_name(),
+            appointment.doctor.get_full_name(),
+            appointment.date,
+            appointment.time_slot.start_time if appointment.time_slot else 'N/A',
+            appointment.get_appointment_type_display(),
+            appointment.get_status_display(),
+            appointment.get_priority_display(),
+            appointment.notes or 'N/A',
+            appointment.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            appointment.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            cancellation_reason
+        ])
+
+        return response
+
+    def export_pdf(self, appointment):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="appointment_{appointment.id}.pdf"'
+
+        doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        elements = []
+
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = styles['Heading1']
+        subtitle_style = styles['Heading2']
+        normal_style = styles['Normal']
+
+        # Title
+        elements.append(Paragraph(f'Appointment Details - #{appointment.id}', title_style))
+        elements.append(Spacer(1, 20))
+
+        # Basic Info
+        elements.append(Paragraph('Basic Information', subtitle_style))
+        elements.append(Spacer(1, 10))
+
+        data = [
+            ['Patient Name:', appointment.patient.get_full_name()],
+            ['Doctor Name:', appointment.doctor.get_full_name()],
+            ['Date:', appointment.date.strftime('%B %d, %Y')],
+            ['Time:', appointment.time_slot.start_time.strftime('%I:%M %p') if appointment.time_slot else 'N/A'],
+            ['Type:', appointment.get_appointment_type_display()],
+            ['Status:', appointment.get_status_display()],
+            ['Priority:', appointment.get_priority_display()]
+        ]
+
+        # Create table for basic info
+        table = Table(data, colWidths=[120, 300])
+        table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.grey),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 20))
+
+        # Notes Section
+        if appointment.notes:
+            elements.append(Paragraph('Notes', subtitle_style))
+            elements.append(Spacer(1, 10))
+            elements.append(Paragraph(appointment.notes, normal_style))
+            elements.append(Spacer(1, 20))
+
+        # Cancellation Info
+        if hasattr(appointment, 'cancellation_reason'):
+            elements.append(Paragraph('Cancellation Information', subtitle_style))
+            elements.append(Spacer(1, 10))
+            cancel_data = [
+                ['Reason:', appointment.cancellation_reason.reason],
+                ['Cancelled By:', appointment.cancellation_reason.cancelled_by.get_full_name()],
+                ['Cancelled At:', appointment.cancellation_reason.cancelled_at.strftime('%B %d, %Y %I:%M %p')]
+            ]
+            cancel_table = Table(cancel_data, colWidths=[120, 300])
+            cancel_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('TEXTCOLOR', (0, 0), (0, -1), colors.grey),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(cancel_table)
+
+        doc.build(elements)
+        return response
