@@ -220,6 +220,9 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
         except self.model.DoesNotExist:
             return handler404(self.request, exception="Appointment not found")
 
+from notifications.services import NotificationService
+from notifications.models import NotificationType
+
 class AppointmentCreateView(LoginRequiredMixin, CreateView):
     model = Appointment
     form_class = AppointmentCreateForm
@@ -272,6 +275,10 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
                 timeslot.save()
                 
                 appointment.save()
+
+                # Create notifications outside the transaction
+                self._create_appointment_notifications(appointment)
+                
                 messages.success(self.request, 'Appointment created successfully!')
                 return super().form_valid(form)
                 
@@ -282,6 +289,57 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
             logger.error(f"Error creating appointment: {str(e)}")
             messages.error(self.request, 'Error creating appointment. Please try again.')
             return self.form_invalid(form)
+
+    def _create_appointment_notifications(self, appointment):
+        """
+        Create notifications for both patient and doctor
+        """
+        try:
+            # Get or create notification types
+            appointment_created_type, _ = NotificationType.objects.get_or_create(
+                name='APPOINTMENT_CREATED',
+                defaults={'description': 'New appointment created'}
+            )
+
+            # Patient notification
+            patient_message = (
+                f"Your appointment with Dr. {appointment.doctor.get_full_name()} "
+                f"has been scheduled for {appointment.date} at "
+                f"{appointment.time_slot.start_time.strftime('%I:%M %p')}"
+            )
+            
+            success, error = NotificationService.create_notifications(
+                user=appointment.patient,
+                notification_type=appointment_created_type,
+                message=patient_message,
+                send_email=True,
+                send_sms=True,
+                phone_number=appointment.patient.phone_number if hasattr(appointment.patient, 'phone_number') else None
+            )
+
+            if not success:
+                logger.error(f"Failed to create patient notification: {error}")
+
+            # Doctor notification
+            doctor_message = (
+                f"New appointment scheduled with {appointment.patient.get_full_name()} "
+                f"for {appointment.date} at "
+                f"{appointment.time_slot.start_time.strftime('%I:%M %p')}"
+            )
+            
+            success, error = NotificationService.create_notifications(
+                user=appointment.doctor,
+                notification_type=appointment_created_type,
+                message=doctor_message,
+                send_email=True
+            )
+
+            if not success:
+                logger.error(f"Failed to create doctor notification: {error}")
+
+        except Exception as e:
+            logger.error(f"Error in _create_appointment_notifications: {str(e)}")
+            # Don't raise the exception - we want the appointment to be created even if notifications fail
 
 @api_view(['GET'])
 def get_doctor_timeslots(request):
@@ -591,6 +649,9 @@ def update_appointment_status(request, appointment_id):
                         appointment.time_slot.save()
                         logger.info(f"Released time slot for cancelled appointment {appointment_id}")
 
+                    # Create cancellation notifications outside the transaction
+                    _create_cancellation_notifications(appointment, reason, request.user)
+                    
                     messages.warning(request, f"Appointment cancelled - {reason}")
                     logger.info(status_messages[new_status]['log'])
             except Exception as e:
@@ -633,6 +694,49 @@ def update_appointment_status(request, appointment_id):
     except Exception as e:
         logger.exception(f"Unexpected error: {str(e)}")
         return Response({"error": "An unexpected error occurred"}, status=500)
+
+def _create_cancellation_notifications(appointment, reason, cancelled_by):
+    """
+    Create notifications for appointment cancellation
+    """
+    try:
+        cancellation_type, _ = NotificationType.objects.get_or_create(
+            name='APPOINTMENT_CANCELLED',
+            defaults={'description': 'Appointment cancelled notification'}
+        )
+
+        # Patient notification
+        patient_message = (
+            f"Your appointment with Dr. {appointment.doctor.get_full_name()} "
+            f"for {appointment.date} has been cancelled. Reason: {reason}"
+        )
+        
+        NotificationService.create_notifications(
+            user=appointment.patient,
+            notification_type=cancellation_type,
+            message=patient_message,
+            send_email=True,
+            send_sms=True,
+            phone_number=appointment.patient.phone_number if hasattr(appointment.patient, 'phone_number') else None
+        )
+
+        # Doctor notification
+        doctor_message = (
+            f"Appointment with {appointment.patient.get_full_name()} "
+            f"for {appointment.date} has been cancelled by {cancelled_by.get_full_name()}. "
+            f"Reason: {reason}"
+        )
+        
+        NotificationService.create_notifications(
+            user=appointment.doctor,
+            notification_type=cancellation_type,
+            message=doctor_message,
+            send_email=True
+        )
+
+    except Exception as e:
+        logger.error(f"Error in _create_cancellation_notifications: {str(e)}")
+        # Don't raise the exception - we want the cancellation to proceed even if notifications fail
 
 class AppointmentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
