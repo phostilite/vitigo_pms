@@ -1,5 +1,5 @@
 from django import forms
-from .models import Appointment, DoctorTimeSlot
+from .models import Appointment, DoctorTimeSlot, ReminderTemplate, ReminderConfiguration
 from django.contrib.auth import get_user_model
 from access_control.models import Role
 
@@ -47,3 +47,29 @@ class AppointmentCreateForm(forms.ModelForm):
             print(f"Error loading roles: {e}")
             self.fields['patient'].queryset = User.objects.none()
             self.fields['doctor'].queryset = User.objects.none()
+
+class ReminderTemplateForm(forms.ModelForm):
+    class Meta:
+        model = ReminderTemplate
+        fields = ['name', 'days_before', 'hours_before', 'message_template', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-input rounded-lg w-full'}),
+            'days_before': forms.NumberInput(attrs={'class': 'form-input rounded-lg w-full', 'min': '0'}),
+            'hours_before': forms.NumberInput(attrs={'class': 'form-input rounded-lg w-full', 'min': '0'}),
+            'message_template': forms.Textarea(attrs={'class': 'form-textarea rounded-lg w-full', 'rows': 4}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-checkbox rounded'}),
+        }
+
+class ReminderConfigurationForm(forms.ModelForm):
+    class Meta:
+        model = ReminderConfiguration
+        fields = ['appointment_type', 'templates', 'reminder_types', 'is_active']
+        widgets = {
+            'appointment_type': forms.Select(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5'}),
+            'templates': forms.CheckboxSelectMultiple(attrs={'class': 'w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['templates'].queryset = ReminderTemplate.objects.filter(is_active=True)

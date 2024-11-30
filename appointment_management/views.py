@@ -2,6 +2,7 @@
 from collections import defaultdict
 from datetime import timedelta, datetime
 import logging
+import json
 import csv
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -824,3 +825,173 @@ class AppointmentReminderView(LoginRequiredMixin, ListView):
             logger.error(f"Error in AppointmentReminderView context: {str(e)}")
             messages.error(self.request, "Error loading reminder data")
             return {}
+
+from .forms import ReminderTemplateForm
+
+class CreateReminderTemplateView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            form = ReminderTemplateForm(request.POST)
+            if form.is_valid():
+                template = form.save(commit=False)
+                template.created_by = request.user
+                template.save()
+                
+                messages.success(request, 'Reminder template created successfully!')
+                return redirect('appointment_reminders')
+            else:
+                messages.error(request, 'Failed to create template. Please check the form data.')
+                return redirect('appointment_reminders')
+        except Exception as e:
+            logger.error(f"Error creating reminder template: {str(e)}")
+            messages.error(request, 'An error occurred while creating the template.')
+            return redirect('appointment_reminders')
+
+from .forms import ReminderConfigurationForm
+
+class ConfigureReminderSettingsView(LoginRequiredMixin, View):
+    def get(self, request):
+        configs = ReminderConfiguration.objects.all()
+        return JsonResponse({
+            'configs': list(configs.values('id', 'appointment_type', 'reminder_types', 'is_active')),
+            'templates': list(ReminderTemplate.objects.filter(is_active=True).values('id', 'name'))
+        })
+
+    def post(self, request):
+        try:
+            appointment_type = request.POST.get('appointment_type')
+            template_ids = request.POST.getlist('templates')
+            
+            # Fix: Properly handle notification methods
+            reminder_types = {
+                'email': request.POST.get('notification_email') == 'on',
+                'sms': request.POST.get('notification_sms') == 'on'
+            }
+            
+            # Fix: Properly handle active status
+            is_active = request.POST.get('is_active') == 'on'
+
+            config, created = ReminderConfiguration.objects.update_or_create(
+                appointment_type=appointment_type,
+                defaults={
+                    'reminder_types': reminder_types,
+                    'is_active': is_active
+                }
+            )
+            
+            # Update templates
+            config.templates.set(template_ids)
+            
+            messages.success(request, 'Reminder settings updated successfully!')
+            return redirect('appointment_reminders')
+            
+        except Exception as e:
+            logger.error(f"Error configuring reminder settings: {str(e)}")
+            messages.error(request, 'Failed to update reminder settings')
+            return redirect('appointment_reminders')
+
+class DeleteReminderTemplateView(LoginRequiredMixin, View):
+    def post(self, request, template_id):
+        try:
+            template = get_object_or_404(ReminderTemplate, id=template_id)
+            template_name = template.name
+            
+            # Check if template is being used in any configurations
+            if template.configurations.exists():
+                messages.error(request, 'Cannot delete template as it is being used in active configurations.')
+                return redirect('appointment_reminders')
+            
+            template.delete()
+            messages.success(request, f'Template "{template_name}" deleted successfully.')
+            return redirect('appointment_reminders')
+            
+        except Exception as e:
+            logger.error(f"Error deleting reminder template: {str(e)}")
+            messages.error(request, 'Failed to delete template.')
+            return redirect('appointment_reminders')
+
+class DeleteReminderConfigurationView(LoginRequiredMixin, View):
+    def post(self, request, config_id):
+        try:
+            config = get_object_or_404(ReminderConfiguration, id=config_id)
+            appointment_type = config.get_appointment_type_display()
+            
+            # Remove template associations first
+            config.templates.clear()
+            config.delete()
+            
+            messages.success(request, f'Configuration for "{appointment_type}" deleted successfully.')
+            return redirect('appointment_reminders')
+            
+        except Exception as e:
+            logger.error(f"Error deleting reminder configuration: {str(e)}")
+            messages.error(request, 'Failed to delete configuration.')
+            return redirect('appointment_reminders')
+
+class EditReminderTemplateView(LoginRequiredMixin, View):
+    def get(self, request, template_id):
+        template = get_object_or_404(ReminderTemplate, id=template_id)
+        return JsonResponse({
+            'id': template.id,
+            'name': template.name,
+            'days_before': template.days_before,
+            'hours_before': template.hours_before,
+            'message_template': template.message_template,
+            'is_active': template.is_active,
+        })
+    
+    def post(self, request, template_id):
+        try:
+            template = get_object_or_404(ReminderTemplate, id=template_id)
+            form = ReminderTemplateForm(request.POST, instance=template)
+            
+            if form.is_valid():
+                template = form.save()
+                messages.success(request, f'Template "{template.name}" updated successfully.')
+                return redirect('appointment_reminders')
+            else:
+                messages.error(request, 'Failed to update template. Please check the form data.')
+                return redirect('appointment_reminders')
+                
+        except Exception as e:
+            logger.error(f"Error updating reminder template: {str(e)}")
+            messages.error(request, 'Failed to update template.')
+            return redirect('appointment_reminders')
+
+class EditReminderConfigurationView(LoginRequiredMixin, View):
+    def get(self, request, config_id):
+        config = get_object_or_404(ReminderConfiguration, id=config_id)
+        return JsonResponse({
+            'id': config.id,
+            'appointment_type': config.appointment_type,
+            'templates': list(config.templates.values_list('id', flat=True)),
+            'reminder_types': config.reminder_types,
+            'is_active': config.is_active
+        })
+
+    def post(self, request, config_id):
+        try:
+            config = get_object_or_404(ReminderConfiguration, id=config_id)
+            
+            # Update basic fields
+            config.appointment_type = request.POST.get('appointment_type')
+            config.reminder_types = {
+                'email': request.POST.get('notification_email') == 'on',
+                'sms': request.POST.get('notification_sms') == 'on'
+            }
+            config.is_active = request.POST.get('is_active') == 'on'
+            
+            # Update template associations
+            template_ids = request.POST.getlist('templates')
+            
+            with transaction.atomic():
+                config.save()
+                config.templates.set(template_ids)
+            
+            messages.success(request, f'Configuration for "{config.get_appointment_type_display()}" updated successfully.')
+            return redirect('appointment_reminders')
+            
+        except Exception as e:
+            logger.error(f"Error updating reminder configuration: {str(e)}")
+            messages.error(request, 'Failed to update configuration.')
+            return redirect('appointment_reminders')
