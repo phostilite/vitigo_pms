@@ -20,4 +20,5 @@ urlpatterns = [
     path('reminders/delete-config/<int:config_id>/', views.DeleteReminderConfigurationView.as_view(), name='delete_reminder_config'),
     path('reminders/edit-template/<int:template_id>/', views.EditReminderTemplateView.as_view(), name='edit_reminder_template'),
     path('reminders/edit-config/<int:config_id>/', views.EditReminderConfigurationView.as_view(), name='edit_reminder_config'),
+    path('<int:appointment_id>/reschedule/', views.AppointmentRescheduleView.as_view(), name='appointment_reschedule'),
 ]

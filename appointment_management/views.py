@@ -823,7 +823,7 @@ class AppointmentReminderView(LoginRequiredMixin, ListView):
     context_object_name = 'reminder_templates'
 
     def dispatch(self, request, *args, **kwargs):
-        if not PermissionManager.check_module_access(request.user, 'appointment_management'):
+        if not PermissionManager.check_module_access(self.request.user, 'appointment_management'):
             messages.error(request, "You don't have permission to access appointment reminders")
             return handler403(request, exception="Access Denied")
         return super().dispatch(request, *args, **kwargs)
@@ -1156,3 +1156,50 @@ class AppointmentExportSingleView(LoginRequiredMixin, UserPassesTestMixin, View)
 
         doc.build(elements)
         return response
+
+class AppointmentRescheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'appointment_management')
+
+    def post(self, request, appointment_id):
+        try:
+            appointment = get_object_or_404(Appointment, id=appointment_id)
+            new_timeslot_id = request.POST.get('timeslot_id')
+
+            if not new_timeslot_id:
+                messages.error(request, 'Please select a new time slot')
+                return redirect('appointment_dashboard')
+
+            try:
+                new_timeslot = DoctorTimeSlot.objects.get(id=new_timeslot_id)
+            except DoctorTimeSlot.DoesNotExist:
+                messages.error(request, 'Selected time slot is invalid')
+                return redirect('appointment_dashboard')
+
+            if not new_timeslot.is_available:
+                messages.error(request, 'Selected time slot is no longer available')
+                return redirect('appointment_dashboard')
+
+            with transaction.atomic():
+                # Make the old timeslot available
+                if appointment.time_slot:
+                    old_timeslot = appointment.time_slot
+                    old_timeslot.is_available = True
+                    old_timeslot.save()
+
+                # Update appointment with new timeslot
+                appointment.time_slot = new_timeslot
+                appointment.date = new_timeslot.date
+                appointment.save()
+
+                # Mark new timeslot as unavailable
+                new_timeslot.is_available = False
+                new_timeslot.save()
+
+            messages.success(request, 'Appointment rescheduled successfully')
+            return redirect('appointment_dashboard')
+
+        except Exception as e:
+            logger.error(f"Error rescheduling appointment: {str(e)}")
+            messages.error(request, 'Error rescheduling appointment')
+            return redirect('appointment_dashboard')
