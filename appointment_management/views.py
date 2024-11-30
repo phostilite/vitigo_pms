@@ -470,4 +470,121 @@ def update_appointment_timeslot(request, appointment_id):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@api_view(['POST'])
+def update_appointment_status(request, appointment_id):
+    """
+    Update an appointment's status
+    Required path parameter:
+    - appointment_id: ID of the appointment to update
+    Required body parameters:
+    - status: New status value
+    - reason: Required when status is CANCELLED
+    """
+    logger.info(f"Starting status update for appointment {appointment_id}")
+    logger.debug(f"Request data: {request.data}")
+    
+    try:
+        # Get the appointment
+        try:
+            appointment = Appointment.objects.get(id=appointment_id)
+            logger.info(f"Found appointment {appointment_id}")
+        except Appointment.DoesNotExist:
+            logger.error(f"Appointment {appointment_id} not found")
+            return Response(
+                {"error": f"Appointment with id {appointment_id} not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Validate status
+        new_status = request.data.get('status')
+        if not new_status:
+            logger.error("No status provided in request")
+            return Response(
+                {"error": "Status is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate status value
+        valid_statuses = dict(Appointment.STATUS_CHOICES)
+        if new_status not in valid_statuses:
+            logger.error(f"Invalid status value: {new_status}")
+            return Response({
+                "error": "Invalid status value",
+                "valid_statuses": valid_statuses
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle cancellation
+        if new_status == 'CANCELLED':
+            reason = request.data.get('reason')
+            if not reason:
+                logger.error("Cancellation reason not provided")
+                return Response(
+                    {"error": "Cancellation reason is required"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                with transaction.atomic():
+                    # Update appointment status
+                    old_status = appointment.status
+                    appointment.status = new_status
+                    appointment.save()
+                    
+                    # Create cancellation record
+                    CancellationReason.objects.create(
+                        appointment=appointment,
+                        reason=reason,
+                        cancelled_by=request.user
+                    )
+                    
+                    # If the appointment had a timeslot, make it available again
+                    if appointment.time_slot:
+                        appointment.time_slot.is_available = True
+                        appointment.time_slot.save()
+                        logger.info(f"Made timeslot available again for appointment {appointment_id}")
+
+                    logger.info(f"Successfully cancelled appointment {appointment_id}. "
+                              f"Status changed from {old_status} to {new_status}")
+            except Exception as e:
+                logger.error(f"Database error during cancellation: {str(e)}")
+                return Response(
+                    {"error": "Failed to cancel appointment"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        else:
+            # Handle other status updates
+            try:
+                old_status = appointment.status
+                appointment.status = new_status
+                appointment.save()
+                logger.info(f"Successfully updated appointment {appointment_id} "
+                          f"status from {old_status} to {new_status}")
+            except Exception as e:
+                logger.error(f"Database error during status update: {str(e)}")
+                return Response(
+                    {"error": "Failed to update appointment status"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        # Return success response with updated data
+        return Response({
+            "status": "success",
+            "message": f"Appointment status updated to {new_status}",
+            "appointment": {
+                "id": appointment.id,
+                "new_status": new_status,
+                "patient_name": appointment.patient.get_full_name(),
+                "doctor_name": appointment.doctor.get_full_name(),
+                "date": appointment.date,
+                "time": appointment.time_slot.start_time if appointment.time_slot else None
+            }
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in update_appointment_status: {str(e)}")
+        return Response(
+            {"error": "An unexpected error occurred"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 
