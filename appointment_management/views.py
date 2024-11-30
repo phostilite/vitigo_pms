@@ -79,33 +79,40 @@ class AppointmentDashboardView(LoginRequiredMixin, ListView):
             'time_slot'
         )
         
-        # Apply filters based on GET parameters
+        # Get filter parameters from URL
         filters = {}
-        
-        # Priority filter
         priority = self.request.GET.get('priority')
+        status = self.request.GET.get('status')
+        date = self.request.GET.get('date')
+        doctor = self.request.GET.get('doctor')
+        patient = self.request.GET.get('patient')
+        appointment_type = self.request.GET.get('appointment_type')
+        search = self.request.GET.get('search')
+        
+        # Apply filters
         if priority:
             filters['priority'] = priority
-            
-        # Status filter
-        status = self.request.GET.get('status')
         if status:
             filters['status'] = status
+        if date:
+            filters['date'] = date
+        if doctor:
+            filters['doctor_id'] = doctor
+        if patient:
+            filters['patient_id'] = patient
+        if appointment_type:
+            filters['appointment_type'] = appointment_type
             
-        # Date filter
-        appointment_date = self.request.GET.get('date')
-        if appointment_date:
-            filters['date'] = appointment_date
-            
-        # Search functionality
-        search_query = self.request.GET.get('search')
-        if search_query:
+        # Apply search query
+        if search:
             queryset = queryset.filter(
-                Q(patient__first_name__icontains=search_query) |
-                Q(patient__last_name__icontains=search_query) |
-                Q(doctor__first_name__icontains=search_query) |
-                Q(doctor__last_name__icontains=search_query) |
-                Q(notes__icontains=search_query)
+                Q(patient__first_name__icontains=search) |
+                Q(patient__last_name__icontains=search) |
+                Q(patient__email__icontains=search) |
+                Q(doctor__first_name__icontains=search) |
+                Q(doctor__last_name__icontains=search) |
+                Q(doctor__email__icontains=search) |
+                Q(notes__icontains=search)
             )
             
         return queryset.filter(**filters).order_by('-date', '-time_slot__start_time')
@@ -129,6 +136,28 @@ class AppointmentDashboardView(LoginRequiredMixin, ListView):
                 'date': self.request.GET.get('date', ''),
                 'search': self.request.GET.get('search', ''),
             },
+        })
+        
+        context.update({
+            # Add choices for filter dropdowns
+            'status_choices': Appointment.STATUS_CHOICES,
+            'priority_choices': Appointment.PRIORITY_CHOICES,
+            'appointment_type_choices': Appointment.APPOINTMENT_TYPES,
+            
+            # Add available doctors and patients for filters
+            'doctors': User.objects.filter(role__name='DOCTOR').order_by('first_name'),
+            'patients': User.objects.filter(role__name='PATIENT').order_by('first_name'),
+            
+            # Current filter values
+            'current_filters': {
+                'priority': self.request.GET.get('priority', ''),
+                'status': self.request.GET.get('status', ''),
+                'date': self.request.GET.get('date', ''),
+                'doctor': self.request.GET.get('doctor', ''),
+                'patient': self.request.GET.get('patient', ''),
+                'appointment_type': self.request.GET.get('appointment_type', ''),
+                'search': self.request.GET.get('search', ''),
+            }
         })
         
         return context
