@@ -7,11 +7,23 @@
         height: auto !important;
         min-height: 200px;
     }
+    
+    select[name="{{ form.patient.html_name }}"] option {
+        padding: 8px 12px;
+        font-size: 1rem;
+        line-height: 1.5;
+    }
 </style>
 <style>
     select[name="{{ form.doctor.html_name }}"] {
         height: auto !important;
         min-height: 200px;
+    }
+
+    select[name="{{ form.doctor.html_name }}"] option {
+        padding: 8px 12px;
+        font-size: 1rem;
+        line-height: 1.5;
     }
 </style>
 
@@ -55,11 +67,11 @@
                             <input type="text" 
                                 id="patient-search" 
                                 placeholder="Search patient..." 
-                                class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
                             <select name="{{ form.patient.html_name }}" 
                                     id="{{ form.patient.auto_id }}"
                                     size="5"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
                                 <option value="">Select a patient</option>
                                 {% for choice in form.patient %}
                                     {{ choice }}
@@ -83,11 +95,11 @@
                             <input type="text" 
                                 id="doctor-search" 
                                 placeholder="Search doctor..." 
-                                class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
                             <select name="{{ form.doctor.html_name }}" 
                                     id="{{ form.doctor.auto_id }}"
                                     size="5"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
                                 <option value="">Select a doctor</option>
                                 {% for choice in form.doctor %}
                                     {{ choice }}
