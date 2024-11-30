@@ -6,10 +6,13 @@ from access_control.models import Role
 User = get_user_model()
 
 class AppointmentCreateForm(forms.ModelForm):
-    timeslot_id = forms.CharField(widget=forms.HiddenInput(), required=True)
+    timeslot_id = forms.CharField(
+        widget=forms.HiddenInput(), 
+        required=True
+    )
     date = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
-        help_text='Select appointment date'
+        help_text='Select the date for your appointment (must be within next 30 days)'
     )
 
     class Meta:
@@ -22,21 +25,25 @@ class AppointmentCreateForm(forms.ModelForm):
             'priority': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
         }
+        help_texts = {
+            'patient': 'Select the patient who needs the appointment',
+            'doctor': 'Select the doctor you want to consult with',
+            'appointment_type': 'Choose the type of appointment (consultation, follow-up, procedure, or phototherapy)',
+            'priority': 'Set priority level - High (A) for urgent cases, Medium (B) for regular visits, Low (C) for routine checkups',
+            'notes': 'Add any relevant details, symptoms, or concerns for the doctor (optional)',
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         try:
-            # Get role objects first
             patient_role = Role.objects.get(name='PATIENT')
             doctor_role = Role.objects.get(name='DOCTOR')
             
-            # Then filter users by role objects
             self.fields['patient'].queryset = User.objects.filter(role=patient_role)
             self.fields['doctor'].queryset = User.objects.filter(role=doctor_role)
             
         except Role.DoesNotExist as e:
-            # Log the error and provide empty querysets as fallback
             print(f"Error loading roles: {e}")
             self.fields['patient'].queryset = User.objects.none()
             self.fields['doctor'].queryset = User.objects.none()
