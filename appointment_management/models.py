@@ -4,7 +4,12 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from doctor_management.models import TreatmentMethodSpecialization, BodyAreaSpecialization
 from doctor_management.models import DoctorProfile
+import logging
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 class TimeSlotConfig(models.Model):
     """Configuration for clinic's standard time slots"""
@@ -103,13 +108,153 @@ class Appointment(models.Model):
         return f"Appointment for {self.patient} on {self.date} at {self.time_slot}"
 
 
-class AppointmentReminder(models.Model):
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='reminders')
-    reminder_date = models.DateTimeField()
-    sent = models.BooleanField(default=False)
+class ReminderTemplate(models.Model):
+    """Pre-configured reminder templates"""
+    name = models.CharField(max_length=100)
+    days_before = models.PositiveIntegerField(
+        help_text="Days before appointment to send reminder"
+    )
+    hours_before = models.PositiveIntegerField(
+        help_text="Hours before appointment to send reminder",
+        default=0
+    )
+    message_template = models.TextField(
+        help_text="Use {patient}, {doctor}, {date}, {time}, {type} as placeholders"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
-        return f"Reminder for {self.appointment} on {self.reminder_date}"
+        return f"{self.name} - {self.days_before}d {self.hours_before}h before"
+
+    class Meta:
+        ordering = ['days_before', 'hours_before']
+        indexes = [
+            models.Index(fields=['is_active', 'days_before']),
+        ]
+
+class ReminderConfiguration(models.Model):
+    """Configure which reminders to send for different appointment types"""
+    appointment_type = models.CharField(
+        max_length=20,
+        choices=Appointment.APPOINTMENT_TYPES,
+        unique=True
+    )
+    templates = models.ManyToManyField(
+        ReminderTemplate,
+        related_name='configurations'
+    )
+    reminder_types = models.JSONField(
+        default=dict,
+        help_text="Configure email/SMS options for each template"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Reminders for {self.get_appointment_type_display()}"
+
+
+class AppointmentReminder(models.Model):
+    REMINDER_TYPES = [
+        ('SMS', 'SMS'),
+        ('EMAIL', 'Email'),
+        ('BOTH', 'Both SMS and Email'),
+    ]
+
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('SENT', 'Sent'),
+        ('FAILED', 'Failed'),
+    ]
+
+    appointment = models.ForeignKey(
+        'Appointment', 
+        on_delete=models.CASCADE, 
+        related_name='reminders'
+    )
+    reminder_type = models.CharField(
+        max_length=5,
+        choices=REMINDER_TYPES,
+        default='BOTH'
+    )
+    reminder_date = models.DateTimeField()
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='PENDING'
+    )
+    sent = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    failure_reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_reminders'
+    )
+    template = models.ForeignKey(
+        ReminderTemplate,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='appointment_reminders'
+    )
+
+    class Meta:
+        ordering = ['reminder_date']
+        indexes = [
+            models.Index(fields=['reminder_date', 'status']),
+            models.Index(fields=['appointment', 'status']),
+        ]
+
+    def __str__(self):
+        return f"Reminder for {self.appointment} at {self.reminder_date}"
+
+    def clean(self):
+        if self.reminder_date:
+            # Don't allow reminders in the past
+            if self.reminder_date < timezone.now():
+                raise ValidationError("Reminder date cannot be in the past")
+            
+            # Don't allow reminders after the appointment
+            if self.reminder_date > self.appointment.date:
+                raise ValidationError("Reminder cannot be scheduled after the appointment")
+            
+            # Don't allow too many reminders
+            if self.appointment.reminders.count() >= 5:
+                raise ValidationError("Maximum 5 reminders allowed per appointment")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def mark_as_sent(self):
+        """Mark reminder as sent"""
+        try:
+            self.sent = True
+            self.status = 'SENT'
+            self.sent_at = timezone.now()
+            self.save()
+            logger.info(f"Reminder {self.id} marked as sent successfully")
+        except Exception as e:
+            logger.error(f"Error marking reminder {self.id} as sent: {str(e)}")
+            raise
+
+    def mark_as_failed(self, reason):
+        """Mark reminder as failed with reason"""
+        try:
+            self.status = 'FAILED'
+            self.failure_reason = reason
+            self.save()
+            logger.info(f"Reminder {self.id} marked as failed: {reason}")
+        except Exception as e:
+            logger.error(f"Error marking reminder {self.id} as failed: {str(e)}")
+            raise
 
 
 class CancellationReason(models.Model):

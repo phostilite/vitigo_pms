@@ -11,13 +11,12 @@ from django.http import HttpResponse
 
 # Django core imports
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Q
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.views.generic import ListView, DetailView
-from django.views.generic.edit import CreateView, FormView
+from django.views.generic.edit import FormView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
@@ -28,9 +27,8 @@ from django.core.exceptions import ValidationError
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from datetime import datetime
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
+from django.views.generic import ListView, DetailView, CreateView, DeleteView, UpdateView
 
 
 # Local application imports
@@ -38,7 +36,7 @@ from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 from patient_management.models import MedicalHistory
-from .models import Appointment, CancellationReason, DoctorProfile, DoctorTimeSlot
+from .models import Appointment, CancellationReason, DoctorProfile, DoctorTimeSlot, AppointmentReminder, ReminderConfiguration, ReminderTemplate
 from doctor_management.models import DoctorProfile
 from .forms import AppointmentCreateForm
 
@@ -791,4 +789,38 @@ class AppointmentExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         doc.build(elements)
         return response
 
+class AppointmentReminderView(LoginRequiredMixin, ListView):
+    model = ReminderTemplate
+    context_object_name = 'reminder_templates'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'appointment_management'):
+            messages.error(request, "You don't have permission to access appointment reminders")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_names(self):
+        return [get_template_path('appointment_reminders.html', self.request.user.role, 'appointment_management')]
+
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            
+            # Add reminder-related data
+            context.update({
+                'appointment_types': dict(Appointment.APPOINTMENT_TYPES),
+                'reminder_configs': ReminderConfiguration.objects.select_related().all(),
+                
+                # Statistics
+                'total_templates': ReminderTemplate.objects.count(),
+                'active_templates': ReminderTemplate.objects.filter(is_active=True).count(),
+                'total_reminders': AppointmentReminder.objects.count(),
+                'pending_reminders': AppointmentReminder.objects.filter(status='PENDING').count(),
+            })
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"Error in AppointmentReminderView context: {str(e)}")
+            messages.error(self.request, "Error loading reminder data")
+            return {}
