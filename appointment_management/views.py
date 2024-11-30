@@ -23,6 +23,9 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from datetime import datetime
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views import View
+
 
 # Local application imports
 from access_control.models import Role
@@ -568,5 +571,37 @@ def update_appointment_status(request, appointment_id):
     except Exception as e:
         logger.exception(f"Unexpected error: {str(e)}")
         return Response({"error": "An unexpected error occurred"}, status=500)
+
+class AppointmentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'appointment_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_delete(self.request.user, 'appointment_management'):
+            messages.error(request, "You don't have permission to delete appointments")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, appointment_id):
+        try:
+            appointment = get_object_or_404(Appointment, id=appointment_id)
+            appointment_number = appointment.id  # Store for message
+
+            with transaction.atomic():
+                # If there's a time slot, mark it as available again
+                if appointment.time_slot:
+                    appointment.time_slot.is_available = True
+                    appointment.time_slot.save()
+                    logger.info(f"Released time slot for appointment {appointment_id}")
+                
+                appointment.delete()
+            
+            messages.success(request, f"Appointment #{appointment_number} deleted successfully")
+            return redirect('appointment_dashboard')
+            
+        except Exception as e:
+            logger.error(f"Error deleting appointment: {str(e)}")
+            messages.error(request, f"Error deleting appointment: {str(e)}")
+            return redirect('appointment_dashboard')
 
 
