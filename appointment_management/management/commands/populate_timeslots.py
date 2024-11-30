@@ -2,6 +2,8 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.db.models import Q
+from access_control.models import Role
 from doctor_management.models import DoctorProfile, DoctorAvailability
 from appointment_management.models import DoctorTimeSlot
 from datetime import datetime, timedelta
@@ -68,14 +70,25 @@ class Command(BaseCommand):
             DoctorTimeSlot.objects.all().delete()
             self.stdout.write('Existing time slots cleared.')
 
-        # Get all doctors
-        doctors = DoctorProfile.objects.filter(user__role='DOCTOR', is_available=True)
-        
-        if not doctors.exists():
-            self.stdout.write(self.style.ERROR('No doctors found. Please create some doctors first.'))
+        # Get doctor role
+        try:
+            doctor_role = Role.objects.get(name='DOCTOR')
+        except Role.DoesNotExist:
+            self.stdout.write(self.style.ERROR('Doctor role not found.'))
             return
 
-        self.stdout.write(f'Found {doctors.count()} doctors. Generating time slots...')
+        # Get all active doctors with doctor profile
+        doctors = DoctorProfile.objects.filter(
+            user__role=doctor_role,
+            user__is_active=True,
+            is_available=True
+        )
+        
+        if not doctors.exists():
+            self.stdout.write(self.style.ERROR('No active doctors found. Please create some doctors first.'))
+            return
+
+        self.stdout.write(f'Found {doctors.count()} active doctors. Generating time slots...')
 
         # Standard clinic hours
         time_slots = [
@@ -88,14 +101,11 @@ class Command(BaseCommand):
         ]
 
         slots_created = 0
+        slots_skipped = 0
         start_date = timezone.now().date()
 
         for doctor in doctors:
-            self.stdout.write(f'Setting up availability for doctor: {doctor}')
-            # Setup availability for the doctor
-            self.setup_doctor_availability(doctor)
-            
-            self.stdout.write(f'Generating slots for doctor: {doctor}')
+            self.stdout.write(f'Processing slots for doctor: {doctor}')
             
             # Generate time slots for the specified number of days
             time_slot_data = []
@@ -105,33 +115,64 @@ class Command(BaseCommand):
                 # Skip weekends
                 if current_date.weekday() >= 5:
                     continue
+
+                # Check doctor's availability for this day
+                day_availability = doctor.availability.filter(
+                    day_of_week=current_date.weekday(),
+                    is_available=True
+                )
                 
+                if not day_availability.exists():
+                    continue
+
+                # Get existing slots for this date to avoid duplicates
+                existing_slots = set(DoctorTimeSlot.objects.filter(
+                    doctor=doctor,
+                    date=current_date
+                ).values_list('start_time', 'end_time'))
+
                 # Randomly make some slots unavailable to simulate booked appointments
                 available_slots = random.sample(time_slots, k=random.randint(6, len(time_slots)))
                 
                 for start_time, end_time in time_slots:
-                    is_available = (start_time, end_time) in available_slots
+                    start = datetime.strptime(start_time, '%H:%M').time()
+                    end = datetime.strptime(end_time, '%H:%M').time()
                     
-                    time_slot_data.append(
-                        DoctorTimeSlot(
-                            doctor=doctor,
-                            date=current_date,
-                            start_time=datetime.strptime(start_time, '%H:%M').time(),
-                            end_time=datetime.strptime(end_time, '%H:%M').time(),
-                            is_available=is_available
-                        )
+                    # Skip if slot already exists
+                    if (start, end) in existing_slots:
+                        slots_skipped += 1
+                        continue
+
+                    # Check if slot falls within doctor's availability
+                    slot_available = any(
+                        avail.start_time <= start and avail.end_time >= end 
+                        for avail in day_availability
                     )
-            
-            # Bulk create time slots for the doctor
-            created_slots = DoctorTimeSlot.objects.bulk_create(
-                time_slot_data,
-                ignore_conflicts=True  # Skip any duplicate entries
-            )
-            slots_created += len(created_slots)
+                    
+                    if slot_available:
+                        is_available = (start_time, end_time) in available_slots
+                        time_slot_data.append(
+                            DoctorTimeSlot(
+                                doctor=doctor,
+                                date=current_date,
+                                start_time=start,
+                                end_time=end,
+                                is_available=is_available
+                            )
+                        )
+
+            if time_slot_data:
+                # Bulk create time slots for the doctor
+                created_slots = DoctorTimeSlot.objects.bulk_create(
+                    time_slot_data,
+                    ignore_conflicts=True
+                )
+                slots_created += len(created_slots)
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Successfully created {slots_created} time slots for {doctors.count()} doctors '
-                f'over {days} days'
+                f'Successfully created {slots_created} time slots '
+                f'(skipped {slots_skipped} existing slots) for {doctors.count()} '
+                f'doctors over {days} days'
             )
         )
