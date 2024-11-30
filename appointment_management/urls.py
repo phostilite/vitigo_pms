@@ -11,4 +11,5 @@ urlpatterns = [
     path('appointments/<int:appointment_id>/timeslot/', views.update_appointment_timeslot, name='update_appointment_timeslot'),
     path('<int:appointment_id>/status/', views.update_appointment_status, name='update_appointment_status'),
     path('<int:appointment_id>/delete/', views.AppointmentDeleteView.as_view(), name='appointment_delete'),
+    path('export/', views.AppointmentExportView.as_view(), name='appointment_export'),
 ]
