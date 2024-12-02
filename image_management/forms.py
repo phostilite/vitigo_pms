@@ -2,16 +2,21 @@ from django import forms
 from .models import PatientImage, Patient, ImageAnnotation
 from datetime import date
 from django.conf import settings
+from consultation_management.models import Consultation
 
 class PatientImageUploadForm(forms.ModelForm):
     patient = forms.ModelChoiceField(
         queryset=Patient.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select rounded-lg'})
     )
-    
+    consultation = forms.ModelChoiceField(
+        queryset=Consultation.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select rounded-lg'})
+    )
+
     class Meta:
         model = PatientImage
-        fields = ['patient', 'image_file', 'body_part', 'image_type', 'date_taken', 'notes', 'is_private']
+        fields = ['patient', 'image_file', 'body_part', 'image_type', 'consultation', 'date_taken', 'notes', 'is_private']
         widgets = {
             'date_taken': forms.DateInput(attrs={'type': 'date', 'max': date.today().isoformat()}),
             'notes': forms.Textarea(attrs={'rows': 3}),

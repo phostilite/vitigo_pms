@@ -9,6 +9,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from datetime import datetime
 
 # Django core imports
 from django.contrib import messages
@@ -557,29 +558,73 @@ class ImageComparisonListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
 class ImageComparisonCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'image_management')
-
-    def get_consultations(self, patient_id=None):
-        """Helper method to get consultations with images"""
+    
+    def get_consultations(self, request):
+        """Helper method to get filtered consultations with images"""
         consultations = Consultation.objects.prefetch_related(
             Prefetch(
                 'patientimage_set',
                 queryset=PatientImage.objects.select_related('body_part')
             )
+        ).select_related(
+            'patient__patient_profile',  # Changed from patient__user
+            'doctor__doctor_profile'     # Changed from doctor
         ).order_by('-date_time')
 
-        if patient_id:
-            consultations = consultations.filter(patient_id=patient_id)
+        # Apply filters
+        filters = Q()
+        
+        # Patient search
+        patient_search = request.GET.get('patient_search')
+        if patient_search:
+            filters |= (
+                Q(patient__first_name__icontains=patient_search) |
+                Q(patient__last_name__icontains=patient_search) |
+                Q(patient__email__icontains=patient_search)
+            )
+
+        # Date range filter
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        if start_date:
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+                filters &= Q(date_time__date__gte=start_date)
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
+                filters &= Q(date_time__date__lte=end_date)
+            except ValueError:
+                pass
+
+        # Doctor filter
+        doctor_id = request.GET.get('doctor')
+        if doctor_id:
+            filters &= Q(doctor_id=doctor_id)
+
+        # Apply all filters
+        if filters:
+            consultations = consultations.filter(filters)
+
         return consultations
 
     def get(self, request):
         try:
             template_path = get_template_path('image_comparison_create.html', request.user.role)
-            patient_id = request.GET.get('patient_id')
-            consultations = self.get_consultations(patient_id)
             
-            # Group consultations by patient
+            # Get filtered consultations
+            consultations = self.get_consultations(request)
+            
+            # Paginate results
+            paginator = Paginator(consultations, 10)  # 10 consultations per page
+            page_number = request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
+            
+            # Group consultations by patient for the current page
             patients_consultations = {}
-            for consultation in consultations:
+            for consultation in page_obj:
                 if consultation.patient:
                     if consultation.patient not in patients_consultations:
                         patients_consultations[consultation.patient] = []
@@ -588,9 +633,21 @@ class ImageComparisonCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
                         'images': list(consultation.patientimage_set.all()),
                         'image_count': len(consultation.patientimage_set.all())
                     })
+
+            # Get list of doctors for filter dropdown
+            doctors = User.objects.filter(
+                role__name='DOCTOR'
+            ).select_related('doctor_profile').order_by('first_name')
             
             context = {
                 'patients_consultations': patients_consultations,
+                'page_obj': page_obj,
+                'doctors': doctors,
+                # Preserve filter values
+                'patient_search': request.GET.get('patient_search', ''),
+                'start_date': request.GET.get('start_date', ''),
+                'end_date': request.GET.get('end_date', ''),
+                'selected_doctor': request.GET.get('doctor', ''),
             }
             
             return render(request, template_path, context)
