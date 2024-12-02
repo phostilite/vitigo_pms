@@ -1,0 +1,105 @@
+{% extends "../base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <h1 class="text-2xl font-bold mb-6">Create Image Comparison</h1>
+    
+    <form method="post" class="mb-8">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="comparison_title">
+                Comparison Title
+            </label>
+            <input type="text" 
+                   name="comparison_title" 
+                   id="comparison_title"
+                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                   required>
+        </div>
+        
+        <div class="mb-6">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="comparison_description">
+                Description (Optional)
+            </label>
+            <textarea name="comparison_description" 
+                      id="comparison_description"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      rows="3"></textarea>
+        </div>
+
+        {% if patients_consultations %}
+            {% for patient, consultations in patients_consultations.items %}
+                <div class="mb-8 border-b pb-6">
+                    <h2 class="text-xl font-semibold mb-4">{{ patient.get_full_name }}</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for consultation_data in consultations %}
+                            <div class="border rounded-lg p-4 consultation-card">
+                                <div class="flex items-center justify-between mb-3">
+                                    <input type="checkbox" 
+                                           name="consultation_ids" 
+                                           value="{{ consultation_data.consultation.id }}"
+                                           class="consultation-checkbox">
+                                    <span class="text-sm text-gray-600">
+                                        {{ consultation_data.consultation.date_time|date:"M d, Y" }}
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h3 class="font-medium">Diagnosis:</h3>
+                                    <p class="text-sm text-gray-700">
+                                        {{ consultation_data.consultation.diagnosis|truncatechars:100 }}
+                                    </p>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h3 class="font-medium">Images Available:</h3>
+                                    <p class="text-sm text-gray-700">{{ consultation_data.image_count }} images</p>
+                                </div>
+                                
+                                {% if consultation_data.images %}
+                                    <div class="grid grid-cols-3 gap-2">
+                                        {% for image in consultation_data.images|slice:":3" %}
+                                            <img src="{{ image.image_file.url }}" 
+                                                 alt="Patient image"
+                                                 class="w-full h-20 object-cover rounded">
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <div class="fixed bottom-0 left-0 w-full bg-white border-t p-4">
+                <div class="container mx-auto flex justify-end">
+                    <button type="submit" 
+                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Create Comparison
+                    </button>
+                </div>
+            </div>
+        {% else %}
+            <p class="text-gray-700">No consultations found for comparison.</p>
+        {% endif %}
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.consultation-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const checkedBoxes = document.querySelectorAll('.consultation-checkbox:checked');
+            if (checkedBoxes.length > 8) {
+                this.checked = false;
+                alert('You can only compare up to 8 consultations at once.');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

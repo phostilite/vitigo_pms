@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from PIL import Image as PILImage
 import os
+from consultation_management.models import Consultation
 
 
 class BodyPart(models.Model):
@@ -36,6 +37,8 @@ class PatientImage(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True)
     tags = models.ManyToManyField(ImageTag, blank=True)
+    tagged_users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True)
+    consultation = models.ForeignKey(Consultation, on_delete=models.SET_NULL, null=True)
 
     # Metadata
     width = models.PositiveIntegerField(null=True, blank=True)
@@ -72,6 +75,10 @@ class PatientImage(models.Model):
             self.extract_metadata()
         super().save(*args, **kwargs)
 
+    @classmethod
+    def get_consultation_images(cls, consultation_id):
+        return cls.objects.filter(consultation_id=consultation_id).order_by('date_taken')
+
 
 class ImageComparison(models.Model):
     title = models.CharField(max_length=255)
@@ -80,17 +87,23 @@ class ImageComparison(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     images = models.ManyToManyField(PatientImage, through='ComparisonImage')
 
+    comparison_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('individual', 'Individual Images'),
+            ('consultation', 'Consultation Based')
+        ],
+        default='individual'
+    )
+
     def __str__(self):
         return self.title
 
     def clean(self):
-        if self.images.count() > 10:
-            raise ValidationError('Cannot compare more than 10 images at once')
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
-
+        if self.comparison_type == 'individual' and self.images.count() > 4:
+            raise ValidationError('Cannot compare more than 4 images in individual comparison')
+        elif self.comparison_type == 'consultation' and self.images.count() > 8:
+            raise ValidationError('Cannot compare more than 8 images in consultation comparison')
 
 class ComparisonImage(models.Model):
     comparison = models.ForeignKey(ImageComparison, on_delete=models.CASCADE)

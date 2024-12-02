@@ -5,27 +5,37 @@ import mimetypes
 import os
 import csv
 from io import StringIO
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # Django core imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.files.storage import default_storage
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, F, Min, Max, Prefetch
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
 from django.template.defaultfilters import filesizeformat
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
+from django.views.generic import DetailView, ListView
 from django.views.generic.edit import CreateView
+from django.contrib.auth import get_user_model
+from django.db import transaction
 
 # Local application imports
 from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403
 from .forms import PatientImageUploadForm, AnnotationForm
-from .models import BodyPart, PatientImage, ImageComparison, ImageAnnotation
+from .models import BodyPart, PatientImage, ImageComparison, ImageAnnotation, ComparisonImage
+from consultation_management.models import Consultation
+
+User = get_user_model()
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -223,29 +233,6 @@ class ImageUploadConfirmationView(LoginRequiredMixin, UserPassesTestMixin, View)
         except PatientImage.DoesNotExist:
             return redirect('image_management')
 
-class GetAnnotationsView(LoginRequiredMixin, View):
-    def get(self, request, image_id):
-        # Add permission check
-        if not PermissionManager.check_module_access(request.user, 'image_management'):
-            return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
-
-        try:
-            annotations = ImageAnnotation.objects.filter(image_id=image_id).select_related('created_by')
-            data = [{
-                'id': ann.id,
-                'x': ann.x_coordinate,
-                'y': ann.y_coordinate,
-                'width': ann.width,
-                'height': ann.height,
-                'text': ann.text,
-                'created_by': ann.created_by.get_full_name(),
-                'created_at': ann.created_at.strftime('%Y-%m-%d %H:%M')
-            } for ann in annotations]
-            return JsonResponse({'annotations': data})
-        except Exception as e:
-            logger.error(f"Failed to fetch annotations: {str(e)}", exc_info=True)
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
 class DownloadImageView(LoginRequiredMixin, View):
     def get(self, request, image_id):
         # Add permission check
@@ -377,77 +364,6 @@ class ImageDetailView(LoginRequiredMixin, View):
             messages.error(request, "Image not found")
             return redirect('image_management')
 
-class ImageComparisonView(LoginRequiredMixin, View):
-    def get(self, request):
-        if not PermissionManager.check_module_access(request.user, 'image_management'):
-            messages.error(request, "You don't have permission to access Image Comparison")
-            return handler403(request, exception="Access Denied")
-
-        template_path = get_template_path('image_comparison_select.html', request.user.role)
-        
-        try:
-            # Get all available images for selection
-            available_images = PatientImage.objects.select_related(
-                'patient', 'patient__user', 'body_part'
-            ).order_by('-date_taken')
-            
-            context = {
-                'available_images': available_images,
-            }
-            
-            return render(request, template_path, context)
-            
-        except Exception as e:
-            logger.error(f"Error in image comparison view: {str(e)}", exc_info=True)
-            messages.error(request, f"An error occurred while loading images: {str(e)}")
-            return redirect('image_management')
-
-class ImageComparisonResultView(LoginRequiredMixin, View):
-    def get(self, request):
-        if not PermissionManager.check_module_access(request.user, 'image_management'):
-            messages.error(request, "You don't have permission to access Image Comparison")
-            return handler403(request, exception="Access Denied")
-
-        try:
-            selected_ids = request.GET.getlist('images', [])
-            if not selected_ids:
-                messages.warning(request, "Please select images to compare")
-                return redirect('image_comparison')
-
-            selected_images = PatientImage.objects.select_related(
-                'patient', 'patient__user', 'body_part'
-            ).filter(id__in=selected_ids)
-
-            if not selected_images.exists():
-                messages.error(request, "No valid images selected")
-                return redirect('image_comparison')
-
-            # Add file size formatted for each image
-            for image in selected_images:
-                if default_storage.exists(image.image_file.name):
-                    image.file_size_formatted = filesizeformat(
-                        default_storage.size(image.image_file.name)
-                    )
-                else:
-                    image.file_size_formatted = 'N/A'
-
-            template_path = get_template_path('image_comparison_result.html', request.user.role)
-            context = {
-                'selected_images': selected_images,
-                'comparison_date': timezone.now(),
-            }
-            
-            return render(request, template_path, context)
-
-        except Exception as e:
-            logger.error(f"Error in image comparison result view: {str(e)}", exc_info=True)
-            messages.error(request, f"An error occurred: {str(e)}")
-            return redirect('image_comparison')
-
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 class ImageExportView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
@@ -570,7 +486,7 @@ class ImageExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
@@ -586,38 +502,189 @@ class ImageExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         doc.build(elements)
         return response
 
-class CreateAnnotationView(LoginRequiredMixin, View):
-    def post(self, request, image_id):
-        if not PermissionManager.check_module_modify(request.user, 'image_management'):
-            return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
-
-        try:
-            image = PatientImage.objects.get(id=image_id)
-            form = AnnotationForm(request.POST)
+class ImageComparisonListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = ImageComparison
+    context_object_name = 'comparisons'
+    paginate_by = 10
+    
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'image_management')
+    
+    def get_template_names(self):
+        return [get_template_path('image_comparison_list.html', self.request.user.role)]
+    
+    def get_queryset(self):
+        queryset = ImageComparison.objects.select_related('created_by')\
+            .prefetch_related('images')\
+            .annotate(image_count=Count('images'))\
+            .order_by('-created_at')
             
-            if form.is_valid():
-                annotation = form.save(commit=False)  # Fixed syntax error here
-                annotation.image = image
-                annotation.created_by = request.user
-                annotation.save()
+        # Search functionality
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(created_by__first_name__icontains=search_query) |
+                Q(created_by__last_name__icontains=search_query)
+            )
+            
+        # Filter by type
+        comparison_type = self.request.GET.get('type')
+        if comparison_type in ['individual', 'consultation']:
+            queryset = queryset.filter(comparison_type=comparison_type)
+            
+        # Filter by creator
+        creator_id = self.request.GET.get('creator')
+        if creator_id:
+            queryset = queryset.filter(created_by_id=creator_id)
+            
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'search_query': self.request.GET.get('search', ''),
+            'selected_type': self.request.GET.get('type', ''),
+            'selected_creator': self.request.GET.get('creator', ''),
+        })
+        return context
+    
+    def handle_no_permission(self):
+        messages.error(self.request, "You don't have permission to view image comparisons.")
+        return redirect('image_management')
+
+class ImageComparisonCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'image_management')
+
+    def get_consultations(self, patient_id=None):
+        """Helper method to get consultations with images"""
+        consultations = Consultation.objects.prefetch_related(
+            Prefetch(
+                'patientimage_set',
+                queryset=PatientImage.objects.select_related('body_part')
+            )
+        ).order_by('-date_time')
+
+        if patient_id:
+            consultations = consultations.filter(patient_id=patient_id)
+        return consultations
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('image_comparison_create.html', request.user.role)
+            patient_id = request.GET.get('patient_id')
+            consultations = self.get_consultations(patient_id)
+            
+            # Group consultations by patient
+            patients_consultations = {}
+            for consultation in consultations:
+                if consultation.patient:
+                    if consultation.patient not in patients_consultations:
+                        patients_consultations[consultation.patient] = []
+                    patients_consultations[consultation.patient].append({
+                        'consultation': consultation,
+                        'images': list(consultation.patientimage_set.all()),
+                        'image_count': len(consultation.patientimage_set.all())
+                    })
+            
+            context = {
+                'patients_consultations': patients_consultations,
+            }
+            
+            return render(request, template_path, context)
+            
+        except Exception as e:
+            messages.error(request, f"Error loading comparison view: {str(e)}")
+            return redirect('image_management')
+    
+    def post(self, request):
+        try:
+            with transaction.atomic():
+                # Get selected consultation IDs
+                consultation_ids = request.POST.getlist('consultation_ids')
                 
-                return JsonResponse({
-                    'status': 'success',
-                    'annotation': {
-                        'id': annotation.id,
-                        'x': annotation.x_coordinate,
-                        'y': annotation.y_coordinate,
-                        'width': annotation.width,
-                        'height': annotation.height,
-                        'text': annotation.text,
-                        'created_by': request.user.get_full_name(),
-                        'created_at': annotation.created_at.strftime('%Y-%m-%d %H:%M')
-                    }
-                })
-            else:
-                return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+                if not consultation_ids:
+                    messages.error(request, "Please select at least one consultation to compare.")
+                    return redirect('comparison_create')
+                
+                # Get all images from selected consultations
+                images = PatientImage.objects.filter(
+                    consultation_id__in=consultation_ids
+                ).order_by('consultation__date_time', 'id')
+                
+                if not images.exists():
+                    messages.error(request, "No images found in selected consultations.")
+                    return redirect('comparison_create')
+                
+                # Create the comparison instance first
+                comparison = ImageComparison(
+                    title=request.POST.get('comparison_title', 'Image Comparison'),
+                    description=request.POST.get('comparison_description', ''),
+                    created_by=request.user,
+                    comparison_type='consultation'
+                )
+                # Save it to get an ID
+                comparison.save()
+                
+                # Now create the ComparisonImage instances
+                comparison_images = []
+                for index, image in enumerate(images, 1):
+                    comparison_images.append(
+                        ComparisonImage(
+                            comparison=comparison,
+                            image=image,
+                            order=index
+                        )
+                    )
+                
+                # Bulk create the ComparisonImage instances
+                if comparison_images:
+                    ComparisonImage.objects.bulk_create(comparison_images)
+                
+                messages.success(request, "Image comparison created successfully!")
+                return redirect('comparison_detail', pk=comparison.pk)
                 
         except Exception as e:
-            logger.error(f"Error creating annotation: {str(e)}", exc_info=True)
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
+            messages.error(request, f"Error creating comparison: {str(e)}")
+            return redirect('comparison_create')
+        
+class ImageComparisonDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    model = ImageComparison
+    context_object_name = 'comparison'
+    
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'image_management')
+    
+    def get_template_names(self):
+        return [get_template_path('image_comparison_detail.html', self.request.user.role)]
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get ordered comparison images with their consultation info
+        comparison_images = (ComparisonImage.objects
+            .filter(comparison=self.object)
+            .select_related('image', 'image__consultation', 'image__body_part')
+            .order_by('order'))
+        
+        # Group images by consultation date for better organization
+        grouped_images = {}
+        for comp_image in comparison_images:
+            consultation = comp_image.image.consultation
+            if consultation:
+                date_key = consultation.date_time.date()
+                if date_key not in grouped_images:
+                    grouped_images[date_key] = {
+                        'consultation': consultation,
+                        'images': []
+                    }
+                grouped_images[date_key]['images'].append(comp_image.image)
+        
+        context['grouped_images'] = grouped_images
+        return context
+    
+    def handle_no_permission(self):
+        messages.error(self.request, "You don't have permission to view image comparisons.")
+        return redirect('image_management')

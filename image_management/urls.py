@@ -1,18 +1,16 @@
 from django.urls import path
-from .views import (ImageManagementView, ImageUploadView, ImageUploadConfirmationView, 
-                   GetAnnotationsView, DownloadImageView, DeleteImageView, ImageDetailView,
-                   ImageComparisonView, ImageComparisonResultView, ImageExportView, CreateAnnotationView)
+from . import views
 
 urlpatterns = [
-    path('', ImageManagementView.as_view(), name='image_management'),
-    path('upload/', ImageUploadView.as_view(), name='image_upload'),
-    path('upload/confirmation/', ImageUploadConfirmationView.as_view(), name='image_upload_confirmation'),
-    path('image/<int:image_id>/annotations/', GetAnnotationsView.as_view(), name='get_annotations'),
-    path('image/<int:image_id>/annotations/create/', CreateAnnotationView.as_view(), name='create_annotation'),
-    path('image/<int:image_id>/download/', DownloadImageView.as_view(), name='download_image'),
-    path('image/<int:image_id>/delete/', DeleteImageView.as_view(), name='delete_image'),
-    path('image/<int:image_id>/details/', ImageDetailView.as_view(), name='image_detail'),
-    path('compare/', ImageComparisonView.as_view(), name='image_comparison'),
-    path('compare/result/', ImageComparisonResultView.as_view(), name='image_comparison_result'),
-    path('export/', ImageExportView.as_view(), name='export_images'),
+    path('', views.ImageManagementView.as_view(), name='image_management'),
+    path('upload/', views.ImageUploadView.as_view(), name='image_upload'),
+    path('upload/confirmation/', views.ImageUploadConfirmationView.as_view(), name='image_upload_confirmation'),
+    path('image/<int:image_id>/download/', views.DownloadImageView.as_view(), name='download_image'),
+    path('image/<int:image_id>/delete/', views.DeleteImageView.as_view(), name='delete_image'),
+    path('image/<int:image_id>/details/', views.ImageDetailView.as_view(), name='image_detail'),
+    path('export/', views.ImageExportView.as_view(), name='export_images'),
+
+    path('comparisons/', views.ImageComparisonListView.as_view(), name='comparison_list'),
+    path('comparison/create/', views.ImageComparisonCreateView.as_view(), name='comparison_create'),
+    path('comparison/<int:pk>/', views.ImageComparisonDetailView.as_view(), name='comparison_detail'),
 ]
