@@ -70,116 +70,146 @@ def whatsapp_webhook(request):
             data = json.loads(request.body)
             logger.debug(f"Webhook payload: {data}")
             
+            if 'object' not in data or data['object'] != 'whatsapp_business_account':
+                logger.warning("Invalid webhook object type")
+                return HttpResponse('Invalid webhook object', status=400)
+            
+            if 'entry' not in data or not data['entry']:
+                logger.warning("Missing entry data")
+                return HttpResponse('Missing entry data', status=400)
+            
             entry = data['entry'][0]
+            if 'changes' not in entry:
+                logger.warning("Missing changes array")
+                return HttpResponse('Missing changes data', status=400)
+            
             changes = entry['changes'][0]
+            if 'value' not in changes:
+                logger.warning("Missing value object")
+                return HttpResponse('Missing value data', status=400)
+            
             value = changes['value']
-            message = value['messages'][0]
-            message_id = message['id']
             
-            # Check if message already processed
-            if WhatsAppWebhook.objects.filter(message_id=message_id).exists():
-                logger.warning(f"Duplicate message received: {message_id}")
-                return HttpResponse('OK', status=200)
-            
-            phone_number = message['from']
-            message_text = message['text']['body'].strip()
-            
-            logger.info(f"Processing message from {phone_number}: {message_text[:50]}...")
-            
-            # Get or create user
-            user = get_or_create_user_whatsapp(phone_number)
-            logger.debug(f"User retrieved/created: {user.id}")
-            
-            # Get latest state
-            last_webhook = get_latest_state(phone_number)
-            current_state = last_webhook.conversation_state if last_webhook else 'MENU'
-            logger.debug(f"Current conversation state: {current_state}")
-            
-            # Create webhook record with initialized temp_data
-            webhook = WhatsAppWebhook.objects.create(
-                message_id=message['id'],
-                from_number=phone_number,
-                message_body=message_text,
-                timestamp=timezone.now(),
-                status='RECEIVED',
-                user=user,
-                conversation_state=current_state,
-                temp_data={}  # Initialize empty dict
-            )
-            logger.info(f"Created webhook record: {webhook.id}")
-
-            # Handle conversation states
-            if message_text == '3':  # Exit
-                logger.info(f"User {phone_number} exiting conversation")
-                send_whatsapp_response(phone_number, "Thank you for using VitiGo Query Management. Goodbye!")
-                webhook.conversation_state = 'MENU'
-                webhook.save()
-                return HttpResponse('OK', status=200)
-
-            if current_state == 'MENU' or message_text == '0':
-                logger.debug(f"Processing menu option: {message_text}")
-                if message_text == '1':
-                    webhook.conversation_state = 'AWAITING_SUBJECT'
-                    webhook.save()
-                    send_whatsapp_response(phone_number, "Please enter the subject for your query:")
+            # Handle different types of webhooks
+            if 'messages' in value and value['messages']:
+                message = value['messages'][0]
+                # Continue with existing message handling code
+                message_id = message['id']
                 
-                elif message_text == '2':
-                    queries = get_queries_whatsapp(phone_number)
-                    if queries:
-                        response = "Your recent queries:\n\n"
-                        response += "\n".join(format_query_status(q) for q in queries)
-                        response += "\n\nReply 0 for main menu, 3 to exit"
-                    else:
-                        response = "You have no queries yet.\n\nReply 0 for main menu, 3 to exit"
-                    send_whatsapp_response(phone_number, response)
+                # Check if message already processed
+                if WhatsAppWebhook.objects.filter(message_id=message_id).exists():
+                    logger.warning(f"Duplicate message received: {message_id}")
+                    return HttpResponse('OK', status=200)
                 
-                else:
-                    send_whatsapp_response(phone_number, MENU_TEXT)
-
-            elif current_state == 'AWAITING_SUBJECT':
-                logger.debug(f"Processing subject input: {message_text[:50]}...")
-                webhook.temp_data = {'subject': message_text}  # Create new dict
-                webhook.conversation_state = 'AWAITING_DESCRIPTION'
-                webhook.save()
-                send_whatsapp_response(phone_number, "Please provide details for your query:")
-
-            elif current_state == 'AWAITING_DESCRIPTION':
-                logger.debug(f"Processing query description: {message_text[:50]}...")
-                # Get last webhook with subject
-                last_webhook = WhatsAppWebhook.objects.filter(
+                phone_number = message['from']
+                message_text = message['text']['body'].strip()
+                
+                logger.info(f"Processing message from {phone_number}: {message_text[:50]}...")
+                
+                # Get or create user
+                user = get_or_create_user_whatsapp(phone_number)
+                logger.debug(f"User retrieved/created: {user.id}")
+                
+                # Get latest state
+                last_webhook = get_latest_state(phone_number)
+                current_state = last_webhook.conversation_state if last_webhook else 'MENU'
+                logger.debug(f"Current conversation state: {current_state}")
+                
+                # Create webhook record with initialized temp_data
+                webhook = WhatsAppWebhook.objects.create(
+                    message_id=message['id'],
                     from_number=phone_number,
-                    conversation_state='AWAITING_DESCRIPTION'
-                ).exclude(id=webhook.id).last()
-                
-                if not last_webhook or 'subject' not in last_webhook.temp_data:
-                    logger.error("Subject not found in conversation flow")
-                    send_whatsapp_response(phone_number, "Sorry, there was an error. Please start over.\n\n" + MENU_TEXT)
+                    message_body=message_text,
+                    timestamp=timezone.now(),
+                    status='RECEIVED',
+                    user=user,
+                    conversation_state=current_state,
+                    temp_data={}  # Initialize empty dict
+                )
+                logger.info(f"Created webhook record: {webhook.id}")
+
+                # Handle conversation states
+                if message_text == '3':  # Exit
+                    logger.info(f"User {phone_number} exiting conversation")
+                    send_whatsapp_response(phone_number, "Thank you for using VitiGo Query Management. Goodbye!")
                     webhook.conversation_state = 'MENU'
                     webhook.save()
                     return HttpResponse('OK', status=200)
 
-                # Create new query
-                query = Query.objects.create(
-                    user=user,
-                    subject=last_webhook.temp_data['subject'],
-                    description=message_text,
-                    source='WHATSAPP',
-                    status='NEW',
-                    contact_phone=phone_number
-                )
-                logger.info(f"Created new query: {query.query_id}")
-                
-                webhook.conversation_state = 'MENU'
-                webhook.save()
-                
-                response = """
+                if current_state == 'MENU' or message_text == '0':
+                    logger.debug(f"Processing menu option: {message_text}")
+                    if message_text == '1':
+                        webhook.conversation_state = 'AWAITING_SUBJECT'
+                        webhook.save()
+                        send_whatsapp_response(phone_number, "Please enter the subject for your query:")
+                    
+                    elif message_text == '2':
+                        queries = get_queries_whatsapp(phone_number)
+                        if queries:
+                            response = "Your recent queries:\n\n"
+                            response += "\n".join(format_query_status(q) for q in queries)
+                            response += "\n\nReply 0 for main menu, 3 to exit"
+                        else:
+                            response = "You have no queries yet.\n\nReply 0 for main menu, 3 to exit"
+                        send_whatsapp_response(phone_number, response)
+                    
+                    else:
+                        send_whatsapp_response(phone_number, MENU_TEXT)
+
+                elif current_state == 'AWAITING_SUBJECT':
+                    logger.debug(f"Processing subject input: {message_text[:50]}...")
+                    webhook.temp_data = {'subject': message_text}  # Create new dict
+                    webhook.conversation_state = 'AWAITING_DESCRIPTION'
+                    webhook.save()
+                    send_whatsapp_response(phone_number, "Please provide details for your query:")
+
+                elif current_state == 'AWAITING_DESCRIPTION':
+                    logger.debug(f"Processing query description: {message_text[:50]}...")
+                    # Get last webhook with subject
+                    last_webhook = WhatsAppWebhook.objects.filter(
+                        from_number=phone_number,
+                        conversation_state='AWAITING_DESCRIPTION'
+                    ).exclude(id=webhook.id).last()
+                    
+                    if not last_webhook or 'subject' not in last_webhook.temp_data:
+                        logger.error("Subject not found in conversation flow")
+                        send_whatsapp_response(phone_number, "Sorry, there was an error. Please start over.\n\n" + MENU_TEXT)
+                        webhook.conversation_state = 'MENU'
+                        webhook.save()
+                        return HttpResponse('OK', status=200)
+
+                    # Create new query
+                    query = Query.objects.create(
+                        user=user,
+                        subject=last_webhook.temp_data['subject'],
+                        description=message_text,
+                        source='WHATSAPP',
+                        status='NEW',
+                        contact_phone=phone_number
+                    )
+                    logger.info(f"Created new query: {query.query_id}")
+                    
+                    webhook.conversation_state = 'MENU'
+                    webhook.save()
+                    
+                    response = """
 Your query has been submitted successfully! 
 Our team will review it and get back to you.
 
 Reply 0 for main menu, 3 to exit
 """
-                send_whatsapp_response(phone_number, response)
+                    send_whatsapp_response(phone_number, response)
             
+            elif 'statuses' in value:
+                # Handle message status updates
+                logger.info("Received status update webhook")
+                return HttpResponse('OK', status=200)
+                
+            else:
+                # Handle other webhook types or system messages
+                logger.info(f"Received webhook type with fields: {list(value.keys())}")
+                return HttpResponse('OK', status=200)
+
             return HttpResponse('OK', status=200)
             
         except KeyError as e:
