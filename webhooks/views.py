@@ -578,15 +578,6 @@ Type 0 for main menu, 3 to exit
         except Exception as inner_e:
             logger.error(f"Error sending error response: {str(inner_e)}", exc_info=True)
 
-def setup_instagram_webhooks(request):
-    try:
-        result = subscribe_to_webhooks()
-        return JsonResponse({
-            'status': 'success',
-            'result': result
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
+def chatbot_webhook(request):
+    logger.info("chatbot webhook triggered")
+    return JsonResponse({'status': 'success', 'message': 'Chatbot webhook received'})
