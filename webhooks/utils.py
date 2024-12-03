@@ -27,17 +27,32 @@ Welcome to VitiGo Query Management!
 Type a number to continue.
 """
 
-def get_or_create_user(phone_number):
+def get_or_create_user_whatsapp(phone_number):
     """Get or create user based on phone number"""
     logger.debug(f"Getting/creating user for phone: {phone_number}")
     User = get_user_model()
     user = User.objects.filter(phone_number=phone_number).first()
     if not user:
         logger.info(f"Creating new user for phone: {phone_number}")
-        email = f"whatsapp_{phone_number}@temp.com"
+        email = f"{phone_number}@temp.com"
         user = User.objects.create(
             email=email,
             phone_number=phone_number,
+            is_active=True
+        )
+    return user
+
+def get_or_create_user_messenger(psid):
+    """Get or create user based on psid"""
+    logger.debug(f"Getting/creating user for psid: {psid}")
+    User = get_user_model()
+    user = User.objects.filter(psid=psid).first()
+    if not user:
+        logger.info(f"Creating new user for psid: {psid}")
+        email = f"{psid}@temp.com"
+        user = User.objects.create(
+            email=email,
+            psid=psid,
             is_active=True
         )
     return user
@@ -56,16 +71,16 @@ def get_messenger_latest_state(psid):
         psid=psid
     ).order_by('-created_at').first()
 
-def get_user_queries(phone_number):
+def get_queries_whatsapp(phone_number):
     """Get queries for a phone number"""
     logger.debug(f"Fetching queries for phone: {phone_number}")
     return Query.objects.filter(
         contact_phone=phone_number
     ).order_by('-created_at')[:5]
 
-def get_messenger_queries(psid):
+def get_queries_messenger(psid):
     """Get queries for a PSID"""
-    user = get_user_model().objects.filter(facebook_psid=psid).first()
+    user = get_user_model().objects.filter(psid=psid).first()
     if not user:
         return []
     return Query.objects.filter(user=user).order_by('-created_at')[:5]

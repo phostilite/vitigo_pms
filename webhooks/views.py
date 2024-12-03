@@ -5,7 +5,7 @@ from django.utils import timezone
 from query_management.models import Query
 import json
 from .models import WhatsAppWebhook, FacebookMessengerWebhook
-from .utils import get_or_create_user, get_latest_state, get_user_queries, format_query_status, send_whatsapp_response, MENU_TEXT, send_messenger_response, MESSENGER_MENU_TEXT, get_messenger_queries, get_messenger_latest_state
+from .utils import get_or_create_user_whatsapp, get_or_create_user_messenger, get_latest_state, get_queries_whatsapp, format_query_status, send_whatsapp_response, MENU_TEXT, send_messenger_response, MESSENGER_MENU_TEXT, get_queries_messenger, get_messenger_latest_state
 from django.conf import settings
 import logging
 
@@ -50,7 +50,7 @@ def whatsapp_webhook(request):
             logger.info(f"Processing message from {phone_number}: {message_text[:50]}...")
             
             # Get or create user
-            user = get_or_create_user(phone_number)
+            user = get_or_create_user_whatsapp(phone_number)
             logger.debug(f"User retrieved/created: {user.id}")
             
             # Get latest state
@@ -87,7 +87,7 @@ def whatsapp_webhook(request):
                     send_whatsapp_response(phone_number, "Please enter the subject for your query:")
                 
                 elif message_text == '2':
-                    queries = get_user_queries(phone_number)
+                    queries = get_queries_whatsapp(phone_number)
                     if queries:
                         response = "Your recent queries:\n\n"
                         response += "\n".join(format_query_status(q) for q in queries)
@@ -189,7 +189,7 @@ def messenger_webhook(request):
                             continue
                         
                         # Get or create user
-                        user = get_or_create_user(sender_psid)
+                        user = get_or_create_user_messenger(sender_psid)
                         
                         # Get latest state
                         last_webhook = get_messenger_latest_state(sender_psid)
@@ -220,7 +220,7 @@ def messenger_webhook(request):
                                 send_messenger_response(sender_psid, "Please enter the subject for your query:")
                             
                             elif message_text == '2':
-                                queries = get_messenger_queries(sender_psid)
+                                queries = get_queries_messenger(sender_psid)
                                 if queries:
                                     response = "Your recent queries:\n\n"
                                     response += "\n".join(format_query_status(q) for q in queries)

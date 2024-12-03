@@ -33,6 +33,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
     country_code = models.CharField(max_length=5, blank=True, help_text="e.g. +91")
     phone_number = models.CharField(max_length=15, blank=True)
+    psid = models.CharField(max_length=255, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
