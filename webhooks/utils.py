@@ -6,6 +6,8 @@ from .models import WhatsAppWebhook, FacebookMessengerWebhook, InstagramWebhook
 from django.conf import settings
 import requests
 import logging
+import hmac
+import hashlib
 
 logger = logging.getLogger('query_management')
 
@@ -123,6 +125,17 @@ def get_queries_instagram(igsid):
         return []
     return Query.objects.filter(user=user).order_by('-created_at')[:5]
 
+def verify_instagram_signature(request_signature, payload, app_secret):
+    """Verify Instagram webhook payload signature"""
+    expected_signature = hmac.new(
+        app_secret.encode('utf-8'),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(request_signature, f"sha256={expected_signature}")
+
+
 def format_query_status(query):
     """Format query status for WhatsApp message"""
     return f"""
@@ -218,26 +231,28 @@ def send_messenger_media(psid, media_url, media_type='image'):
 def send_instagram_response(igsid, message_text):
     """Send Instagram DM"""
     logger.info(f"Sending Instagram message to {igsid}")
-    logger.debug(f"Message content: {message_text[:100]}...")
     
     url = f"https://graph.instagram.com/v21.0/{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/messages"
     
+    payload = {
+        "recipient": {"id": igsid},
+        "message": {"text": message_text},
+        "messaging_type": "RESPONSE"
+    }
+    
     try:
-        response = requests.post(url, json={
-            "recipient": {"id": igsid},
-            "message": {"text": message_text}
-        }, headers={
-            "Authorization": f"Bearer {settings.INSTAGRAM_ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        })
+        response = requests.post(url, 
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {settings.INSTAGRAM_ACCESS_TOKEN}",
+                "Content-Type": "application/json"
+            }
+        )
         
-        response_data = response.json()
         if response.status_code != 200:
-            logger.error(f"Instagram API error: {response_data}")
-        else:
-            logger.debug(f"Instagram API response: {response_data}")
-        return response_data
-    except requests.exceptions.RequestException as e:
+            logger.error(f"Instagram API error: {response.text}")
+        return response.json()
+    except Exception as e:
         logger.error(f"Instagram API request failed: {str(e)}", exc_info=True)
         raise
 

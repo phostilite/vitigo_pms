@@ -34,6 +34,7 @@ from .utils import (
     get_queries_instagram,
     send_instagram_response,
     send_instagram_media,
+    verify_instagram_signature,
     
     format_query_status,
 
@@ -328,6 +329,14 @@ def instagram_webhook(request):
 
     if request.method == 'POST':
         logger.info("Received Instagram webhook POST request")
+        signature = request.headers.get('X-Hub-Signature-256', '')
+        if not verify_instagram_signature(
+            signature, 
+            request.body, 
+            settings.INSTAGRAM_APP_SECRET
+        ):
+            logger.warning("Invalid Instagram webhook signature")
+            return HttpResponse('Invalid signature', status=403)
         try:
             data = json.loads(request.body)
             logger.debug(f"Instagram webhook payload: {data}")
