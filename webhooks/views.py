@@ -608,6 +608,34 @@ Type 0 for main menu, 3 to exit
         except Exception as inner_e:
             logger.error(f"Error sending error response: {str(inner_e)}", exc_info=True)
 
+@csrf_exempt
 def chatbot_webhook(request):
-    logger.info("chatbot webhook triggered")
-    return JsonResponse({'status': 'success', 'message': 'Chatbot webhook received'})
+    """Handle Crisp chatbot webhooks"""
+    logger.info("====== Crisp Chatbot Webhook Request Started ======")
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            logger.info(f"Received chatbot webhook data: {json.dumps(data, indent=2)}")
+            
+            # Log specific fields of interest
+            website_id = data.get('website_id')
+            event = data.get('event')
+            message_data = data.get('data', {})
+            
+            logger.info(f"Website ID: {website_id}")
+            logger.info(f"Event Type: {event}")
+            logger.info(f"Message: {message_data.get('content')}")
+            logger.info(f"From: {message_data.get('from')}")
+            logger.info(f"User: {message_data.get('user', {}).get('nickname')}")
+            
+            return JsonResponse({'status': 'success', 'message': 'Webhook received and processed'})
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in webhook: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON payload'}, status=400)
+        except Exception as e:
+            logger.error(f"Error processing webhook: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': 'Internal server error'}, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
