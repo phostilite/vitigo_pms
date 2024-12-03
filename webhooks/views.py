@@ -1,14 +1,49 @@
 # webhooks/views.py
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from query_management.models import Query
+
+# Python standard library
 import json
-from .models import WhatsAppWebhook, FacebookMessengerWebhook
-from .utils import get_or_create_user_whatsapp, get_or_create_user_messenger, get_latest_state, get_queries_whatsapp, format_query_status, send_whatsapp_response, MENU_TEXT, send_messenger_response, MESSENGER_MENU_TEXT, get_queries_messenger, get_messenger_latest_state
-from django.conf import settings
 import logging
 
+# Django imports
+from django.conf import settings
+from django.http import HttpResponse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+
+# Local application imports
+from query_management.models import Query
+from .models import WhatsAppWebhook, FacebookMessengerWebhook, InstagramWebhook
+from .utils import (
+    
+    #
+    get_or_create_user_whatsapp,
+    get_latest_state,
+    get_queries_whatsapp,
+    send_whatsapp_response,
+    
+    # 
+    get_or_create_user_messenger,
+    get_messenger_latest_state,
+    get_queries_messenger,
+    send_messenger_response,
+    send_messenger_media,
+
+    #
+    get_or_create_user_instagram,
+    get_instagram_latest_state,
+    get_queries_instagram,
+    send_instagram_response,
+    send_instagram_media,
+    
+    format_query_status,
+
+    # Constants
+    MENU_TEXT,
+    MESSENGER_MENU_TEXT,
+    INSTAGRAM_MENU_TEXT
+)
+
+# Logger configuration
 logger = logging.getLogger('query_management')
 
 # webhooks/views.py
@@ -274,4 +309,140 @@ Type 0 for main menu, 3 to exit
             
         except Exception as e:
             logger.error(f"Error processing Messenger webhook: {str(e)}", exc_info=True)
+            return HttpResponse('Error processing webhook', status=500)
+        
+
+@csrf_exempt
+def instagram_webhook(request):
+    if request.method == 'GET':
+        logger.info("Received Instagram verification request")
+        mode = request.GET.get('hub.mode')
+        token = request.GET.get('hub.verify_token')
+        challenge = request.GET.get('hub.challenge')
+        
+        if mode and token and mode == 'subscribe' and token == settings.INSTAGRAM_VERIFY_TOKEN:
+            logger.info("Instagram webhook verified successfully")
+            return HttpResponse(challenge, content_type='text/plain')
+        logger.warning(f"Invalid Instagram verification attempt with token: {token}")
+        return HttpResponse('Invalid verification token', status=403)
+
+    if request.method == 'POST':
+        logger.info("Received Instagram webhook POST request")
+        try:
+            data = json.loads(request.body)
+            logger.debug(f"Instagram webhook payload: {data}")
+            
+            for entry in data['entry']:
+                for messaging in entry.get('messaging', []):
+                    sender_igsid = messaging['sender']['id']
+                    message = messaging.get('message', {})
+                    message_id = message.get('mid')
+                    
+                    if not message_id:
+                        continue
+                        
+                    # Check for duplicate message
+                    if InstagramWebhook.objects.filter(message_id=message_id).exists():
+                        logger.warning(f"Duplicate Instagram message received: {message_id}")
+                        continue
+                    
+                    # Get or create user
+                    user = get_or_create_user_instagram(sender_igsid)
+                    
+                    # Get latest state
+                    last_webhook = get_instagram_latest_state(sender_igsid)
+                    current_state = last_webhook.conversation_state if last_webhook else 'MENU'
+                    
+                    message_text = message.get('text', '')
+                    message_type = 'text'
+                    media_url = None
+                    
+                    # Handle different message types
+                    if 'attachments' in message:
+                        for attachment in message['attachments']:
+                            if attachment['type'] in ['image', 'video', 'audio']:
+                                message_type = attachment['type']
+                                media_url = attachment.get('payload', {}).get('url')
+                    
+                    # Create webhook record
+                    webhook = InstagramWebhook.objects.create(
+                        igsid=sender_igsid,
+                        message_id=message_id,
+                        message_body=message_text,
+                        message_type=message_type,
+                        media_url=media_url,
+                        timestamp=timezone.now(),
+                        status='RECEIVED',
+                        user=user,
+                        conversation_state=current_state
+                    )
+
+                    # Handle conversation states
+                    if message_text == '3':  # Exit
+                        send_instagram_response(sender_igsid, "Thank you for using VitiGo Query Management. Goodbye!")
+                        webhook.conversation_state = 'MENU'
+                        webhook.save()
+                        continue
+
+                    if current_state == 'MENU' or message_text == '0':
+                        if message_text == '1':
+                            webhook.conversation_state = 'AWAITING_SUBJECT'
+                            webhook.save()
+                            send_instagram_response(sender_igsid, "Please enter the subject for your query:")
+                        
+                        elif message_text == '2':
+                            queries = get_queries_instagram(sender_igsid)
+                            if queries:
+                                response = "Your recent queries:\n\n"
+                                response += "\n".join(format_query_status(q) for q in queries)
+                                response += "\n\nType 0 for main menu, 3 to exit"
+                            else:
+                                response = "You have no queries yet.\n\nType 0 for main menu, 3 to exit"
+                            send_instagram_response(sender_igsid, response)
+                        
+                        else:
+                            send_instagram_response(sender_igsid, INSTAGRAM_MENU_TEXT)
+
+                    elif current_state == 'AWAITING_SUBJECT':
+                        webhook.temp_data = {'subject': message_text}
+                        webhook.conversation_state = 'AWAITING_DESCRIPTION'
+                        webhook.save()
+                        send_instagram_response(sender_igsid, "Please provide details for your query:")
+
+                    elif current_state == 'AWAITING_DESCRIPTION':
+                        last_webhook = InstagramWebhook.objects.filter(
+                            igsid=sender_igsid,
+                            conversation_state='AWAITING_DESCRIPTION'
+                        ).exclude(id=webhook.id).last()
+
+                        if not last_webhook or 'subject' not in last_webhook.temp_data:
+                            send_instagram_response(sender_igsid, "Sorry, there was an error. Please start over.\n\n" + INSTAGRAM_MENU_TEXT)
+                            webhook.conversation_state = 'MENU'
+                            webhook.save()
+                            continue
+
+                        # Create new query
+                        query = Query.objects.create(
+                            user=user,
+                            subject=last_webhook.temp_data['subject'],
+                            description=message_text,
+                            source='INSTAGRAM',
+                            status='NEW'
+                        )
+                        
+                        webhook.conversation_state = 'MENU'
+                        webhook.save()
+                        
+                        response = """
+Your query has been submitted successfully! 
+Our team will review it and get back to you.
+
+Type 0 for main menu, 3 to exit
+"""
+                        send_instagram_response(sender_igsid, response)
+            
+            return HttpResponse('OK', status=200)
+            
+        except Exception as e:
+            logger.error(f"Error processing Instagram webhook: {str(e)}", exc_info=True)
             return HttpResponse('Error processing webhook', status=500)

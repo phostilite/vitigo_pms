@@ -2,7 +2,7 @@
 import re
 from django.contrib.auth import get_user_model
 from query_management.models import Query
-from .models import WhatsAppWebhook, FacebookMessengerWebhook
+from .models import WhatsAppWebhook, FacebookMessengerWebhook, InstagramWebhook
 from django.conf import settings
 import requests
 import logging
@@ -19,6 +19,15 @@ Reply with a number to continue.
 """
 
 MESSENGER_MENU_TEXT = """
+Welcome to VitiGo Query Management!
+1. Create new query
+2. View my queries
+3. Exit
+
+Type a number to continue.
+"""
+
+INSTAGRAM_MENU_TEXT = """
 Welcome to VitiGo Query Management!
 1. Create new query
 2. View my queries
@@ -57,6 +66,21 @@ def get_or_create_user_messenger(psid):
         )
     return user
 
+def get_or_create_user_instagram(igsid):
+    """Get or create user based on Instagram-scoped ID"""
+    logger.debug(f"Getting/creating user for IGSID: {igsid}")
+    User = get_user_model()
+    user = User.objects.filter(igsid=igsid).first()
+    if not user:
+        logger.info(f"Creating new user for IGSID: {igsid}")
+        email = f"{igsid}@temp.instagram.com"
+        user = User.objects.create(
+            email=email,
+            igsid=igsid,
+            is_active=True
+        )
+    return user
+
 def get_latest_state(phone_number):
     """Get user's latest conversation state"""
     logger.debug(f"Fetching latest state for phone: {phone_number}")
@@ -71,6 +95,13 @@ def get_messenger_latest_state(psid):
         psid=psid
     ).order_by('-created_at').first()
 
+def get_instagram_latest_state(igsid):
+    """Get user's latest Instagram conversation state"""
+    logger.debug(f"Fetching latest Instagram state for IGSID: {igsid}")
+    return InstagramWebhook.objects.filter(
+        igsid=igsid
+    ).order_by('-created_at').first()
+
 def get_queries_whatsapp(phone_number):
     """Get queries for a phone number"""
     logger.debug(f"Fetching queries for phone: {phone_number}")
@@ -81,6 +112,13 @@ def get_queries_whatsapp(phone_number):
 def get_queries_messenger(psid):
     """Get queries for a PSID"""
     user = get_user_model().objects.filter(psid=psid).first()
+    if not user:
+        return []
+    return Query.objects.filter(user=user).order_by('-created_at')[:5]
+
+def get_queries_instagram(igsid):
+    """Get queries for an Instagram user"""
+    user = get_user_model().objects.filter(igsid=igsid).first()
     if not user:
         return []
     return Query.objects.filter(user=user).order_by('-created_at')[:5]
@@ -175,4 +213,57 @@ def send_messenger_media(psid, media_url, media_type='image'):
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Messenger media send failed: {str(e)}", exc_info=True)
+        raise
+
+def send_instagram_response(igsid, message_text):
+    """Send Instagram DM"""
+    logger.info(f"Sending Instagram message to {igsid}")
+    logger.debug(f"Message content: {message_text[:100]}...")
+    
+    url = f"https://graph.instagram.com/v21.0/{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/messages"
+    
+    try:
+        response = requests.post(url, json={
+            "recipient": {"id": igsid},
+            "message": {"text": message_text}
+        }, headers={
+            "Authorization": f"Bearer {settings.INSTAGRAM_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        
+        response_data = response.json()
+        if response.status_code != 200:
+            logger.error(f"Instagram API error: {response_data}")
+        else:
+            logger.debug(f"Instagram API response: {response_data}")
+        return response_data
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Instagram API request failed: {str(e)}", exc_info=True)
+        raise
+
+def send_instagram_media(igsid, media_url, media_type='image'):
+    """Send media via Instagram DM"""
+    logger.info(f"Sending Instagram {media_type} to {igsid}")
+    
+    url = f"https://graph.instagram.com/v21.0/{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/messages"
+    
+    try:
+        response = requests.post(url, json={
+            "recipient": {"id": igsid},
+            "message": {
+                "attachment": {
+                    "type": media_type,
+                    "payload": {
+                        "url": media_url,
+                    }
+                }
+            }
+        }, headers={
+            "Authorization": f"Bearer {settings.INSTAGRAM_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Instagram media send failed: {str(e)}", exc_info=True)
         raise
