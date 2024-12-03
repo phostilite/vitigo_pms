@@ -8,20 +8,23 @@ from patient_management.models import Patient, MedicalHistory, Medication, Vitil
 import random
 from datetime import timedelta
 from faker import Faker
+from django.db import IntegrityError
 
 User = get_user_model()
 fake = Faker()
 
 class Command(BaseCommand):
-    help = 'Creates a patient user and populates related patient data'
+    help = 'Creates patient profiles for existing patient users and creates new patient users'
 
     def add_arguments(self, parser):
         parser.add_argument('--email', type=str, help='Specify email for the patient user')
         parser.add_argument('--password', type=str, help='Specify password for the patient user')
         parser.add_argument('--count', type=int, default=1, help='Number of patients to create')
+        parser.add_argument('--only-existing', action='store_true', help='Only create profiles for existing patients')
 
     def handle(self, *args, **options):
         count = options['count']
+        only_existing = options.get('only_existing', False)
         
         # Get or create patient role
         patient_role, _ = Role.objects.get_or_create(
@@ -32,29 +35,44 @@ class Command(BaseCommand):
             }
         )
 
-        for _ in range(count):
-            # Create user with specified or random email
-            email = options['email'] or fake.email()
-            password = options['password'] or 'defaultpass123'
-            
-            # Check if user exists
-            if User.objects.filter(email=email).exists():
-                self.stdout.write(self.style.WARNING(f'User {email} already exists'))
-                continue
+        # Process existing patient users
+        existing_patient_users = User.objects.filter(role__name='PATIENT')
+        for user in existing_patient_users:
+            try:
+                # Try to get existing patient profile
+                Patient.objects.get(user=user)
+                self.stdout.write(self.style.WARNING(f'Patient profile already exists for: {user.email}'))
+            except Patient.DoesNotExist:
+                try:
+                    self.create_patient_profile(user)
+                    self.stdout.write(self.style.SUCCESS(f'Created profile for existing patient: {user.email}'))
+                except IntegrityError:
+                    self.stdout.write(self.style.ERROR(f'Failed to create profile for: {user.email} - Integrity Error'))
 
-            # Create user with patient role
-            user = User.objects.create_user(
-                email=email,
-                password=password,
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                role=patient_role,
-                is_active=True
-            )
+        # Create new users if not only processing existing ones
+        if not only_existing:
+            for _ in range(count):
+                email = options['email'] or fake.email()
+                password = options['password'] or 'defaultpass123'
+                
+                if User.objects.filter(email=email).exists():
+                    self.stdout.write(self.style.WARNING(f'User {email} already exists'))
+                    continue
 
-            # Create patient profile
-            self.create_patient_profile(user)
-            self.stdout.write(self.style.SUCCESS(f'Successfully created patient user: {email}'))
+                user = User.objects.create_user(
+                    email=email,
+                    password=password,
+                    first_name=fake.first_name(),
+                    last_name=fake.last_name(),
+                    role=patient_role,
+                    is_active=True
+                )
+
+                try:
+                    self.create_patient_profile(user)
+                    self.stdout.write(self.style.SUCCESS(f'Created new patient user with profile: {email}'))
+                except IntegrityError:
+                    self.stdout.write(self.style.ERROR(f'Failed to create profile for new user: {email} - Integrity Error'))
 
     def create_patient_profile(self, user):
         patient = Patient.objects.create(
