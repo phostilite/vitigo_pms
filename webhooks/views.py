@@ -6,7 +6,7 @@ import logging
 
 # Django imports
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
@@ -35,6 +35,7 @@ from .utils import (
     send_instagram_response,
     send_instagram_media,
     verify_instagram_signature,
+    subscribe_to_webhooks,
     
     format_query_status,
 
@@ -455,3 +456,17 @@ Type 0 for main menu, 3 to exit
         except Exception as e:
             logger.error(f"Error processing Instagram webhook: {str(e)}", exc_info=True)
             return HttpResponse('Error processing webhook', status=500)
+        
+
+def setup_instagram_webhooks(request):
+    try:
+        result = subscribe_to_webhooks()
+        return JsonResponse({
+            'status': 'success',
+            'result': result
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

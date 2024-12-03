@@ -136,6 +136,16 @@ def verify_instagram_signature(request_signature, payload, app_secret):
     return hmac.compare_digest(request_signature, f"sha256={expected_signature}")
 
 
+def subscribe_to_webhooks():
+    url = f"https://graph.instagram.com/v21.0/{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/subscribed_apps"
+    params = {
+        "subscribed_fields": "messages,messaging_postbacks,messaging_optins,message_reactions,messaging_referrals,messaging_seen",
+        "access_token": settings.INSTAGRAM_ACCESS_TOKEN
+    }
+    response = requests.post(url, params=params)
+    return response.json()
+
+
 def format_query_status(query):
     """Format query status for WhatsApp message"""
     return f"""

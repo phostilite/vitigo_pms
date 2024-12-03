@@ -6,4 +6,5 @@ urlpatterns = [
     path('whatsapp/', views.whatsapp_webhook, name='whatsapp_webhook'),
     path('messenger/', views.messenger_webhook, name='messenger_webhook'),
     path('instagram/', views.instagram_webhook, name='instagram_webhook'),
+    path('setup-instagram-webhooks/', views.setup_instagram_webhooks, name='setup_instagram_webhooks'),
 ]
