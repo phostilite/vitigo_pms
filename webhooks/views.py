@@ -9,6 +9,7 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import get_user_model
 
 # Local application imports
 from query_management.models import Query
@@ -608,6 +609,12 @@ Type 0 for main menu, 3 to exit
         except Exception as inner_e:
             logger.error(f"Error sending error response: {str(inner_e)}", exc_info=True)
 
+GREETING_PATTERNS = [
+    'hi', 'hello', 'hey', 'hii', 'hola', 'greetings', 
+    'good morning', 'good afternoon', 'good evening',
+    'hi there', 'hello there', 'namaste'
+]
+
 @csrf_exempt
 def chatbot_webhook(request):
     """Handle Crisp chatbot webhooks"""
@@ -618,18 +625,52 @@ def chatbot_webhook(request):
             data = json.loads(request.body)
             logger.info(f"Received chatbot webhook data: {json.dumps(data, indent=2)}")
             
-            # Log specific fields of interest
-            website_id = data.get('website_id')
-            event = data.get('event')
             message_data = data.get('data', {})
+            message_content = message_data.get('content', '').strip()
+            user_data = message_data.get('user', {})
+            nickname = user_data.get('nickname', '')
             
-            logger.info(f"Website ID: {website_id}")
-            logger.info(f"Event Type: {event}")
-            logger.info(f"Message: {message_data.get('content')}")
-            logger.info(f"From: {message_data.get('from')}")
-            logger.info(f"User: {message_data.get('user', {}).get('nickname')}")
+            # Skip processing for greeting messages
+            if is_greeting(message_content):
+                logger.info(f"Skipping greeting message: {message_content}")
+                return JsonResponse({'status': 'success', 'message': 'Greeting message ignored'})
             
-            return JsonResponse({'status': 'success', 'message': 'Webhook received and processed'})
+            # Get or create user
+            try:
+                User = get_user_model()
+                email = f"{nickname}@temp.com"
+                user, created = User.objects.get_or_create(
+                    email=email,
+                    defaults={
+                        'is_active': True,
+                    }
+                )
+                if created:
+                    logger.info(f"Created new user with email: {email}")
+            except Exception as e:
+                logger.error(f"Error creating user: {str(e)}")
+                return JsonResponse({'status': 'error', 'message': 'User creation failed'}, status=500)
+            
+            # Create query
+            try:
+                query = Query.objects.create(
+                    user=user,
+                    subject=f"Chat Query from {nickname}",
+                    description=message_content,
+                    source='CHATBOT',
+                    status='NEW',
+                    query_type='GENERAL'
+                )
+                logger.info(f"Created new query {query.query_id} for user {nickname}")
+            except Exception as e:
+                logger.error(f"Error creating query: {str(e)}")
+                return JsonResponse({'status': 'error', 'message': 'Query creation failed'}, status=500)
+            
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Query created successfully',
+                'query_id': query.query_id
+            })
             
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in webhook: {str(e)}")
@@ -639,3 +680,11 @@ def chatbot_webhook(request):
             return JsonResponse({'status': 'error', 'message': 'Internal server error'}, status=500)
     
     return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+def is_greeting(message):
+    """Check if message is a greeting"""
+    message = message.lower().strip()
+    return (
+        message in GREETING_PATTERNS or
+        len(message) < 10 
+    )
