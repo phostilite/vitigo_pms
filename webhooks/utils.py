@@ -139,7 +139,7 @@ def verify_instagram_signature(request_signature, payload, app_secret):
 def subscribe_to_webhooks():
     url = f"https://graph.instagram.com/v21.0/{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/subscribed_apps"
     params = {
-        "subscribed_fields": "messages,messaging_postbacks,messaging_optins,message_reactions,messaging_referrals,messaging_seen",
+        "subscribed_fields": "messages,messaging_postbacks,messaging_optins,message_reactions,messaging_referral,messaging_seen",  
         "access_token": settings.INSTAGRAM_ACCESS_TOKEN
     }
     response = requests.post(url, params=params)
