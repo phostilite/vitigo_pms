@@ -10,13 +10,16 @@ class PatientImageUploadForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select rounded-lg'})
     )
     consultation = forms.ModelChoiceField(
-        queryset=Consultation.objects.all(),
-        widget=forms.Select(attrs={'class': 'form-select rounded-lg'})
+        queryset=Consultation.objects.none(),  # Start with empty queryset
+        widget=forms.Select(attrs={
+            'class': 'form-select rounded-lg',
+            'disabled': 'disabled'  # Initially disabled
+        })
     )
 
     class Meta:
         model = PatientImage
-        fields = ['patient', 'image_file', 'body_part', 'image_type', 'consultation', 'date_taken', 'notes', 'is_private']
+        fields = ['patient', 'image_file', 'body_part', 'image_type', 'upload_type', 'consultation', 'date_taken', 'notes', 'is_private']
         widgets = {
             'date_taken': forms.DateInput(attrs={'type': 'date', 'max': date.today().isoformat()}),
             'notes': forms.Textarea(attrs={'rows': 3}),

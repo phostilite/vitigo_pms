@@ -24,6 +24,11 @@ class ImageTag(models.Model):
 
 
 class PatientImage(models.Model):
+    UPLOAD_TYPE_CHOICES = [
+        ('PROGRESS', 'Progress Update'),
+        ('PROBLEM', 'Problem Report')
+    ]
+
     IMAGE_TYPE_CHOICES = [
         ('CLINIC', 'Clinic Taken'),
         ('PATIENT', 'Patient Uploaded'),
@@ -33,6 +38,11 @@ class PatientImage(models.Model):
     image_file = models.ImageField(upload_to='patient_images/')
     body_part = models.ForeignKey(BodyPart, on_delete=models.SET_NULL, null=True)
     image_type = models.CharField(max_length=10, choices=IMAGE_TYPE_CHOICES)
+    upload_type = models.CharField(
+        max_length=10, 
+        choices=UPLOAD_TYPE_CHOICES,
+        default='PROGRESS'
+    )
     date_taken = models.DateField()
     uploaded_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True)
