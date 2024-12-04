@@ -753,3 +753,12 @@ class ImageComparisonDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailV
     def handle_no_permission(self):
         messages.error(self.request, "You don't have permission to view image comparisons.")
         return redirect('image_management')
+    
+
+class Human3DModelView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'image_management')
+    
+    def get(self, request):
+        template_path = get_template_path('human_3d_model.html', request.user.role)
+        return render(request, template_path)

@@ -13,4 +13,6 @@ urlpatterns = [
     path('comparisons/', views.ImageComparisonListView.as_view(), name='comparison_list'),
     path('comparison/create/', views.ImageComparisonCreateView.as_view(), name='comparison_create'),
     path('comparison/<int:pk>/', views.ImageComparisonDetailView.as_view(), name='comparison_detail'),
+
+    path('human-3d/', views.Human3DModelView.as_view(), name='human_3d'),
 ]
