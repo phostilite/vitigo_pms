@@ -3,6 +3,7 @@ from .models import PatientImage, Patient, ImageAnnotation
 from datetime import date
 from django.conf import settings
 from consultation_management.models import Consultation
+from django.contrib.auth import get_user_model
 
 class PatientImageUploadForm(forms.ModelForm):
     patient = forms.ModelChoiceField(
@@ -10,16 +11,23 @@ class PatientImageUploadForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select rounded-lg'})
     )
     consultation = forms.ModelChoiceField(
-        queryset=Consultation.objects.none(),  # Start with empty queryset
+        queryset=Consultation.objects.all(), 
         widget=forms.Select(attrs={
             'class': 'form-select rounded-lg',
-            'disabled': 'disabled'  # Initially disabled
+        })
+    )
+    tagged_users = forms.ModelMultipleChoiceField(
+        queryset=get_user_model().objects.exclude(role__name='PATIENT'),
+        required=False,
+        widget=forms.SelectMultiple(attrs={
+            'class': 'form-select rounded-lg',
+            'size': '5' 
         })
     )
 
     class Meta:
         model = PatientImage
-        fields = ['patient', 'image_file', 'body_part', 'image_type', 'upload_type', 'consultation', 'date_taken', 'notes', 'is_private']
+        fields = ['patient', 'image_file', 'body_part', 'image_type', 'upload_type', 'consultation', 'date_taken', 'notes', 'is_private', 'tagged_users']
         widgets = {
             'date_taken': forms.DateInput(attrs={'type': 'date', 'max': date.today().isoformat()}),
             'notes': forms.Textarea(attrs={'rows': 3}),

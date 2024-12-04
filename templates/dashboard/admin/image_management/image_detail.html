@@ -161,6 +161,36 @@
                             <p class="font-medium text-gray-900">{{ image.uploaded_by.get_full_name }}</p>
                         </div>
                     </div>
+                    {% if image.tagged_users.exists %}
+                    <div class="py-3">
+                        <p class="text-sm text-gray-600 mb-2">Tagged Users</p>
+                        <div class="space-y-2">
+                            {% for tagged_user in image.tagged_users.all %}
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    {% if tagged_user.profile_picture %}
+                                        <img src="{{ tagged_user.profile_picture.url }}" alt="{{ tagged_user.get_full_name }}" 
+                                             class="w-8 h-8 rounded-full object-cover">
+                                    {% else %}
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                            <i class="fas {% if tagged_user.role.name == 'DOCTOR' %}fa-user-md{% else %}fa-user-nurse{% endif %} text-blue-600"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <p class="font-medium text-gray-900">{{ tagged_user.get_full_name }}</p>
+                                        <p class="text-xs text-gray-500">{{ tagged_user.role.display_name }}</p>
+                                    </div>
+                                </div>
+                                {% if tagged_user.email %}
+                                <a href="mailto:{{ tagged_user.email }}" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-envelope"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
