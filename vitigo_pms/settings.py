@@ -79,6 +79,8 @@ INSTALLED_APPS = [
     'settings',
     'access_control',
     'webhooks',
+    'sandbox',
+    'body_mapping',
 ]
 
 MIDDLEWARE = [
