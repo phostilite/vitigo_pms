@@ -332,6 +332,13 @@ class ImageDetailView(LoginRequiredMixin, View):
             image = PatientImage.objects.select_related(
                 'patient', 'patient__user', 'body_part', 'uploaded_by'
             ).get(id=image_id)
+
+            file_size = None
+            if image.image_file:
+                try:
+                    file_size = default_storage.size(image.image_file.name)
+                except Exception:
+                    file_size = None
             
             # Get all images of the same patient
             related_images = PatientImage.objects.filter(
@@ -353,6 +360,7 @@ class ImageDetailView(LoginRequiredMixin, View):
             
             context = {
                 'image': image,
+                'file_size': file_size, 
                 'related_images': related_images,
                 'comparisons': comparisons,
                 'annotations': annotations,
