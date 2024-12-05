@@ -15,6 +15,11 @@ from patient_management.models import Patient, MedicalHistory
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.urls import reverse_lazy
 from access_control.models import Role
+from django.http import Http404
+from error_handling.views import handler404, handler500, handler403, handler400
+from django.db.models import Q
+from appointment_management.models import Appointment
+from consultation_management.models import Consultation 
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +192,7 @@ class UserManagementView(View):
 
         except Exception as e:
             logger.error(f"Error in UserManagementView: {str(e)}")
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            return handler500(request, exception=str(e))
         
 class UserProfileView(View):
     def get_template_name(self):
@@ -250,7 +255,7 @@ class UserProfileView(View):
         except Exception as e:
             logger.error(f"Error in UserProfileView: {str(e)}")
             messages.error(request, "An error occurred while loading your profile.")
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            return handler500(request, exception=str(e))
 
     def post(self, request):
         try:
@@ -313,10 +318,11 @@ class CreateUserView(View):
                 'user_role': request.user.role,
             }
             return render(request, self.get_template_name(), context)
+        except PermissionDenied:
+            return handler403(request, exception="You don't have permission to create users")
         except Exception as e:
             logger.error(f"Error in CreateUserView GET: {str(e)}")
-            messages.error(request, "An error occurred while loading the form.")
-            return redirect('user_management')
+            return handler500(request, exception=str(e))
 
     def post(self, request):
         try:
@@ -333,5 +339,100 @@ class CreateUserView(View):
 
         except Exception as e:
             logger.error(f"Error in CreateUserView POST: {str(e)}")
-            messages.error(request, "An error occurred while creating the user.")
-            return redirect('create_user')
+            return handler500(request, exception=str(e))
+
+class UserDetailsView(View):
+    def get_template_name(self):
+        return get_template_path('user_details.html', self.request.user.role, 'user_management')
+
+    def get_doctor_patient_count(self, doctor_user):
+        """Helper method to get total unique patients for a doctor"""
+        try:
+            # Get unique patient IDs from appointments (completed or confirmed)
+            appointment_patient_ids = set(Appointment.objects.filter(
+                doctor=doctor_user,
+                status__in=['COMPLETED', 'CONFIRMED']
+            ).values_list('patient_id', flat=True))
+
+            # Get unique patient IDs from consultations
+            consultation_patient_ids = set(Consultation.objects.filter(
+                doctor=doctor_user
+            ).values_list('patient_id', flat=True))
+
+            # Combine both sets to get unique patients
+            total_unique_patients = len(appointment_patient_ids.union(consultation_patient_ids))
+            
+            return total_unique_patients
+
+        except Exception as e:
+            logger.error(f"Error calculating doctor's patient count: {str(e)}")
+            return 0
+
+    def get(self, request, user_id):
+        try:
+            # Get the user being viewed with related role
+            viewed_user = CustomUser.objects.select_related('role').get(id=user_id)
+            
+            # Base context
+            context = {
+                'user': viewed_user,
+                'viewing_user': request.user,
+                'user_role': request.user.role,
+            }
+
+            # Add role-specific data
+            if viewed_user.role.name == 'DOCTOR':
+                try:
+                    doctor_profile = DoctorProfile.objects.get(user=viewed_user)
+                    
+                    # Get patient count using the new helper method
+                    total_patients = self.get_doctor_patient_count(viewed_user)
+                    
+                    # Get recent appointments
+                    recent_appointments = Appointment.objects.filter(
+                        doctor=viewed_user,
+                        status__in=['COMPLETED', 'CONFIRMED']
+                    ).order_by('-date')[:5]
+                    
+                    # Get recent consultations
+                    recent_consultations = Consultation.objects.filter(
+                        doctor=viewed_user
+                    ).order_by('-date_time')[:5]
+                    
+                    context.update({
+                        'doctor_profile': doctor_profile,
+                        'total_patients': total_patients,
+                        'recent_appointments': recent_appointments,
+                        'recent_consultations': recent_consultations,
+                    })
+                except DoctorProfile.DoesNotExist:
+                    context.update({
+                        'doctor_profile': None,
+                        'total_patients': 0,
+                    })
+
+            elif viewed_user.role.name == 'PATIENT':
+                try:
+                    patient_profile = Patient.objects.get(user=viewed_user)
+                    total_appointments = viewed_user.appointments.count() if hasattr(viewed_user, 'appointments') else 0
+                    context.update({
+                        'patient_profile': patient_profile,
+                        'total_appointments': total_appointments,
+                    })
+                except Patient.DoesNotExist:
+                    context.update({
+                        'patient_profile': None,
+                        'total_appointments': 0,
+                    })
+
+            return render(request, self.get_template_name(), context)
+
+        except CustomUser.DoesNotExist:
+            logger.warning(f"User with id {user_id} not found")
+            return handler404(request, exception="User not found")
+        except PermissionDenied:
+            logger.warning(f"Permission denied for user {request.user.email} accessing user {user_id}")
+            return handler403(request, exception="Access Denied")
+        except Exception as e:
+            logger.error(f"Error in UserDetailsView: {str(e)}")
+            return handler500(request, exception=str(e))
