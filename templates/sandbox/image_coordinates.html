@@ -172,86 +172,125 @@
             let currentIndex = 0;
             const totalItems = items.length;
 
-            // Function to check if a point is inside a polygon
-    function isPointInPolygon(point, polygon) {
-        const x = point[0];
-        const y = point[1];
-        let inside = false;
-        
-        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            const xi = polygon[i][0], yi = polygon[i][1];
-            const xj = polygon[j][0], yj = polygon[j][1];
-            
-            const intersect = ((yi > y) !== (yj > y))
-                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-        
-        return inside;
-    }
-
-    // Store image data from Django context
-    const imageData = {{ images|safe }};
-    
-    // Click coordinate handling
-    document.querySelectorAll('.carousel-image').forEach(image => {
-        image.addEventListener('click', function(e) {
-            const rect = this.getBoundingClientRect();
-            const x = Math.round(e.clientX - rect.left);
-            const y = Math.round(e.clientY - rect.top);
-            
-            const xPercent = Math.round((x / this.offsetWidth) * 100);
-            const yPercent = Math.round((y / this.offsetHeight) * 100);
-            
-            const imageId = this.dataset.imageId;
-            const viewCode = this.dataset.viewCode;
-            
-            // Find the current image data
-            const currentImage = imageData.find(img => img.id.toString() === imageId);
-            
-            // Check if point is in any defined region
-            let foundRegion = null;
-            let regionMeasurements = null;
-            
-            if (currentImage && currentImage.regions) {
-                for (const [regionCode, region] of Object.entries(currentImage.regions)) {
-                    const polygonPoints = region.coordinates.map(coord => 
-                        [coord.x_coordinate, coord.y_coordinate]
-                    );
-                    
-                    if (isPointInPolygon([x, y], polygonPoints)) {
-                        foundRegion = {
-                            code: regionCode,
-                            name: region.name,
-                            description: region.description
-                        };
-                        regionMeasurements = region.measurements;
-                        break;
-                    }
-                }
+            // Update carousel display
+            function updateCarousel() {
+                carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentIndex);
+                });
+                
+                // Update current view text
+                const currentImage = document.querySelector('.carousel-image');
+                document.getElementById('current-view').textContent = currentImage.dataset.viewCode;
             }
+
+            // Event listeners for navigation
+            prevButton.addEventListener('click', () => {
+                currentIndex = (currentIndex - 1 + totalItems) % totalItems;
+                updateCarousel();
+            });
+
+            nextButton.addEventListener('click', () => {
+                currentIndex = (currentIndex + 1) % totalItems;
+                updateCarousel();
+            });
+
+            // Dot navigation
+            dots.forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    currentIndex = index;
+                    updateCarousel();
+                });
+            });
+
+            // Gender switching function
+            window.switchGender = function(gender) {
+                window.location.href = `?gender=${gender}`;
+            };
+
+            // Initialize carousel
+            updateCarousel();
+
+            // Function to check if a point is inside a polygon
+            function isPointInPolygon(point, polygon) {
+                const x = point[0];
+                const y = point[1];
+                let inside = false;
+                
+                for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                    const xi = polygon[i][0], yi = polygon[i][1];
+                    const xj = polygon[j][0], yj = polygon[j][1];
+                    
+                    const intersect = ((yi > y) !== (yj > y))
+                        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                
+                return inside;
+            }
+
+            // Store image data from Django context
+            const imageData = {{ images|safe }};
             
-            const coordsText = `X: ${x}px (${xPercent}%), Y: ${y}px (${yPercent}%)`;
-            document.getElementById('coordinates').textContent = coordsText;
-            
-            // Log comprehensive information
-            console.log('Click Analysis:', {
-                imageDetails: {
-                    id: imageId,
-                    viewCode: viewCode
-                },
-                clickCoordinates: {
-                    pixels: { x, y },
-                    percentage: { x: xPercent, y: yPercent }
-                },
-                region: foundRegion ? {
-                    ...foundRegion,
-                    measurements: regionMeasurements
-                } : 'No specific region detected'
+            // Click coordinate handling
+            document.querySelectorAll('.carousel-image').forEach(image => {
+                image.addEventListener('click', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const x = Math.round(e.clientX - rect.left);
+                    const y = Math.round(e.clientY - rect.top);
+                    
+                    const xPercent = Math.round((x / this.offsetWidth) * 100);
+                    const yPercent = Math.round((y / this.offsetHeight) * 100);
+                    
+                    const imageId = this.dataset.imageId;
+                    const viewCode = this.dataset.viewCode;
+                    
+                    // Find the current image data
+                    const currentImage = imageData.find(img => img.id.toString() === imageId);
+                    
+                    // Check if point is in any defined region
+                    let foundRegion = null;
+                    let regionMeasurements = null;
+                    
+                    if (currentImage && currentImage.regions) {
+                        for (const [regionCode, region] of Object.entries(currentImage.regions)) {
+                            const polygonPoints = region.coordinates.map(coord => 
+                                [coord.x_coordinate, coord.y_coordinate]
+                            );
+                            
+                            if (isPointInPolygon([x, y], polygonPoints)) {
+                                foundRegion = {
+                                    code: regionCode,
+                                    name: region.name,
+                                    description: region.description
+                                };
+                                regionMeasurements = region.measurements;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    const coordsText = `X: ${x}px (${xPercent}%), Y: ${y}px (${yPercent}%)`;
+                    document.getElementById('coordinates').textContent = coordsText;
+                    
+                    // Log comprehensive information
+                    console.log('Click Analysis:', {
+                        imageDetails: {
+                            id: imageId,
+                            viewCode: viewCode
+                        },
+                        clickCoordinates: {
+                            pixels: { x, y },
+                            percentage: { x: xPercent, y: yPercent }
+                        },
+                        region: foundRegion ? {
+                            ...foundRegion,
+                            measurements: regionMeasurements
+                        } : 'No specific region detected'
+                    });
+                });
             });
         });
-    });
-});
-</script>
+    </script>
 </body>
 </html>
