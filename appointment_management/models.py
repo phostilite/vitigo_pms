@@ -100,9 +100,12 @@ class Appointment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
-        # Prevent scheduling appointments more than 30 days in advance
-        if self.date > timezone.now().date() + timezone.timedelta(days=30):
-            raise ValidationError("Appointments cannot be scheduled more than 30 days in advance.")
+        if self.appointment_type == 'FOLLOW_UP':
+            days_until_appointment = (self.date - timezone.now().date()).days
+            if days_until_appointment > 30:
+                # Check if user has admin permissions
+                if not hasattr(self, '_admin_override'):
+                    raise ValidationError("Follow-up appointments cannot be scheduled more than 30 days in advance")
 
     def __str__(self):
         return f"Appointment for {self.patient} on {self.date} at {self.time_slot}"
