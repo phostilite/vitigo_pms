@@ -20,6 +20,12 @@ from error_handling.views import handler404, handler500, handler403, handler400
 from django.db.models import Q
 from appointment_management.models import Appointment
 from consultation_management.models import Consultation 
+from access_control.permissions import PermissionManager
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import get_object_or_404
+from django.db import transaction
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +146,16 @@ def user_logout(request):
     return redirect('login')
 
 
-class UserManagementView(View):
+class UserManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to access user management")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
         return get_template_path('users_dashboard.html', self.request.user.role, 'user_management')
 
@@ -194,7 +209,16 @@ class UserManagementView(View):
             logger.error(f"Error in UserManagementView: {str(e)}")
             return handler500(request, exception=str(e))
         
-class UserProfileView(View):
+class UserProfileView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to access profile management")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
         return get_template_path('profile_management.html', self.request.user.role, 'profile')
 
@@ -306,7 +330,16 @@ class UserProfileView(View):
             messages.error(request, "An error occurred while saving your profile.")
             return redirect('profile_management')
 
-class CreateUserView(View):
+class CreateUserView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_create(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_create(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to create users")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
         return get_template_path('create_user.html', self.request.user.role, 'user_management')
 
@@ -341,7 +374,16 @@ class CreateUserView(View):
             logger.error(f"Error in CreateUserView POST: {str(e)}")
             return handler500(request, exception=str(e))
 
-class UserDetailsView(View):
+class UserDetailsView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to view user details")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
         return get_template_path('user_details.html', self.request.user.role, 'user_management')
 
@@ -436,3 +478,44 @@ class UserDetailsView(View):
         except Exception as e:
             logger.error(f"Error in UserDetailsView: {str(e)}")
             return handler500(request, exception=str(e))
+
+class UserDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_delete(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to delete users")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(CustomUser, id=user_id)
+            
+            # Prevent self-deletion
+            if user == request.user:
+                messages.error(request, "You cannot delete your own account")
+                return redirect('user_management')
+                
+            # Store user info for message
+            user_email = user.email
+            user_name = user.get_full_name()
+            
+            with transaction.atomic():
+                # Delete associated profiles if they exist
+                if hasattr(user, 'patient_profile'):
+                    user.patient_profile.delete()
+                if hasattr(user, 'doctor_profile'):
+                    user.doctor_profile.delete()
+                    
+                user.delete()
+            
+            messages.success(request, f"User {user_name} ({user_email}) has been deleted successfully")
+            logger.info(f"User {user_email} deleted by {request.user.email}")
+            return redirect('user_management')
+            
+        except Exception as e:
+            logger.error(f"Error deleting user: {str(e)}")
+            messages.error(request, f"Error deleting user: {str(e)}")
+            return redirect('user_management')

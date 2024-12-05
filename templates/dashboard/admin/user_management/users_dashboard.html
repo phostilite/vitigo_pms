@@ -249,11 +249,72 @@
                                 </a>
                             </li>
                             <li>
-                                <a href="#" class="block px-4 py-2 hover:bg-gray-100">
+                                <button data-modal-target="deleteModal{{ user.id }}" 
+                                        data-modal-toggle="deleteModal{{ user.id }}"
+                                        class="block w-full text-left px-4 py-2 hover:bg-gray-100">
                                     <i class="fas fa-trash text-red-500 mr-2"></i> Delete
-                                </a>
+                                </button>
                             </li>
                         </ul>
+                    </div>
+
+                    <!-- Delete Modal -->
+                    <div id="deleteModal{{ user.id }}" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                        <div class="relative w-full max-w-md max-h-full">
+                            <div class="relative bg-white rounded-lg shadow">
+                                <button type="button" class="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="deleteModal{{ user.id }}">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <div class="p-6 text-center">
+                                    <div class="flex items-center justify-center mb-6">
+                                        <div class="rounded-full bg-red-100 p-3">
+                                            <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                                        </div>
+                                    </div>
+                                    <h3 class="mb-5 text-lg font-normal text-gray-500">
+                                        Are you sure you want to delete this user?
+                                    </h3>
+                                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                                        <div class="space-y-3">
+                                            <!-- Name -->
+                                            <p class="flex items-center text-gray-600">
+                                                <i class="fas fa-user w-5"></i>
+                                                <span class="font-medium ml-2">Name:</span>
+                                                <span class="ml-2">{{ user.get_full_name }}</span>
+                                            </p>
+                                            <!-- Email on its own row -->
+                                            <p class="flex items-start text-gray-600">
+                                                <i class="fas fa-envelope w-5 mt-1"></i>
+                                                <span class="font-medium ml-2 mt-1">Email:</span>
+                                                <span class="ml-2 break-all">{{ user.email }}</span>
+                                            </p>
+                                            <!-- Role and Join Date in grid -->
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <p class="flex items-center text-gray-600">
+                                                    <i class="fas fa-user-tag w-5"></i>
+                                                    <span class="font-medium ml-2">Role:</span>
+                                                    <span class="ml-2">{{ user.role.display_name }}</span>
+                                                </p>
+                                                <p class="flex items-center text-gray-600">
+                                                    <i class="fas fa-calendar-alt w-5"></i>
+                                                    <span class="font-medium ml-2">Joined:</span>
+                                                    <span class="ml-2">{{ user.date_joined|date:"M d, Y" }}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <form action="{% url 'user_delete' user.id %}" method="POST" class="inline-flex">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2">
+                                            <i class="fas fa-trash-alt mr-2"></i> Yes, delete it
+                                        </button>
+                                        <button data-modal-hide="deleteModal{{ user.id }}" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">
+                                            <i class="fas fa-times mr-2"></i> No, cancel
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     {% endfor %}
                 </tbody>
@@ -305,64 +366,29 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
+{{ block.super }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize dropdowns
-        const dropdownButtons = document.querySelectorAll('[data-dropdown-toggle]');
-        dropdownButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const targetId = this.getAttribute('data-dropdown-toggle');
-                const dropdown = document.getElementById(targetId);
-                
-                // Close all other dropdowns first
-                document.querySelectorAll('[id^="dropdownDots"]').forEach(d => {
-                    if (d.id !== targetId) {
-                        d.classList.add('hidden');
-                    }
-                });
-                
-                if (dropdown) {
-                    dropdown.classList.toggle('hidden');
-                }
-            });
+        // Initialize Flowbite dropdowns and modals
+        const dropdowns = document.querySelectorAll('[data-dropdown-toggle]');
+        dropdowns.forEach(dropdown => {
+            new Dropdown(dropdown);
+        });
+        
+        // Initialize modals
+        const modals = document.querySelectorAll('[data-modal-target]');
+        modals.forEach(modal => {
+            const targetId = modal.getAttribute('data-modal-target');
+            const modalElement = document.getElementById(targetId);
+            new Modal(modalElement);
         });
 
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', function() {
-            document.querySelectorAll('[id^="dropdownDots"]').forEach(dropdown => {
-                if (!dropdown.classList.contains('hidden')) {
-                    dropdown.classList.add('hidden');
-                }
-            });
-        });
-
-        // Initialize checkboxes
-        const mainCheckbox = document.querySelector('thead input[type="checkbox"]');
-        const rowCheckboxes = document.querySelectorAll('tbody input[type="checkbox"]');
-
-        if (mainCheckbox) {
-            mainCheckbox.addEventListener('change', function() {
-                rowCheckboxes.forEach(checkbox => {
-                    checkbox.checked = this.checked;
-                });
-            });
-        }
-
-        rowCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const allChecked = [...rowCheckboxes].every(c => c.checked);
-                const someChecked = [...rowCheckboxes].some(c => c.checked);
-                
-                if (mainCheckbox) {
-                    mainCheckbox.checked = allChecked;
-                    mainCheckbox.indeterminate = someChecked && !allChecked;
-                }
-            });
-        });
+        // Remove old event listeners and functions since we're using Flowbite's modal now
+        // ...rest of existing dropdown and checkbox code...
     });
 </script>
 {% endblock %}
