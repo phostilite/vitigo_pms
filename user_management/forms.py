@@ -9,37 +9,6 @@ from access_control.models import Role
 User = get_user_model()
 
 class UserRegistrationForm(UserCreationForm):
-    email = forms.EmailField(
-        max_length=254,
-        help_text='Required. Enter a valid email address.',
-        widget=forms.EmailInput(attrs={
-            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
-            'placeholder': 'you@example.com'
-        })
-    )
-    first_name = forms.CharField(
-        widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]'
-        })
-    )
-    last_name = forms.CharField(
-        widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]'
-        })
-    )
-    password1 = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
-            'placeholder': '••••••••'
-        })
-    )
-    password2 = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
-            'placeholder': '••••••••'
-        })
-    )
-
     class Meta:
         model = User
         fields = ('email', 'first_name', 'last_name', 'password1', 'password2')
@@ -115,33 +84,27 @@ class UserCreationForm(forms.ModelForm):
         model = User
         fields = ['email', 'first_name', 'last_name', 'password', 'confirm_password', 
                  'role', 'gender', 'country_code', 'phone_number', 'profile_picture', 'is_active']
-        widgets = {
-            'email': forms.EmailInput(attrs={
-                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
-            }),
-            'first_name': forms.TextInput(attrs={
-                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
-            }),
-            'last_name': forms.TextInput(attrs={
-                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
-            }),
-            'gender': forms.Select(attrs={
-                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
-            }),
-            'phone_number': forms.TextInput(attrs={
-                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
-            }),
-            'is_active': forms.CheckboxInput(attrs={
-                'class': 'h-4 w-4 text-blue-600 border-gray-300 rounded'
-            })
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Remove the helper and layout configuration since we're using direct form rendering
-        for field in self.fields.values():
+        for field_name, field in self.fields.items():
             if not isinstance(field.widget, forms.CheckboxInput):
-                field.widget.attrs['class'] = 'w-full px-3 py-2 border border-gray-300 rounded-md'
+                field.widget.attrs.update({
+                    'class': 'w-full px-3 py-2 pl-10 border border-gray-300 rounded-md'
+                })
+        
+        # Add help text for each field
+        self.fields['email'].help_text = "Enter a valid email address. This will be used for login."
+        self.fields['first_name'].help_text = "Enter your first name as it appears on official documents."
+        self.fields['last_name'].help_text = "Enter your last name as it appears on official documents."
+        self.fields['password'].help_text = "Create a strong password with at least 8 characters including letters, numbers and symbols."
+        self.fields['confirm_password'].help_text = "Enter the same password as above for verification."
+        self.fields['role'].help_text = "Select the appropriate role for this user (e.g., Patient, Doctor, Staff)."
+        self.fields['gender'].help_text = "Select your gender identity."
+        self.fields['country_code'].help_text = "Enter your country code (e.g., +91 for India)."
+        self.fields['phone_number'].help_text = "Enter your phone number without country code."
+        self.fields['profile_picture'].help_text = "Upload a clear photo of yourself (optional). Max size: 5MB."
+        self.fields['is_active'].help_text = "Check this box to make the account active immediately."
 
     def clean(self):
         cleaned_data = super().clean()
