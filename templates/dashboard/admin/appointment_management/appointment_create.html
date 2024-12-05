@@ -54,6 +54,40 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Display specific errors -->
+                {% for field in form %}
+                    {% for error in field.errors %}
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-2">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-circle text-red-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700">
+                                    {{ field.label }}: {{ error }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
+
+                <!-- Non-field errors -->
+                {% for error in form.non_field_errors %}
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-2">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-500"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-red-700">
+                                {{ error }}
+                            </p>
+                        </div>
+                    </div>
+                    </div>
+                {% endfor %}
                 {% endif %}
 
                 <!-- Two Column Grid -->

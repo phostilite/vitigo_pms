@@ -268,6 +268,16 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
                 if not timeslot.is_available:
                     messages.error(self.request, 'This time slot is no longer available')
                     return self.form_invalid(form)
+                
+                # Follow-up specific validation
+                if appointment.appointment_type == 'FOLLOW_UP':
+                    days_until_appointment = (appointment.date - timezone.now().date()).days
+                    if days_until_appointment > 30:
+                        messages.error(self.request, 'Follow-up appointments cannot be scheduled more than 30 days in advance')
+                        return self.form_invalid(form)
+                    if days_until_appointment < 1:
+                        messages.error(self.request, 'Follow-up appointments must be scheduled at least 1 day in advance')
+                        return self.form_invalid(form)
 
                 # Set the timeslot and mark it as unavailable
                 appointment.time_slot = timeslot
