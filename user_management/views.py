@@ -332,10 +332,10 @@ class UserProfileView(LoginRequiredMixin, UserPassesTestMixin, View):
 
 class CreateUserView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
-        return PermissionManager.check_module_create(self.request.user, 'user_management')
+        return PermissionManager.check_module_modify(self.request.user, 'user_management')
         
     def dispatch(self, request, *args, **kwargs):
-        if not PermissionManager.check_module_create(self.request.user, 'user_management'):
+        if not PermissionManager.check_module_modify(self.request.user, 'user_management'):
             messages.error(request, "You don't have permission to create users")
             return handler403(request, exception="Insufficient Permissions")
         return super().dispatch(request, *args, **kwargs)
