@@ -1,13 +1,34 @@
-# views.py
+# Python Standard Library imports
+import logging
+from datetime import datetime
 
-from django.shortcuts import render
+# Django core imports
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.views import View
+from django.db.models import Count, Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from django.http import HttpResponse
-from .models import ResearchStudy, StudyProtocol, PatientStudyEnrollment, DataCollectionPoint, ResearchData, AnalysisResult, Publication
-from django.db.models import Count
+from django.views import View
+from django.views.generic import ListView
+
+# Local application imports
 from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403, handler404, handler500
+from .models import (
+    ResearchStudy, 
+    StudyProtocol, 
+    PatientStudyEnrollment, 
+    DataCollectionPoint, 
+    ResearchData, 
+    AnalysisResult, 
+    Publication
+)
+
+# Logger configuration
+logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module=''):
     """
@@ -25,7 +46,16 @@ def get_template_path(base_template, role, module=''):
         return f'dashboard/{role_folder}/{module}/{base_template}'
     return f'dashboard/{role_folder}/{base_template}'
 
-class ResearchManagementView(View):
+class ResearchManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'research_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to access Research Management")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
         return get_template_path('research_dashboard.html', self.request.user.role, 'research_management')
 
@@ -34,10 +64,38 @@ class ResearchManagementView(View):
             template_path = self.get_template_name()
             
             if not template_path:
-                return HttpResponse("Unauthorized access", status=403)
+                return handler403(request, exception="Unauthorized access")
 
-            # Fetch all research studies, study protocols, patient enrollments, data collection points, research data, analysis results, and publications
-            research_studies = ResearchStudy.objects.all()
+            # Get filter parameters from URL
+            filters = {}
+            status = request.GET.get('status')
+            date = request.GET.get('date')
+            search = request.GET.get('search')
+            investigator = request.GET.get('investigator')
+
+            # Base queryset
+            research_studies = ResearchStudy.objects.select_related('principal_investigator')
+            
+            # Apply filters
+            if status:
+                filters['status'] = status
+            if date:
+                filters['start_date'] = date
+            if investigator:
+                filters['principal_investigator_id'] = investigator
+
+            # Apply search
+            if search:
+                research_studies = research_studies.filter(
+                    Q(title__icontains=search) |
+                    Q(description__icontains=search) |
+                    Q(principal_investigator__first_name__icontains=search) |
+                    Q(principal_investigator__last_name__icontains=search)
+                )
+
+            research_studies = research_studies.filter(**filters)
+
+            # Fetch related data
             study_protocols = StudyProtocol.objects.all()
             patient_enrollments = PatientStudyEnrollment.objects.all()
             data_collection_points = DataCollectionPoint.objects.all()
@@ -52,8 +110,8 @@ class ResearchManagementView(View):
             total_analysis_results = analysis_results.count()
             total_publications = publications.count()
 
-            # Pagination for research studies
-            paginator = Paginator(research_studies, 10)  # Show 10 research studies per page
+            # Pagination
+            paginator = Paginator(research_studies, 10)
             page = request.GET.get('page')
             try:
                 research_studies = paginator.page(page)
@@ -62,7 +120,6 @@ class ResearchManagementView(View):
             except EmptyPage:
                 research_studies = paginator.page(paginator.num_pages)
 
-            # Context data to be passed to the template
             context = {
                 'research_studies': research_studies,
                 'study_protocols': study_protocols,
@@ -78,11 +135,17 @@ class ResearchManagementView(View):
                 'total_publications': total_publications,
                 'paginator': paginator,
                 'page_obj': research_studies,
-                'user_role': request.user.role,  # Add user role to context
+                'current_filters': {
+                    'status': status,
+                    'date': date,
+                    'investigator': investigator,
+                    'search': search
+                },
+                'user_role': request.user.role,
             }
 
             return render(request, template_path, context)
 
         except Exception as e:
-            # Handle any exceptions that occur
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            logger.exception(f"Error in ResearchManagementView: {str(e)}")
+            return handler500(request, exception=str(e))
