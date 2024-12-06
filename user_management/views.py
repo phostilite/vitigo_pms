@@ -35,7 +35,8 @@ from patient_management.models import Patient, MedicalHistory
 from .forms import (
     UserRegistrationForm,
     UserLoginForm,
-    UserCreationForm
+    UserCreationForm,
+    UserEditForm
 )
 
 # Configure logging and user model
@@ -618,4 +619,62 @@ class UserResetPasswordView(LoginRequiredMixin, UserPassesTestMixin, View):
             return handler403(request, exception="Insufficient permissions to reset passwords")
         except Exception as e:
             logger.error(f"Password reset error: {str(e)}")
+            return handler500(request, exception=str(e))
+
+class UserEditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_modify(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to edit users")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('edit_user.html', self.request.user.role, 'user_management')
+
+    def get(self, request, user_id):
+        try:
+            user = get_object_or_404(User.objects.select_related('role'), id=user_id)
+            form = UserEditForm(instance=user)
+            
+            context = {
+                'form': form,
+                'edited_user': user,
+                'user_role': request.user.role,
+            }
+            
+            return render(request, self.get_template_name(), context)
+            
+        except Http404:
+            return handler404(request, exception=f"User {user_id} not found")
+        except Exception as e:
+            logger.error(f"Error in UserEditView GET: {str(e)}")
+            return handler500(request, exception=str(e))
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            form = UserEditForm(request.POST, request.FILES, instance=user)
+            
+            if form.is_valid():
+                # Prevent role change for self
+                if user == request.user and 'role' in form.changed_data:
+                    messages.error(request, "You cannot change your own role")
+                    return render(request, self.get_template_name(), {'form': form, 'edited_user': user})
+                
+                # Save the form
+                user = form.save()
+                messages.success(request, f"User {user.get_full_name()} updated successfully")
+                logger.info(f"User {user.email} updated by {request.user.email}")
+                return redirect('user_detail', user_id=user.id)
+            else:
+                messages.error(request, "Please correct the errors below.")
+                return render(request, self.get_template_name(), {'form': form, 'edited_user': user})
+                
+        except Http404:
+            return handler404(request, exception=f"User {user_id} not found")
+        except Exception as e:
+            logger.error(f"Error in UserEditView POST: {str(e)}")
             return handler500(request, exception=str(e))

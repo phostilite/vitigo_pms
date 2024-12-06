@@ -114,3 +114,27 @@ class UserCreationForm(forms.ModelForm):
         if password and confirm_password and password != confirm_password:
             raise forms.ValidationError("Passwords do not match")
         return cleaned_data
+
+class UserEditForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['email', 'first_name', 'last_name', 'gender', 
+                 'country_code', 'phone_number', 'role', 'is_active',
+                 'profile_picture']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            if not isinstance(field.widget, (forms.CheckboxInput, forms.FileInput)):
+                field.widget.attrs.update({
+                    'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+                })
+        
+        self.fields['role'].widget.attrs.update({
+            'class': 'w-full px-3 py-2 border border-gray-300 rounded-md'
+        })
+        
+        self.fields['profile_picture'].widget.attrs.update({
+            'class': 'w-full px-3 py-2 border border-gray-300 rounded-md',
+            'accept': 'image/*'
+        })
