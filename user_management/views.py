@@ -69,20 +69,20 @@ class UserRegistrationView(View):
         return render(request, 'user_management/register.html', {'form': form})
 
     def post(self, request):
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            try:
+        try:
+            form = UserRegistrationForm(request.POST)
+            if form.is_valid():
                 user = form.save()
                 login(request, user)
                 logger.info(f"New patient registered: {user.email}.")
                 messages.success(request, 'Registration successful.')
                 return redirect('patient_dashboard')
-            except Exception as e:
-                logger.error(f"Unexpected error during registration: {str(e)}")
-                messages.error(request, "An unexpected error occurred. Please try again later.")
-        else:
-            logger.warning(f"Registration failed for email: {request.POST.get('email')}. Errors: {form.errors}")
-        return render(request, 'user_management/register.html', {'form': form})
+            else:
+                logger.warning(f"Registration failed. Errors: {form.errors}")
+                return render(request, 'user_management/register.html', {'form': form})
+        except Exception as e:
+            logger.error(f"Registration error: {str(e)}")
+            return handler500(request, exception=str(e))
 
 class UserLoginView(View):
     def dispatch(self, *args, **kwargs):
@@ -95,22 +95,26 @@ class UserLoginView(View):
         return render(request, 'user_management/login.html', {'form': form})
 
     def post(self, request):
-        form = UserLoginForm(request.POST)
-        if form.is_valid():
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            user = authenticate(request, email=email, password=password)
-            if user:
-                login(request, user)
-                logger.info(f"User logged in: {user.email} (Role: {user.role}).")
-                messages.success(request, 'Login successful.')
-                return self.redirect_based_on_role(user)
+        try:
+            form = UserLoginForm(request.POST)
+            if form.is_valid():
+                email = form.cleaned_data['email']
+                password = form.cleaned_data['password']
+                user = authenticate(request, email=email, password=password)
+                if user:
+                    login(request, user)
+                    logger.info(f"User logged in: {user.email} (Role: {user.role}).")
+                    messages.success(request, 'Login successful.')
+                    return self.redirect_based_on_role(user)
+                else:
+                    logger.warning(f"Failed login attempt for email: {email}.")
+                    messages.error(request, "Invalid email or password.")
             else:
-                logger.warning(f"Failed login attempt for email: {email}.")
-                messages.error(request, "Invalid email or password.")
-        else:
-            logger.warning(f"Login form invalid. Errors: {form.errors}")
-        return render(request, 'user_management/login.html', {'form': form})
+                logger.warning(f"Login form invalid. Errors: {form.errors}")
+            return render(request, 'user_management/login.html', {'form': form})
+        except Exception as e:
+            logger.error(f"Login error: {str(e)}")
+            return handler500(request, exception=str(e))
 
     def redirect_based_on_role(self, user):
         """
@@ -289,8 +293,10 @@ class UserProfileView(LoginRequiredMixin, UserPassesTestMixin, View):
 
             return render(request, self.get_template_name(), context)
 
+        except PermissionDenied:
+            return handler403(request, exception="Insufficient permissions to access profile")
         except Exception as e:
-            logger.error(f"Error in UserProfileView: {str(e)}")
+            logger.error(f"Profile view error: {str(e)}")
             messages.error(request, "An error occurred while loading your profile.")
             return handler500(request, exception=str(e))
 
@@ -563,10 +569,13 @@ class UserDeactivateView(LoginRequiredMixin, UserPassesTestMixin, View):
             
             return redirect('user_management')
             
+        except Http404:
+            return handler404(request, exception=f"User {user_id} not found")
+        except PermissionDenied:
+            return handler403(request, exception="Insufficient permissions to deactivate users")
         except Exception as e:
-            logger.error(f"Error toggling user status: {str(e)}")
-            messages.error(request, f"Error updating user status: {str(e)}")
-            return redirect('user_management')
+            logger.error(f"User deactivation error: {str(e)}")
+            return handler500(request, exception=str(e))
 
 class UserResetPasswordView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
@@ -603,7 +612,10 @@ class UserResetPasswordView(LoginRequiredMixin, UserPassesTestMixin, View):
             
             return redirect('user_management')
             
+        except Http404:
+            return handler404(request, exception=f"User {user_id} not found")
+        except PermissionDenied:
+            return handler403(request, exception="Insufficient permissions to reset passwords")
         except Exception as e:
-            logger.error(f"Error resetting password: {str(e)}")
-            messages.error(request, f"Error resetting password: {str(e)}")
-            return redirect('user_management')
+            logger.error(f"Password reset error: {str(e)}")
+            return handler500(request, exception=str(e))
