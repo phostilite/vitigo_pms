@@ -2,6 +2,7 @@
 import logging
 import random
 import string
+from datetime import datetime
 
 # Django core imports
 from django.contrib import messages
@@ -17,7 +18,11 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
-
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+import csv
 
 # Local application imports
 from access_control.models import Role
@@ -495,7 +500,7 @@ class UserDetailsView(LoginRequiredMixin, UserPassesTestMixin, View):
             # Add role-specific data
             if viewed_user.role.name == 'DOCTOR':
                 try:
-                    doctor_profile = DoctorProfile.objects.get(user=viewed_user)
+                    doctor_profile = DoctorProfile.objects.get(user=viewed_user)  # Fixed parenthesis
                     
                     # Get patient count using the new helper method
                     total_patients = self.get_doctor_patient_count(viewed_user)
@@ -728,3 +733,169 @@ class UserEditView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             logger.error(f"Error in UserEditView POST: {str(e)}")
             return handler500(request, exception=str(e))
+
+class UserExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'user_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to export users")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_filtered_queryset(self, date_range, start_date=None, end_date=None):
+        """Filter queryset based on date range or custom dates"""
+        queryset = User.objects.select_related('role').all()
+
+        if date_range == 'custom':
+            if not start_date or not end_date:
+                raise ValueError("Both start date and end date are required for custom range")
+            try:
+                start_datetime = timezone.make_aware(datetime.strptime(start_date, '%m/%d/%Y'))
+                end_datetime = timezone.make_aware(datetime.strptime(end_date, '%m/%d/%Y'))
+                end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
+                
+                queryset = queryset.filter(date_joined__range=[start_datetime, end_datetime])
+            except ValueError as e:
+                raise ValueError(f"Invalid date format: {str(e)}")
+        else:
+            try:
+                days = int(date_range or '30')
+                if days <= 0:
+                    raise ValueError("Days must be a positive number")
+                    
+                end_date = timezone.now()
+                start_date = end_date - timedelta(days=days)
+                queryset = queryset.filter(date_joined__range=[start_date, end_date])
+            except ValueError:
+                raise ValueError("Invalid date range value")
+
+        return queryset
+
+    def export_csv(self, queryset):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="users_report.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Name',
+            'Email',
+            'Role',
+            'Status',
+            'Phone Number',
+            'Date Joined',
+            'Last Login',
+            'Gender',
+            'Country Code'
+        ])
+
+        for user in queryset:
+            writer.writerow([
+                user.id,
+                user.get_full_name(),
+                user.email,
+                user.role.display_name if user.role else 'No Role',
+                'Active' if user.is_active else 'Inactive',
+                user.phone_number or 'N/A',
+                user.date_joined.strftime('%Y-%m-%d %H:%M:%S'),
+                user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never',
+                user.get_gender_display() if user.gender else 'N/A',
+                user.country_code or 'N/A'
+            ])
+
+        return response
+
+    def export_pdf(self, queryset):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="users_report.pdf"'
+
+        doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        elements = []
+
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph('User Management Report', styles['Heading1']))
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Statistics
+        total_users = queryset.count()
+        active_users = queryset.filter(is_active=True).count()
+        inactive_users = total_users - active_users
+
+        stats_data = [
+            ['Total Users:', str(total_users)],
+            ['Active Users:', str(active_users)],
+            ['Inactive Users:', str(inactive_users)]
+        ]
+
+        stats_table = Table(stats_data, colWidths=[100, 100])
+        stats_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ]))
+        elements.append(stats_table)
+        elements.append(Spacer(1, 20))
+
+        # Users Table
+        data = [[
+            'Name',
+            'Email',
+            'Role',
+            'Status',
+            'Joined Date'
+        ]]
+
+        for user in queryset:
+            data.append([
+                user.get_full_name(),
+                user.email,
+                user.role.display_name if user.role else 'No Role',
+                'Active' if user.is_active else 'Inactive',
+                user.date_joined.strftime('%Y-%m-%d')
+            ])
+
+        table = Table(data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ]))
+
+        elements.append(table)
+        doc.build(elements)
+        return response
+
+    def get(self, request):
+        try:
+            export_format = request.GET.get('format', 'csv')
+            date_range = request.GET.get('date_range')
+            start_date = request.GET.get('start_date')
+            end_date = request.GET.get('end_date')
+
+            # Get filtered queryset
+            try:
+                queryset = self.get_filtered_queryset(date_range, start_date, end_date)
+            except ValueError as e:
+                messages.error(request, str(e))
+                return redirect('user_management')
+
+            if export_format == 'csv':
+                return self.export_csv(queryset)
+            elif export_format == 'pdf':
+                return self.export_pdf(queryset)
+            else:
+                messages.error(request, "Invalid export format")
+                return redirect('user_management')
+
+        except Exception as e:
+            messages.error(request, f"Export failed: {str(e)}")
+            return redirect('user_management')

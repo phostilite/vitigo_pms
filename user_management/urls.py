@@ -1,6 +1,7 @@
 # user_management/urls.py
 from django.urls import path
 from . import views
+from .views import UserExportView
 
 urlpatterns = [
     path('register/', views.UserRegistrationView.as_view(), name='register'),
@@ -14,4 +15,5 @@ urlpatterns = [
     path('delete/<int:user_id>/', views.UserDeleteView.as_view(), name='user_delete'),
     path('deactivate/<int:user_id>/', views.UserDeactivateView.as_view(), name='user_deactivate'),
     path('reset-password/<int:user_id>/', views.UserResetPasswordView.as_view(), name='user_reset_password'),
+    path('export/', UserExportView.as_view(), name='user_export'),
 ]
