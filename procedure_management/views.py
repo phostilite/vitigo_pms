@@ -1,12 +1,23 @@
-# views.py
-from django.shortcuts import render, get_object_or_404
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.http import HttpResponse
-from django.views import View
-from .models import Procedure, ProcedureType
-from django.contrib.auth import get_user_model
-from access_control.models import Role
+# Standard library imports
+import logging
 
+# Django core imports
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Q
+from django.shortcuts import render, get_object_or_404
+from django.views import View
+
+# Local application imports
+from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403, handler404, handler500
+from .models import Procedure, ProcedureType
+
+# Configure logging and user model
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 def get_template_path(base_template, role, module=''):
@@ -25,111 +36,172 @@ def get_template_path(base_template, role, module=''):
         return f'dashboard/{role_folder}/{module}/{base_template}'
     return f'dashboard/{role_folder}/{base_template}'
 
-class ProcedureManagementView(View):
+class ProcedureManagementView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'procedure_management'):
+                messages.error(request, "You don't have permission to access Procedure Management")
+                return handler403(request, exception="Access denied to procedure management")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in procedure management dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing procedure management")
+            return handler500(request, exception=str(e))
+
     def get(self, request):
         try:
             template_path = get_template_path('procedure_dashboard.html', request.user.role, 'procedure_management')
             
-            if not template_path:
-                return HttpResponse("Unauthorized access", status=403)
-
             # Get patient role and users
             patient_role = Role.objects.get(name='PATIENT')
-            patients = User.objects.filter(role=patient_role)  # Changed from string to Role object
+            patients = User.objects.filter(role=patient_role)
 
-            # Fetch all procedure types
-            procedure_types = ProcedureType.objects.all()
+            # Initialize query
+            procedures = Procedure.objects.select_related(
+                'user', 'procedure_type', 'performed_by'
+            ).prefetch_related('images')
 
-            # Fetch procedures with optional filtering
-            procedures = Procedure.objects.all()
-            procedure_type_id = request.GET.get('procedure_type')
-            status = request.GET.get('status')
-            patient_id = request.GET.get('patient')
-            search_query = request.GET.get('search')
-
-            if procedure_type_id:
-                procedures = procedures.filter(procedure_type_id=procedure_type_id)
-            if status:
-                procedures = procedures.filter(status=status)
-            if patient_id:
-                procedures = procedures.filter(user_id=patient_id)  # Changed from patient_id to user_id
-            if search_query:
-                procedures = procedures.filter(notes__icontains=search_query)
+            # Apply filters
+            procedures = self.apply_filters(procedures, request)
 
             # Pagination
-            paginator = Paginator(procedures, 10)  # Show 10 procedures per page
-            page = request.GET.get('page')
             try:
+                page = request.GET.get('page', 1)
+                paginator = Paginator(procedures, 10)
                 procedures = paginator.page(page)
             except PageNotAnInteger:
                 procedures = paginator.page(1)
             except EmptyPage:
                 procedures = paginator.page(paginator.num_pages)
 
-            # Context data to be passed to the template
-            context = {
-                'procedure_types': procedure_types,
-                'patients': patients,
-                'procedures': procedures,
+            context = self.get_context_data(
+                procedures=procedures,
+                procedure_types=ProcedureType.objects.all(),
+                patients=patients,
+                paginator=paginator
+            )
+
+            return render(request, template_path, context)
+
+        except Role.DoesNotExist:
+            logger.error("Patient role not found")
+            messages.error(request, "System configuration error")
+            return handler500(request, exception="Patient role not found")
+        except Exception as e:
+            logger.error(f"Error in procedure management view: {str(e)}")
+            messages.error(request, "An error occurred while loading procedures")
+            return handler500(request, exception=str(e))
+
+    def apply_filters(self, queryset, request):
+        try:
+            # Fetch procedures with optional filtering
+            procedure_type_id = request.GET.get('procedure_type')
+            status = request.GET.get('status')
+            patient_id = request.GET.get('patient')
+            search_query = request.GET.get('search')
+
+            if procedure_type_id:
+                queryset = queryset.filter(procedure_type_id=procedure_type_id)
+            if status:
+                queryset = queryset.filter(status=status)
+            if patient_id:
+                queryset = queryset.filter(user_id=patient_id)  # Changed from patient_id to user_id
+            if search_query:
+                queryset = queryset.filter(notes__icontains=search_query)
+            return queryset
+        except Exception as e:
+            logger.error(f"Error applying filters: {str(e)}")
+            messages.warning(request, "Error applying filters")
+            return queryset
+
+    def get_context_data(self, **kwargs):
+        try:
+            return {
+                **kwargs,
                 'total_procedures': Procedure.objects.count(),
                 'scheduled_procedures': Procedure.objects.filter(status='SCHEDULED').count(),
                 'completed_procedures': Procedure.objects.filter(status='COMPLETED').count(),
                 'cancelled_procedures': Procedure.objects.filter(status='CANCELLED').count(),
-                'paginator': paginator,
-                'page_obj': procedures,
             }
-
-            return render(request, template_path, context)
-
         except Exception as e:
-            # Handle any exceptions that occur
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            logger.error(f"Error getting context data: {str(e)}")
+            return kwargs
 
-class ProcedureDetailView(View):
+class ProcedureDetailView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'procedure_management'):
+                messages.error(request, "You don't have permission to view procedure details")
+                return handler403(request, exception="Access denied to procedure details")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in procedure detail dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing procedure details")
+            return handler500(request, exception=str(e))
+
     def get(self, request, procedure_id):
         try:
             template_path = get_template_path('procedure_detail.html', request.user.role, 'procedure_management')
             
-            if not template_path:
-                return HttpResponse("Unauthorized access", status=403)
+            procedure = self.get_procedure_with_relations(procedure_id)
+            
+            # Validate patient role
+            if procedure.user and procedure.user.role.name != 'PATIENT':
+                messages.error(request, "Invalid patient assignment")
+                return handler403(request, exception="Invalid patient assignment")
 
-            # Get procedure with related data
-            procedure = get_object_or_404(Procedure.objects.select_related(
+            context = self.get_context_data(procedure)
+            return render(request, template_path, context)
+
+        except Procedure.DoesNotExist:
+            messages.error(request, "Procedure not found")
+            return handler404(request, exception="Procedure not found")
+        except Exception as e:
+            logger.error(f"Error in procedure detail view: {str(e)}")
+            messages.error(request, "An error occurred while loading procedure details")
+            return handler500(request, exception=str(e))
+
+    def get_procedure_with_relations(self, procedure_id):
+        return get_object_or_404(
+            Procedure.objects.select_related(
                 'user',
                 'procedure_type',
                 'performed_by',
                 'consent_form',
                 'result'
-            ).prefetch_related('images'), id=procedure_id)
+            ).prefetch_related('images'),
+            id=procedure_id
+        )
 
-            # Get patient role for validation
-            patient_role = Role.objects.get(name='PATIENT')
-            
-            # Validate that the user is actually a patient
-            if procedure.user and procedure.user.role != patient_role:
-                raise ValueError("Invalid patient assignment")
-
-            context = {
+    def get_context_data(self, procedure):
+        try:
+            return {
                 'procedure': procedure,
-                'consent_form': procedure.consent_form if hasattr(procedure, 'consent_form') else None,
-                'procedure_result': procedure.result if hasattr(procedure, 'result') else None,
+                'consent_form': getattr(procedure, 'consent_form', None),
+                'procedure_result': getattr(procedure, 'result', None),
                 'images': procedure.images.all(),
-                'patient_details': {
-                    'name': procedure.user.get_full_name(),
-                    'email': procedure.user.email,
-                    'gender': procedure.user.gender,
-                    'id': procedure.user.id
-                } if procedure.user and procedure.user.role == 'PATIENT' else None,
-                'performer_details': {
-                    'name': procedure.performed_by.get_full_name(),
-                    'role': procedure.performed_by.role,
-                } if procedure.performed_by else None,
+                'patient_details': self.get_patient_details(procedure.user),
+                'performer_details': self.get_performer_details(procedure.performed_by),
             }
-
-            return render(request, template_path, context)
-
-        except ValueError as e:
-            return HttpResponse(f"Invalid procedure data: {str(e)}", status=400)
         except Exception as e:
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            logger.error(f"Error getting procedure context data: {str(e)}")
+            return {'procedure': procedure}
+
+    def get_patient_details(self, user):
+        if user and user.role.name == 'PATIENT':
+            return {
+                'name': user.get_full_name(),
+                'email': user.email,
+                'gender': user.gender,
+                'id': user.id
+            }
+        return None
+
+    def get_performer_details(self, performer):
+        if performer:
+            return {
+                'name': performer.get_full_name(),
+                'role': performer.role,
+            }
+        return None
 
