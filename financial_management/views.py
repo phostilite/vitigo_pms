@@ -1,13 +1,26 @@
-# views.py
+# Standard library imports
+import logging
 
-from django.shortcuts import render
+# Django core imports
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.views import View
-from django.utils import timezone
-from django.http import HttpResponse
-from .models import GSTRate, Invoice, Payment, Expense, TDSEntry, FinancialYear, FinancialReport
 from django.db.models import Sum
+from django.shortcuts import render
+from django.utils import timezone
+from django.views import View
+
+# Local application imports
 from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403, handler404, handler500
+from .models import (
+    GSTRate, Invoice, Payment, Expense,
+    TDSEntry, FinancialYear, FinancialReport
+)
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module=''):
     """
@@ -25,70 +38,90 @@ def get_template_path(base_template, role, module=''):
         return f'dashboard/{role_folder}/{module}/{base_template}'
     return f'dashboard/{role_folder}/{base_template}'
 
-class FinanceManagementView(View):
-    def get_template_name(self):
-        return get_template_path('finance_dashboard.html', self.request.user.role, 'finance_management')
+class FinanceManagementView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'financial_management'):
+                messages.error(request, "You don't have permission to access Financial Management")
+                return handler403(request, exception="Access denied to financial management")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in finance management dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing financial management")
+            return handler500(request, exception=str(e))
 
     def get(self, request):
         try:
-            template_path = self.get_template_name()
-            if not template_path:
-                return HttpResponse("You do not have permission to view this page.", status=403)
-
-            # Fetch all invoices, payments, expenses, TDS entries, financial years, and financial reports
-            invoices = Invoice.objects.all()
-            payments = Payment.objects.all()
-            expenses = Expense.objects.all()
-            tds_entries = TDSEntry.objects.all()
-            financial_years = FinancialYear.objects.all()
-            financial_reports = FinancialReport.objects.all()
-
-            # Calculate statistics
-            total_invoices = invoices.count()
-            total_payments = payments.aggregate(total_amount=Sum('amount'))['total_amount'] or 0
-            total_expenses = expenses.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
-            total_tds = tds_entries.aggregate(total_amount=Sum('tds_amount'))['total_amount'] or 0
-            total_gst_collected = invoices.aggregate(total_gst=Sum('total_gst_amount'))['total_gst'] or 0
-            net_profit = total_payments - total_expenses
-
-            # Round values to 2 decimal places
-            total_payments = round(total_payments, 2)
-            total_expenses = round(total_expenses, 2)
-            total_tds = round(total_tds, 2)
-            total_gst_collected = round(total_gst_collected, 2)
-            net_profit = round(net_profit, 2)
+            template_path = get_template_path('financial_dashboard.html', request.user.role, 'financial_management')
+            context = self.get_context_data()
 
             # Pagination for invoices
-            paginator = Paginator(invoices, 10)  # Show 10 invoices per page
-            page = request.GET.get('page')
             try:
-                invoices = paginator.page(page)
+                page = request.GET.get('page', 1)
+                paginator = Paginator(context['invoices'], 10)
+                context['invoices'] = paginator.page(page)
+                context['paginator'] = paginator
             except PageNotAnInteger:
-                invoices = paginator.page(1)
+                context['invoices'] = paginator.page(1)
             except EmptyPage:
-                invoices = paginator.page(paginator.num_pages)
-
-            # Context data to be passed to the template
-            context = {
-                'invoices': invoices,
-                'payments': payments,
-                'expenses': expenses,
-                'tds_entries': tds_entries,
-                'financial_years': financial_years,
-                'financial_reports': financial_reports,
-                'total_invoices': total_invoices,
-                'total_payments': total_payments,
-                'total_expenses': total_expenses,
-                'total_tds': total_tds,
-                'total_gst_collected': total_gst_collected,
-                'net_profit': net_profit,
-                'paginator': paginator,
-                'page_obj': invoices,
-                'user_role': request.user.role,  # Add user role to context
-            }
+                context['invoices'] = paginator.page(paginator.num_pages)
+            except Exception as e:
+                logger.error(f"Pagination error: {str(e)}")
+                messages.warning(request, "Error loading page data")
 
             return render(request, template_path, context)
 
         except Exception as e:
-            # Handle any exceptions that occur
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            logger.error(f"Error in finance management view: {str(e)}")
+            messages.error(request, "An error occurred while loading financial data")
+            return handler500(request, exception=str(e))
+
+    def get_context_data(self):
+        try:
+            invoices = Invoice.objects.select_related(
+                'patient__user',
+                'created_by'
+            ).prefetch_related(
+                'items',
+                'payments'
+            )
+
+            now = timezone.now()
+            context = {
+                'invoices': invoices,
+                'payments': Payment.objects.select_related('invoice', 'received_by'),
+                'expenses': Expense.objects.select_related('created_by', 'approved_by'),
+                'tds_entries': TDSEntry.objects.select_related('expense'),
+                'financial_years': FinancialYear.objects.all(),
+                'financial_reports': FinancialReport.objects.select_related('financial_year', 'generated_by'),
+                'total_invoices': invoices.count(),
+                'total_payments': Payment.objects.aggregate(total_amount=Sum('amount'))['total_amount'] or 0,
+                'total_expenses': Expense.objects.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0,
+                'total_tds': TDSEntry.objects.aggregate(total_amount=Sum('tds_amount'))['total_amount'] or 0,
+                'total_gst_collected': invoices.aggregate(total_gst=Sum('total_gst_amount'))['total_gst'] or 0,
+            }
+
+            # Calculate net profit
+            context['net_profit'] = context['total_payments'] - context['total_expenses']
+
+            # Round monetary values
+            for key in ['total_payments', 'total_expenses', 'total_tds', 'total_gst_collected', 'net_profit']:
+                context[key] = round(context[key], 2)
+
+            return context
+        except Exception as e:
+            logger.error(f"Error getting finance context data: {str(e)}")
+            return {
+                'invoices': Invoice.objects.none(),
+                'payments': Payment.objects.none(),
+                'expenses': Expense.objects.none(),
+                'tds_entries': TDSEntry.objects.none(),
+                'financial_years': FinancialYear.objects.none(),
+                'financial_reports': FinancialReport.objects.none(),
+                'total_invoices': 0,
+                'total_payments': 0,
+                'total_expenses': 0,
+                'total_tds': 0,
+                'total_gst_collected': 0,
+                'net_profit': 0
+            }
