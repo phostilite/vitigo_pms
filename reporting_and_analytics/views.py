@@ -1,15 +1,30 @@
 # views.py
 
-from django.shortcuts import render
+# Python Standard Library imports
+import logging
+from datetime import timedelta, datetime
+
+# Django core imports
+from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views import View
 from django.utils import timezone
 from django.http import HttpResponse
-from .models import Report, ReportExecution, Dashboard, DashboardWidget, AnalyticsLog
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count
-from access_control.models import Role
+from django.db import transaction
 
-def get_template_path(base_template, role, module=''):
+# Local application imports
+from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403, handler404, handler500
+from .models import Report, ReportExecution, Dashboard, DashboardWidget, AnalyticsLog
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+def get_template_path(base_template, role, module='reporting_and_analytics'):
     """
     Resolves template path based on user role.
     Now uses the template_folder from Role model.
@@ -25,58 +40,65 @@ def get_template_path(base_template, role, module=''):
         return f'dashboard/{role_folder}/{module}/{base_template}'
     return f'dashboard/{role_folder}/{base_template}'
 
-class ReportsAnalyticsManagementView(View):
+class ReportsAnalyticsManagementView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'reporting_and_analytics'):
+            messages.error(request, "You don't have permission to access Reports & Analytics")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
-        return get_template_path('reports_analytics_dashboard.html', self.request.user.role, 'reports_analytics')
+        return get_template_path('reports_analytics_dashboard.html', self.request.user.role, 'reporting_and_analytics')
 
     def get(self, request):
         try:
             template_path = self.get_template_name()
             if not template_path:
-                return HttpResponse("Unauthorized access", status=403)
+                return handler403(request, exception="Unauthorized access")
 
-            # Fetch all reports, report executions, dashboards, dashboard widgets, and analytics logs
-            reports = Report.objects.all()
-            report_executions = ReportExecution.objects.all()
-            dashboards = Dashboard.objects.all()
-            dashboard_widgets = DashboardWidget.objects.all()
-            analytics_logs = AnalyticsLog.objects.all()
+            # Fetch data with try-except blocks
+            try:
+                reports = Report.objects.all()
+                report_executions = ReportExecution.objects.all()
+                dashboards = Dashboard.objects.all()
+                dashboard_widgets = DashboardWidget.objects.all()
+                analytics_logs = AnalyticsLog.objects.all()
+            except Exception as e:
+                logger.error(f"Error fetching reports data: {str(e)}")
+                return handler500(request, exception="Error fetching reports data")
 
             # Calculate statistics
-            total_reports = reports.count()
-            total_executions = report_executions.count()
-            total_dashboards = dashboards.count()
-            total_widgets = dashboard_widgets.count()
-            total_logs = analytics_logs.count()
-
-            # Pagination for reports
-            paginator = Paginator(reports, 10)  # Show 10 reports per page
-            page = request.GET.get('page')
-            try:
-                reports = paginator.page(page)
-            except PageNotAnInteger:
-                reports = paginator.page(1)
-            except EmptyPage:
-                reports = paginator.page(paginator.num_pages)
-
-            # Context data to be passed to the template
             context = {
                 'reports': reports,
                 'report_executions': report_executions,
                 'dashboards': dashboards,
                 'dashboard_widgets': dashboard_widgets,
                 'analytics_logs': analytics_logs,
-                'total_reports': total_reports,
-                'total_executions': total_executions,
-                'total_dashboards': total_dashboards,
-                'total_widgets': total_widgets,
-                'total_logs': total_logs,
-                'paginator': paginator,
-                'page_obj': reports,
-                'user_role': request.user.role,  # Add user role to context
+                'total_reports': reports.count(),
+                'total_executions': report_executions.count(),
+                'total_dashboards': dashboards.count(),
+                'total_widgets': dashboard_widgets.count(),
+                'total_logs': analytics_logs.count(),
+                'user_role': request.user.role,
             }
+
+            # Handle pagination
+            try:
+                paginator = Paginator(reports, 10)
+                page = request.GET.get('page')
+                context['reports'] = paginator.page(page)
+                context['paginator'] = paginator
+                context['page_obj'] = context['reports']
+            except PageNotAnInteger:
+                context['reports'] = paginator.page(1)
+            except EmptyPage:
+                context['reports'] = paginator.page(paginator.num_pages)
+            except Exception as e:
+                logger.error(f"Pagination error: {str(e)}")
+                messages.warning(request, "Error in pagination. Showing all results.")
 
             return render(request, template_path, context)
 
         except Exception as e:
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            logger.exception(f"Unexpected error in ReportsAnalyticsManagementView: {str(e)}")
+            return handler500(request, exception="An unexpected error occurred")
