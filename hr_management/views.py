@@ -69,12 +69,12 @@ class HRManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
             date = request.GET.get('date')
             search = request.GET.get('search')
 
-            # Base queryset
-            employees = Employee.objects.select_related('user', 'department')
+            # Base queryset - only select_related 'user' since department is a CharField
+            employees = Employee.objects.select_related('user')
             
-            # Apply filters
+            # Apply filters - fix department filter
             if department:
-                filters['department_id'] = department
+                filters['department'] = department  # Changed from department_id to department
             if status:
                 filters['status'] = status
             if date:
