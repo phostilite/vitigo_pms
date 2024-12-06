@@ -103,29 +103,52 @@
 
     <!-- Filters and Search -->
     <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <form method="GET" class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+            <!-- Left side filters -->
             <div class="flex flex-wrap items-center gap-4">
                 <!-- Role Filter -->
-                <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                <select name="role" 
+                        onchange="this.form.submit()" 
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                     <option value="">All Roles</option>
-                    <option value="PATIENT">Patient</option>
-                    <option value="DOCTOR">Doctor</option>
-                    <option value="NURSE">Nurse</option>
-                    <option value="RECEPTIONIST">Receptionist</option>
-                    <option value="PHARMACIST">Pharmacist</option>
-                    <option value="LAB_TECHNICIAN">Lab Technician</option>
-                    <option value="ADMIN">Administrator</option>
+                    {% for role in roles %}
+                    <option value="{{ role.name }}" {% if current_filters.role == role.name %}selected{% endif %}>
+                        {{ role.display_name }}
+                    </option>
+                    {% endfor %}
                 </select>
 
                 <!-- Status Filter -->
-                <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                <select name="status" 
+                        onchange="this.form.submit()" 
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                     <option value="">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
                 </select>
 
-                <!-- Date Range -->
-                <input type="date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                <!-- Date Range Filter -->
+                <select name="date_range" 
+                        onchange="this.form.submit()" 
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                    <option value="">All Time</option>
+                    {% for value, label in date_ranges %}
+                    <option value="{{ value }}" {% if current_filters.date_range == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                {% if current_filters.role or current_filters.status or current_filters.date_range or current_filters.search %}
+                <a href="{% url 'user_management' %}" 
+                   class="inline-flex items-center text-sm text-red-600 hover:text-red-800">
+                    <i class="fas fa-times-circle mr-1"></i>
+                    Clear Filters
+                </a>
+                {% endif %}
             </div>
 
             <!-- Search -->
@@ -133,9 +156,13 @@
                 <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                     <i class="fas fa-search text-gray-500"></i>
                 </div>
-                <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" placeholder="Search users...">
+                <input type="text" 
+                       name="search" 
+                       value="{{ current_filters.search }}"
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" 
+                       placeholder="Search users...">
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Users Table -->
@@ -333,9 +360,6 @@
             const modalElement = document.getElementById(targetId);
             new Modal(modalElement);
         });
-
-        // Remove old event listeners and functions since we're using Flowbite's modal now
-        // ...rest of existing dropdown and checkbox code...
     });
 </script>
 {% endblock %}

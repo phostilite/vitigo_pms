@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
+
 # Local application imports
 from access_control.models import Role
 from access_control.permissions import PermissionManager
@@ -32,6 +33,7 @@ from doctor_management.models import (
 )
 from error_handling.views import handler400, handler403, handler404, handler500
 from patient_management.models import Patient, MedicalHistory
+from datetime import timedelta
 from .forms import (
     UserRegistrationForm,
     UserLoginForm,
@@ -179,8 +181,41 @@ class UserManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def get(self, request):
         try:
-            users = User.objects.select_related('role').all()  # Add select_related to optimize queries
+            # Get base queryset
+            queryset = User.objects.select_related('role').all()
             
+            # Get filter parameters
+            role_filter = request.GET.get('role')
+            status_filter = request.GET.get('status')
+            date_filter = request.GET.get('date_range')
+            search_query = request.GET.get('search')
+
+            # Apply filters
+            if role_filter:
+                queryset = queryset.filter(role__name=role_filter)
+            if status_filter:
+                is_active = status_filter == 'active'
+                queryset = queryset.filter(is_active=is_active)
+            if date_filter:
+                if date_filter == '7':
+                    date_threshold = timezone.now() - timedelta(days=7)
+                elif date_filter == '30':
+                    date_threshold = timezone.now() - timedelta(days=30)
+                elif date_filter == '90':
+                    date_threshold = timezone.now() - timedelta(days=90)
+                queryset = queryset.filter(date_joined__gte=date_threshold)
+            
+            # Apply search
+            if search_query:
+                queryset = queryset.filter(
+                    Q(email__icontains=search_query) |
+                    Q(first_name__icontains=search_query) |
+                    Q(last_name__icontains=search_query) |
+                    Q(phone_number__icontains=search_query)
+                )
+
+            users = queryset  # Update users with filtered queryset
+
             # Update role-based queries
             patient_role = Role.objects.get(name='PATIENT')
             doctor_role = Role.objects.get(name='DOCTOR')
@@ -219,6 +254,21 @@ class UserManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'paginator': paginator,
                 'page_obj': users,
                 'user_role': request.user.role,
+                'current_filters': {
+                    'role': role_filter or '',
+                    'status': status_filter or '',
+                    'date_range': date_filter or '',
+                    'search': search_query or '',
+                },
+                'date_ranges': [
+                    ('7', 'Last 7 Days'),
+                    ('30', 'Last 30 Days'),
+                    ('90', 'Last 90 Days'),
+                ],
+                'status_choices': [
+                    ('active', 'Active'),
+                    ('inactive', 'Inactive'),
+                ],
             }
 
             return render(request, self.get_template_name(), context)
