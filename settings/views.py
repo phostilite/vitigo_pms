@@ -40,5 +40,4 @@ class SettingsManagementView(View):
 
         except Exception as e:
             messages.error(request, f"An error occurred: {str(e)}")
-            dashboard_url = get_dashboard_url(request)['dashboard_url']
-            return redirect(dashboard_url)
+            return redirect('dashboard')

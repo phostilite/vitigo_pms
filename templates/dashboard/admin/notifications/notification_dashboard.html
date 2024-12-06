@@ -177,7 +177,51 @@
                             <div class="text-sm text-gray-900">{{ notification.notification_type.name }}</div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">{{ notification.user.username }}</div>
+                            <div class="text-sm text-gray-900">
+                                <a href="{% url 'user_detail' user.id %}">
+                                    <a href="{% url 'user_detail' user.id %}" class="user-info-link">
+                                        {% if notification.user.email %}
+                                            <div class="info-item">
+                                                <i class="fas fa-envelope"></i>
+                                                {{ notification.user.email }}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if notification.user.first_name or notification.user.last_name %}
+                                            <div class="info-item">
+                                                <i class="fas fa-user"></i>
+                                                {{ notification.user.first_name }} {{ notification.user.last_name }}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if notification.user.phone_number %}
+                                            <div class="info-item">
+                                                <i class="fas fa-phone"></i>
+                                                {{ notification.user.phone_number }}
+                                            </div>
+                                        {% endif %}
+                                    </a>
+                                    
+                                    <style>
+                                    .user-info-link {
+                                        text-decoration: none;
+                                        color: inherit;
+                                    }
+                                    
+                                    .info-item {
+                                        margin: 5px 0;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                    }
+                                    
+                                    .info-item i {
+                                        width: 16px;
+                                        color: #666;
+                                    }
+                                    </style>
+                                </a>
+                            </div>
                         </td>
                         <td class="px-6 py-4">
                             <div class="text-sm text-gray-900">{{ notification.created_at|date:"M d, Y" }}</div>
