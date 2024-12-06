@@ -138,3 +138,14 @@ class UserEditForm(forms.ModelForm):
             'class': 'w-full px-3 py-2 border border-gray-300 rounded-md',
             'accept': 'image/*'
         })
+        
+        # Add help text for each field
+        self.fields['email'].help_text = "Update the email address. This will be used for login."
+        self.fields['first_name'].help_text = "User's first name as it appears on official documents."
+        self.fields['last_name'].help_text = "User's last name as it appears on official documents."
+        self.fields['gender'].help_text = "Select the user's gender identity."
+        self.fields['country_code'].help_text = "Country code for phone number (e.g., +91 for India)."
+        self.fields['phone_number'].help_text = "Contact number without country code."
+        self.fields['role'].help_text = "User's system role determines their permissions and access levels."
+        self.fields['is_active'].help_text = "Inactive accounts cannot log in to the system."
+        self.fields['profile_picture'].help_text = "Profile photo should be clear and professional. Max size: 5MB."
