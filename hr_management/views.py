@@ -1,23 +1,40 @@
-# views.py
+# Python Standard Library imports
+import logging
+from datetime import datetime
 
-from django.shortcuts import render
+# Django core imports
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.views import View
+from django.db.models import Count, Sum, Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from django.http import HttpResponse
-from .models import Employee, Attendance, LeaveType, LeaveRequest, PerformanceReview, Training, TrainingAttendance
-from django.db.models import Count, Sum
+from django.views import View
+from django.views.generic import ListView
+
+# Local application imports
 from access_control.models import Role
+from access_control.permissions import PermissionManager
+from error_handling.views import handler403, handler404, handler500
+from .models import (
+    Employee, 
+    Attendance, 
+    LeaveType, 
+    LeaveRequest, 
+    PerformanceReview, 
+    Training, 
+    TrainingAttendance
+)
+
+# Logger configuration
+logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module=''):
-    """
-    Resolves template path based on user role.
-    Now uses the template_folder from Role model.
-    """
+    """Resolves template path based on user role"""
     if isinstance(role, Role):
         role_folder = role.template_folder
     else:
-        # Fallback for any legacy code
         role = Role.objects.get(name=role)
         role_folder = role.template_folder
     
@@ -25,7 +42,16 @@ def get_template_path(base_template, role, module=''):
         return f'dashboard/{role_folder}/{module}/{base_template}'
     return f'dashboard/{role_folder}/{base_template}'
 
-class HRManagementView(View):
+class HRManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to access HR Management")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
         return get_template_path('hr_dashboard.html', self.request.user.role, 'hr_management')
 
@@ -34,10 +60,38 @@ class HRManagementView(View):
             template_path = self.get_template_name()
             
             if not template_path:
-                return HttpResponse("Unauthorized access", status=403)
+                return handler403(request, exception="Unauthorized access")
 
-            # Fetch all employees, attendance records, leave requests, performance reviews, and trainings
-            employees = Employee.objects.all()
+            # Get filter parameters from URL
+            filters = {}
+            department = request.GET.get('department')
+            status = request.GET.get('status')
+            date = request.GET.get('date')
+            search = request.GET.get('search')
+
+            # Base queryset
+            employees = Employee.objects.select_related('user', 'department')
+            
+            # Apply filters
+            if department:
+                filters['department_id'] = department
+            if status:
+                filters['status'] = status
+            if date:
+                filters['date_joined'] = date
+
+            # Apply search
+            if search:
+                employees = employees.filter(
+                    Q(user__first_name__icontains=search) |
+                    Q(user__last_name__icontains=search) |
+                    Q(user__email__icontains=search) |
+                    Q(employee_id__icontains=search)
+                )
+
+            employees = employees.filter(**filters)
+
+            # Fetch related data
             attendance_records = Attendance.objects.all()
             leave_requests = LeaveRequest.objects.all()
             performance_reviews = PerformanceReview.objects.all()
@@ -51,7 +105,7 @@ class HRManagementView(View):
             total_trainings = trainings.count()
 
             # Pagination for employees
-            paginator = Paginator(employees, 10)  # Show 10 employees per page
+            paginator = Paginator(employees, 10)
             page = request.GET.get('page')
             try:
                 employees = paginator.page(page)
@@ -60,7 +114,6 @@ class HRManagementView(View):
             except EmptyPage:
                 employees = paginator.page(paginator.num_pages)
 
-            # Context data to be passed to the template
             context = {
                 'employees': employees,
                 'attendance_records': attendance_records,
@@ -74,11 +127,17 @@ class HRManagementView(View):
                 'total_trainings': total_trainings,
                 'paginator': paginator,
                 'page_obj': employees,
-                'user_role': request.user.role,  # Add user role to context
+                'current_filters': {
+                    'department': department,
+                    'status': status,
+                    'date': date,
+                    'search': search
+                },
+                'user_role': request.user.role,
             }
 
             return render(request, template_path, context)
 
         except Exception as e:
-            # Handle any exceptions that occur
-            return HttpResponse(f"An error occurred: {str(e)}", status=500)
+            logger.exception(f"Error in HRManagementView: {str(e)}")
+            return handler500(request, exception=str(e))
