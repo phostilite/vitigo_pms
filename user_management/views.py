@@ -109,9 +109,9 @@ class UserLoginView(View):
             
             # Get role-based redirects
             role_redirects = {
-                'SUPER_ADMIN': 'admin_dashboard',
-                'ADMIN': 'admin_dashboard',
-                'MANAGER': 'admin_dashboard',
+                'SUPER_ADMIN': 'dashboard',
+                'ADMIN': 'dashboard',
+                'MANAGER': 'dashboard',
                 'DOCTOR': 'doctor_dashboard',
                 'NURSE': 'nurse_dashboard',
                 'MEDICAL_ASSISTANT': 'medical_dashboard',

@@ -3,7 +3,7 @@ from django.views import View
 from django.contrib import messages
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403
-from dashboard.context_processors import get_dashboard_url
+
 from access_control.models import Role
 
 def get_template_path(base_template, role, module='settings'):
