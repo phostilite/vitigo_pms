@@ -1,32 +1,45 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout
-from django.views import View
-from django.contrib import messages
-from django.utils.decorators import method_decorator
-from .forms import UserRegistrationForm, UserLoginForm, UserCreationForm
+# Standard library imports
 import logging
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.utils import timezone
-from user_management.models import CustomUser
-from django.http import HttpResponse
+import random
+import string
+
+# Django core imports
+from django.contrib import messages
+from django.contrib.auth import login, authenticate, logout, get_user_model
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
-from doctor_management.models import DoctorProfile, Specialization, TreatmentMethodSpecialization, BodyAreaSpecialization, AssociatedConditionSpecialization
-from patient_management.models import Patient, MedicalHistory
-from django.contrib.auth.mixins import UserPassesTestMixin
-from django.urls import reverse_lazy
-from access_control.models import Role
-from django.http import Http404
-from error_handling.views import handler404, handler500, handler403, handler400
-from django.db.models import Q
-from appointment_management.models import Appointment
-from consultation_management.models import Consultation 
-from access_control.permissions import PermissionManager
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import get_object_or_404
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
+from django.db.models import Q
+from django.http import Http404, HttpResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views import View
 
+# Local application imports
+from access_control.models import Role
+from access_control.permissions import PermissionManager
+from appointment_management.models import Appointment
+from consultation_management.models import Consultation
+from doctor_management.models import (
+    DoctorProfile,
+    Specialization,
+    TreatmentMethodSpecialization,
+    BodyAreaSpecialization,
+    AssociatedConditionSpecialization
+)
+from error_handling.views import handler400, handler403, handler404, handler500
+from patient_management.models import Patient, MedicalHistory
+from .forms import (
+    UserRegistrationForm,
+    UserLoginForm,
+    UserCreationForm
+)
 
-
+# Configure logging and user model
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module=''):
@@ -161,7 +174,7 @@ class UserManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def get(self, request):
         try:
-            users = CustomUser.objects.select_related('role').all()  # Add select_related to optimize queries
+            users = User.objects.select_related('role').all()  # Add select_related to optimize queries
             
             # Update role-based queries
             patient_role = Role.objects.get(name='PATIENT')
@@ -413,7 +426,7 @@ class UserDetailsView(LoginRequiredMixin, UserPassesTestMixin, View):
     def get(self, request, user_id):
         try:
             # Get the user being viewed with related role
-            viewed_user = CustomUser.objects.select_related('role').get(id=user_id)
+            viewed_user = User.objects.select_related('role').get(id=user_id)
             
             # Base context
             context = {
@@ -469,7 +482,7 @@ class UserDetailsView(LoginRequiredMixin, UserPassesTestMixin, View):
 
             return render(request, self.get_template_name(), context)
 
-        except CustomUser.DoesNotExist:
+        except User.DoesNotExist:
             logger.warning(f"User with id {user_id} not found")
             return handler404(request, exception="User not found")
         except PermissionDenied:
@@ -491,7 +504,7 @@ class UserDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def post(self, request, user_id):
         try:
-            user = get_object_or_404(CustomUser, id=user_id)
+            user = get_object_or_404(User, id=user_id)
             
             # Prevent self-deletion
             if user == request.user:
@@ -518,4 +531,79 @@ class UserDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             logger.error(f"Error deleting user: {str(e)}")
             messages.error(request, f"Error deleting user: {str(e)}")
+            return redirect('user_management')
+
+class UserDeactivateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_modify(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to deactivate users")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            
+            # Prevent self-deactivation
+            if user == request.user:
+                messages.error(request, "You cannot deactivate your own account")
+                return redirect('user_management')
+            
+            # Toggle user's active status
+            new_status = not user.is_active
+            user.is_active = new_status
+            user.save()
+            
+            action = "activated" if new_status else "deactivated"
+            messages.success(request, f"User {user.get_full_name()} has been {action} successfully")
+            logger.info(f"User {user.email} {action} by {request.user.email}")
+            
+            return redirect('user_management')
+            
+        except Exception as e:
+            logger.error(f"Error toggling user status: {str(e)}")
+            messages.error(request, f"Error updating user status: {str(e)}")
+            return redirect('user_management')
+
+class UserResetPasswordView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'user_management')
+        
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_modify(self.request.user, 'user_management'):
+            messages.error(request, "You don't have permission to reset passwords")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            
+            # Prevent self-password reset through this view
+            if user == request.user:
+                messages.error(request, "Use the profile settings to change your own password")
+                return redirect('user_management')
+            
+            # Generate a random password
+            new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            
+            # Set the new password
+            user.set_password(new_password)
+            user.save()
+            
+            messages.success(
+                request, 
+                f"Password has been reset for {user.get_full_name()}. "
+                f"New password: {new_password}"
+            )
+            logger.info(f"Password reset for user {user.email} by {request.user.email}")
+            
+            return redirect('user_management')
+            
+        except Exception as e:
+            logger.error(f"Error resetting password: {str(e)}")
+            messages.error(request, f"Error resetting password: {str(e)}")
             return redirect('user_management')
