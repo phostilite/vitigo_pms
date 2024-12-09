@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
-from patient_management.models import Patient
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class TeleconsultationSession(models.Model):
     STATUS_CHOICES = [
@@ -11,8 +13,13 @@ class TeleconsultationSession(models.Model):
         ('NO_SHOW', 'No Show'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='teleconsultations')
-    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='teleconsultations_conducted')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='teleconsultations',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='teleconsultations_conducted')
     scheduled_start = models.DateTimeField()
     scheduled_end = models.DateTimeField()
     actual_start = models.DateTimeField(null=True, blank=True)
@@ -48,7 +55,7 @@ class TeleconsultationFile(models.Model):
     teleconsultation = models.ForeignKey(TeleconsultationSession, on_delete=models.CASCADE, related_name='files')
     file = models.FileField(upload_to='teleconsultation_files/')
     file_type = models.CharField(max_length=20, choices=FILE_TYPE_CHOICES)
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True)
 
@@ -67,17 +74,22 @@ class TeleconsultationFeedback(models.Model):
     teleconsultation = models.OneToOneField(TeleconsultationSession, on_delete=models.CASCADE, related_name='feedback')
     rating = models.IntegerField(choices=RATING_CHOICES)
     comments = models.TextField(blank=True)
-    submitted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Feedback for {self.teleconsultation}"
 
 class TelemedicinevirtualWaitingRoom(models.Model):
-    patient = models.OneToOneField(Patient, on_delete=models.CASCADE, related_name='virtual_waiting_room')
+    patient = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='virtual_waiting_room',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     joined_at = models.DateTimeField(auto_now_add=True)
     teleconsultation = models.ForeignKey(TeleconsultationSession, on_delete=models.CASCADE, related_name='waiting_room_entries')
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.patient.user.get_full_name()} in waiting room for {self.teleconsultation}"
+        return f"{self.patient.get_full_name()} in waiting room for {self.teleconsultation}"

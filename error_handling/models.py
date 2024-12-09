@@ -1,5 +1,8 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class ErrorLog(models.Model):
     ERROR_LEVELS = [
@@ -14,7 +17,7 @@ class ErrorLog(models.Model):
     message = models.TextField()
     traceback = models.TextField(blank=True, null=True)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True

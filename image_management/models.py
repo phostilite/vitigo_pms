@@ -1,11 +1,20 @@
-from django.db import models
+# Django imports
 from django.conf import settings
-from patient_management.models import Patient
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+
+# Third-party imports
 from PIL import Image as PILImage
 import os
+
+# Local app imports
 from consultation_management.models import Consultation
+from patient_management.models import Patient
+
+# Get user model
+User = get_user_model()
 
 
 class BodyPart(models.Model):
@@ -34,7 +43,12 @@ class PatientImage(models.Model):
         ('PATIENT', 'Patient Uploaded'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='images')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='images',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     image_file = models.ImageField(upload_to='patient_images/')
     body_part = models.ForeignKey(BodyPart, on_delete=models.SET_NULL, null=True)
     image_type = models.CharField(max_length=10, choices=IMAGE_TYPE_CHOICES)
@@ -47,7 +61,7 @@ class PatientImage(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True)
     tags = models.ManyToManyField(ImageTag, blank=True)
-    tagged_users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True)
+    tagged_users = models.ManyToManyField(User, blank=True)
     consultation = models.ForeignKey(Consultation, on_delete=models.SET_NULL, null=True)
 
     # Metadata
@@ -55,7 +69,7 @@ class PatientImage(models.Model):
     height = models.PositiveIntegerField(null=True, blank=True)
     file_size = models.PositiveIntegerField(null=True, blank=True)  # in bytes
 
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                                     related_name='uploaded_images')
     is_private = models.BooleanField(default=False)
 
@@ -94,7 +108,7 @@ class ImageComparison(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     images = models.ManyToManyField(PatientImage, through='ComparisonImage')
 
     comparison_type = models.CharField(
@@ -135,7 +149,7 @@ class ImageAnnotation(models.Model):
     width = models.FloatField(validators=[MinValueValidator(1), MaxValueValidator(100)])
     height = models.FloatField(validators=[MinValueValidator(1), MaxValueValidator(100)])
     text = models.TextField()
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

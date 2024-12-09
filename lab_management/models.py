@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
-from patient_management.models import Patient
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class LabTest(models.Model):
     name = models.CharField(max_length=255)
@@ -21,8 +23,13 @@ class LabOrder(models.Model):
         ('CANCELLED', 'Cancelled'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='lab_orders')
-    ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='ordered_lab_tests')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='lab_orders',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
+    ordered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='ordered_lab_tests')
     order_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ORDERED')
     notes = models.TextField(blank=True)
@@ -50,7 +57,7 @@ class LabResult(models.Model):
     unit = models.CharField(max_length=50)
     reference_range = models.CharField(max_length=100)
     status = models.CharField(max_length=20, choices=RESULT_STATUS_CHOICES)
-    performed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='performed_lab_tests')
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='performed_lab_tests')
     performed_at = models.DateTimeField()
     notes = models.TextField(blank=True)
 
@@ -66,7 +73,7 @@ class LabReport(models.Model):
     lab_order = models.OneToOneField(LabOrder, on_delete=models.CASCADE, related_name='report')
     report_file = models.FileField(upload_to='lab_reports/')
     upload_type = models.CharField(max_length=20, choices=UPLOAD_TYPE_CHOICES)
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     is_sent_to_patient = models.BooleanField(default=False)
 
@@ -76,7 +83,7 @@ class LabReport(models.Model):
 class LabReportComment(models.Model):
     lab_report = models.ForeignKey(LabReport, on_delete=models.CASCADE, related_name='comments')
     comment = models.TextField()
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,9 +1,12 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Employee(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='employee_profile')
     employee_id = models.CharField(max_length=20, unique=True)
     department = models.CharField(max_length=100)
     position = models.CharField(max_length=100)
@@ -59,7 +62,7 @@ class LeaveRequest(models.Model):
         ('APPROVED', 'Approved'),
         ('REJECTED', 'Rejected'),
     ], default='PENDING')
-    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -68,7 +71,7 @@ class LeaveRequest(models.Model):
 
 class PerformanceReview(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='performance_reviews')
-    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conducted_reviews')
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conducted_reviews')
     review_date = models.DateField()
     performance_score = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     strengths = models.TextField()

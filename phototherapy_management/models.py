@@ -1,7 +1,11 @@
-from django.db import models
+# Django imports
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
-from patient_management.models import Patient
+from django.db import models
+
+# Get user model
+User = get_user_model()
 
 class PhototherapyType(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -26,17 +30,22 @@ class PhototherapyProtocol(models.Model):
         return f"{self.phototherapy_type.name} - {self.name}"
 
 class PhototherapyPlan(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='phototherapy_plans')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='phototherapy_plans',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     protocol = models.ForeignKey(PhototherapyProtocol, on_delete=models.SET_NULL, null=True)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     current_dose = models.FloatField(help_text="Current dose in mJ/cm²")
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"Phototherapy Plan for {self.patient.user.get_full_name()} - {self.protocol.phototherapy_type.name}"
+        return f"Phototherapy Plan for {self.patient.get_full_name()} - {self.protocol.phototherapy_type.name}"
 
 class PhototherapySession(models.Model):
     COMPLIANCE_CHOICES = [
@@ -52,10 +61,10 @@ class PhototherapySession(models.Model):
     compliance = models.CharField(max_length=20, choices=COMPLIANCE_CHOICES)
     side_effects = models.TextField(blank=True)
     notes = models.TextField(blank=True)
-    administered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    administered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
-        return f"Session for {self.plan.patient.user.get_full_name()} on {self.session_date}"
+        return f"Session for {self.plan.patient.get_full_name()} on {self.session_date}"
 
 class PhototherapyDevice(models.Model):
     name = models.CharField(max_length=100)
@@ -75,7 +84,7 @@ class HomePhototherapyLog(models.Model):
     date = models.DateField()
     duration = models.PositiveIntegerField(help_text="Duration of session in seconds")
     notes = models.TextField(blank=True)
-    reported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    reported_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
-        return f"Home Session for {self.plan.patient.user.get_full_name()} on {self.date}"
+        return f"Home Session for {self.plan.patient.get_full_name()} on {self.date}"

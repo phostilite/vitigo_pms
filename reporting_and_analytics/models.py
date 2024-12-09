@@ -1,7 +1,9 @@
 from django.db import models
 from django.conf import settings
-from django.db.models import JSONField  # Use this instead of django.contrib.postgres.fields.JSONField
+from django.db.models import JSONField
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class Report(models.Model):
     REPORT_TYPES = [
@@ -28,7 +30,7 @@ class Report(models.Model):
     report_type = models.CharField(max_length=20, choices=REPORT_TYPES)
     query = models.TextField(help_text="SQL query or aggregation logic for the report")
     parameters = JSONField(default=dict, blank=True, help_text="JSON object of report parameters")
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                                    related_name='created_reports')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -46,7 +48,7 @@ class Report(models.Model):
 class ReportExecution(models.Model):
     report = models.ForeignKey(Report, on_delete=models.CASCADE, related_name='executions')
     executed_at = models.DateTimeField(auto_now_add=True)
-    executed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    executed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     status = models.CharField(max_length=20, choices=[
         ('SUCCESS', 'Success'),
         ('FAILURE', 'Failure'),
@@ -62,7 +64,7 @@ class ReportExecution(models.Model):
 class Dashboard(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                                    related_name='created_dashboards')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -92,7 +94,7 @@ class DashboardWidget(models.Model):
 
 
 class AnalyticsLog(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     action = models.CharField(max_length=255)
     details = JSONField(default=dict)
     timestamp = models.DateTimeField(auto_now_add=True)

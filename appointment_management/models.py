@@ -1,15 +1,18 @@
-from django.db import models
-from django.conf import settings
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-from doctor_management.models import TreatmentMethodSpecialization, BodyAreaSpecialization
-from doctor_management.models import DoctorProfile
+# Standard library imports
 import logging
+
+# Django imports
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Q
+from django.utils import timezone
 
+# Custom variables
 User = get_user_model()
-
 logger = logging.getLogger(__name__)
+
 
 class TimeSlotConfig(models.Model):
     """Configuration for clinic's standard time slots"""
@@ -26,7 +29,12 @@ class TimeSlotConfig(models.Model):
 
 class DoctorTimeSlot(models.Model):
     """Available time slots for each doctor"""
-    doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='time_slots')
+    doctor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='time_slots',
+        limit_choices_to={'role__name': 'DOCTOR'}
+    )
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -77,18 +85,17 @@ class Appointment(models.Model):
         ('C', 'Low'),
     ]
 
-    # Update these ForeignKey fields to use Role-based filtering
     patient = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        User, 
         on_delete=models.CASCADE, 
         related_name='appointments',
-        limit_choices_to={'role__name': 'PATIENT'}  # Changed from role to role__name
+        limit_choices_to={'role__name': 'PATIENT'}  
     )
     doctor = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        User, 
         on_delete=models.CASCADE, 
         related_name='doctor_appointments',
-        limit_choices_to={'role__name': 'DOCTOR'}   # Changed from role to role__name
+        limit_choices_to={'role__name': 'DOCTOR'}   
     )
     appointment_type = models.CharField(max_length=20, choices=APPOINTMENT_TYPES, default='CONSULTATION')
     date = models.DateField()
@@ -261,7 +268,7 @@ class AppointmentReminder(models.Model):
 class CancellationReason(models.Model):
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name='cancellation_reason')
     reason = models.TextField()
-    cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    cancelled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     cancelled_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

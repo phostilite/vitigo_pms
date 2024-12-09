@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
-from patient_management.models import Patient
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class ResearchStudy(models.Model):
     STUDY_STATUS_CHOICES = [
@@ -15,7 +17,7 @@ class ResearchStudy(models.Model):
     description = models.TextField()
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
-    principal_investigator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='led_studies')
+    principal_investigator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='led_studies')
     status = models.CharField(max_length=20, choices=STUDY_STATUS_CHOICES, default='PLANNING')
     ethics_approval_document = models.FileField(upload_to='research_documents/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -44,7 +46,12 @@ class PatientStudyEnrollment(models.Model):
         ('WITHDRAWN', 'Withdrawn'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='study_enrollments')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='study_enrollments',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     study = models.ForeignKey(ResearchStudy, on_delete=models.CASCADE, related_name='patient_enrollments')
     enrollment_date = models.DateField()
     status = models.CharField(max_length=20, choices=ENROLLMENT_STATUS_CHOICES, default='SCREENING')
@@ -67,7 +74,7 @@ class ResearchData(models.Model):
     collection_point = models.ForeignKey(DataCollectionPoint, on_delete=models.CASCADE)
     collected_date = models.DateField()
     data = models.JSONField()
-    collected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    collected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     notes = models.TextField(blank=True)
 
     def __str__(self):
@@ -78,7 +85,7 @@ class AnalysisResult(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     result_data = models.JSONField()
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

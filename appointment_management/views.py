@@ -37,8 +37,9 @@ from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 from patient_management.models import MedicalHistory
-from .models import Appointment, CancellationReason, DoctorProfile, DoctorTimeSlot, AppointmentReminder, ReminderConfiguration, ReminderTemplate
 from doctor_management.models import DoctorProfile
+from .models import Appointment, CancellationReason, DoctorTimeSlot, AppointmentReminder, ReminderConfiguration, ReminderTemplate
+
 from .forms import AppointmentCreateForm
 
 # Logger configuration

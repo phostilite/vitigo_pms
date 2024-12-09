@@ -1,5 +1,8 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class NotificationType(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -9,7 +12,7 @@ class NotificationType(models.Model):
         return self.name
 
 class UserNotification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     notification_type = models.ForeignKey(NotificationType, on_delete=models.CASCADE, related_name='user_notifications')
     message = models.TextField()
     is_read = models.BooleanField(default=False)
@@ -20,7 +23,7 @@ class UserNotification(models.Model):
         return f"Notification for {self.user.email} - {self.message[:20]}"
 
 class SystemActivityLog(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     action = models.CharField(max_length=255)
     details = models.JSONField(default=dict)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -29,7 +32,7 @@ class SystemActivityLog(models.Model):
         return f"{self.user.email if self.user else 'System'} - {self.action} at {self.timestamp}"
 
 class UserActivityLog(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='activity_logs')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
     action = models.CharField(max_length=255)
     details = models.JSONField(default=dict)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -38,7 +41,7 @@ class UserActivityLog(models.Model):
         return f"{self.user.email} - {self.action} at {self.timestamp}"
 
 class EmailNotification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='email_notifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_notifications')
     subject = models.CharField(max_length=255)
     message = models.TextField()
     sent_at = models.DateTimeField(auto_now_add=True)
@@ -52,7 +55,7 @@ class EmailNotification(models.Model):
         return f"Email to {self.user.email} - {self.subject[:20]}"
 
 class SMSNotification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sms_notifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sms_notifications')
     phone_number = models.CharField(max_length=15)
     message = models.TextField()
     sent_at = models.DateTimeField(auto_now_add=True)
@@ -66,7 +69,7 @@ class SMSNotification(models.Model):
         return f"SMS to {self.phone_number} - {self.message[:20]}"
 
 class PushNotification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='push_notifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='push_notifications')
     title = models.CharField(max_length=255)
     message = models.TextField()
     sent_at = models.DateTimeField(auto_now_add=True)

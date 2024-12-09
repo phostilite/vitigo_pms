@@ -1,7 +1,9 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class Patient(models.Model):
     GENDER_CHOICES = [
@@ -17,7 +19,12 @@ class Patient(models.Model):
         ('O+', 'O+'), ('O-', 'O-'),
     ]
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='patient_profile')
+    user = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='patient_profile',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     blood_group = models.CharField(max_length=3, choices=BLOOD_GROUP_CHOICES, null=True, blank=True)
@@ -53,7 +60,7 @@ class Medication(models.Model):
     frequency = models.CharField(max_length=50)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
-    prescribed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+    prescribed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                                       related_name='prescribed_medications')
 
     def __str__(self):
@@ -67,7 +74,7 @@ class VitiligoAssessment(models.Model):
     vasi_score = models.FloatField(validators=[MinValueValidator(0), MaxValueValidator(100)], null=True, blank=True)
     treatment_response = models.TextField()
     notes = models.TextField(blank=True)
-    assessed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    assessed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f"Assessment for {self.patient.user.get_full_name()} on {self.assessment_date}"
@@ -82,7 +89,7 @@ class TreatmentPlan(models.Model):
     phototherapy_details = models.TextField(blank=True)
     lifestyle_recommendations = models.TextField(blank=True)
     follow_up_frequency = models.CharField(max_length=50)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f"Treatment Plan for {self.patient.user.get_full_name()} created on {self.created_date}"

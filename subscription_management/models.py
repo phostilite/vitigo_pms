@@ -2,6 +2,9 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class SubscriptionTier(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -28,7 +31,7 @@ class SubscriptionFeature(models.Model):
         return self.name
 
 class Subscription(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscription')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='subscription')
     tier = models.ForeignKey(SubscriptionTier, on_delete=models.PROTECT)
     start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
@@ -54,7 +57,7 @@ class Subscription(models.Model):
             raise ValidationError("Trial end date is required for trial subscriptions.")
 
 class SubscriptionHistory(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscription_history')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscription_history')
     tier = models.ForeignKey(SubscriptionTier, on_delete=models.PROTECT)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()

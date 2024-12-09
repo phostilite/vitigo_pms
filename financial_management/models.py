@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
-from patient_management.models import Patient
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class GSTRate(models.Model):
     rate = models.DecimalField(max_digits=5, decimal_places=2)
@@ -17,7 +19,12 @@ class Invoice(models.Model):
         ('CANCELLED', 'Cancelled'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='invoices')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='invoices',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     invoice_number = models.CharField(max_length=20, unique=True)
     invoice_date = models.DateField()
     due_date = models.DateField()
@@ -30,7 +37,7 @@ class Invoice(models.Model):
     total_with_gst = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.TextField(blank=True)
     terms_and_conditions = models.TextField(blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -67,7 +74,7 @@ class Payment(models.Model):
     bank_name = models.CharField(max_length=100, blank=True, null=True)
     upi_id = models.CharField(max_length=50, blank=True, null=True)
     notes = models.TextField(blank=True)
-    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    received_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f"Payment of {self.amount} for Invoice {self.invoice.invoice_number}"
@@ -94,8 +101,8 @@ class Expense(models.Model):
     invoice_number = models.CharField(max_length=50, blank=True, null=True)
     payment_method = models.CharField(max_length=20, choices=Payment.PAYMENT_METHOD_CHOICES)
     receipt = models.FileField(upload_to='expense_receipts/', null=True, blank=True)
-    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='approved_expenses')
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_expenses')
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='approved_expenses')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_expenses')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -145,7 +152,7 @@ class FinancialReport(models.Model):
     net_profit = models.DecimalField(max_digits=12, decimal_places=2)
     total_gst_collected = models.DecimalField(max_digits=12, decimal_places=2)
     total_tds_deducted = models.DecimalField(max_digits=12, decimal_places=2)
-    generated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    generated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     generated_at = models.DateTimeField(auto_now_add=True)
     report_file = models.FileField(upload_to='financial_reports/', null=True, blank=True)
 

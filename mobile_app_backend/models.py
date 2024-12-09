@@ -1,9 +1,11 @@
 from django.db import models
 from django.conf import settings
-from patient_management.models import Patient
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class MobileDeviceToken(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='mobile_tokens')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mobile_tokens')
     device_token = models.CharField(max_length=255, unique=True)
     device_type = models.CharField(max_length=20, choices=[('IOS', 'iOS'), ('ANDROID', 'Android')])
     is_active = models.BooleanField(default=True)
@@ -29,7 +31,12 @@ class MobileAppointmentRequest(models.Model):
         ('REJECTED', 'Rejected'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='mobile_appointment_requests')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='mobile_appointment_requests',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     preferred_date = models.DateField()
     preferred_time = models.TimeField()
     reason = models.TextField()
@@ -48,7 +55,12 @@ class PatientQuery(models.Model):
         ('CLOSED', 'Closed'),
     ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='mobile_queries')
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='mobile_queries',
+        limit_choices_to={'role__name': 'PATIENT'}
+    )
     subject = models.CharField(max_length=255)
     message = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
@@ -60,7 +72,7 @@ class PatientQuery(models.Model):
 
 class PatientQueryResponse(models.Model):
     query = models.ForeignKey(PatientQuery, on_delete=models.CASCADE, related_name='responses')
-    responder = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    responder = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -68,7 +80,7 @@ class PatientQueryResponse(models.Model):
         return f"Response to {self.query.subject} by {self.responder.get_full_name()}"
 
 class MobileNotification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='mobile_notifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mobile_notifications')
     title = models.CharField(max_length=255)
     message = models.TextField()
     is_read = models.BooleanField(default=False)

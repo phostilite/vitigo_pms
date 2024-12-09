@@ -16,7 +16,7 @@ from access_control.models import Role
 from access_control.permissions import PermissionManager
 from appointment_management.models import Appointment
 from consultation_management.models import Consultation
-from doctor_management.models import DoctorProfile
+
 from patient_management.models import Patient, TreatmentPlan
 from phototherapy_management.models import PhototherapySession
 from stock_management.models import StockItem

@@ -19,7 +19,6 @@ from .models import (
     Medication,
     MedicationStock,
     PurchaseOrder,
-    Prescription,
     Supplier
 )
 
@@ -83,43 +82,35 @@ class PharmacyManagementView(LoginRequiredMixin, View):
 
     def get_context_data(self):
         try:
-            # Fix: Remove non-relational fields from select_related
             medications = Medication.objects.select_related(
-                'stock'  # Only include actual foreign key relationships
+                'stock'
+            ).all()
+
+            purchase_orders = PurchaseOrder.objects.select_related(
+                'supplier',
+                'created_by'
             ).prefetch_related(
-                'purchase_orders',
-                'prescription_items'  # Changed from prescriptions to prescription_items
-            )
+                'items__medication'
+            ).filter(status='PENDING')
 
             context = {
                 'medications': medications,
                 'suppliers': Supplier.objects.all(),
-                'prescriptions': Prescription.objects.select_related(
-                    'patient',
-                    'doctor',
-                    'filled_by'
-                ).prefetch_related(
-                    'items__medication'  # Add this to load prescription items
-                ).filter(status='PENDING'),
-                'purchase_orders': PurchaseOrder.objects.select_related(
-                    'supplier',
-                    'created_by'
-                ).filter(status='PENDING'),
+                'purchase_orders': purchase_orders,
             }
 
             # Calculate statistics
             now = timezone.now()
             context.update({
-                'active_prescriptions': context['prescriptions'].count(),
                 'low_stock_count': MedicationStock.objects.filter(
                     quantity__lte=F('reorder_level')
                 ).count(),
-                'monthly_revenue': PurchaseOrder.objects.filter(
+                'monthly_revenue': purchase_orders.filter(
                     status='RECEIVED',
                     order_date__month=now.month,
                     order_date__year=now.year
                 ).aggregate(total=Sum('total_amount'))['total'] or 0,
-                'pending_orders': context['purchase_orders'].count(),
+                'pending_orders': purchase_orders.count(),
             })
 
             return context
@@ -159,11 +150,9 @@ class MedicationDetailView(LoginRequiredMixin, View):
     def get_medication_with_relations(self, medication_id):
         try:
             return Medication.objects.select_related(
-                'stock'  # Only include actual foreign key relationships
+                'stock'
             ).prefetch_related(
-                'purchase_orders__supplier',
-                'prescription_items__prescription',
-                'stock_records'
+                'purchaseorderitem_set__purchase_order'  # Added to get purchase history
             ).get(id=medication_id)
         except Medication.DoesNotExist:
             return None
@@ -175,14 +164,10 @@ class MedicationDetailView(LoginRequiredMixin, View):
         try:
             return {
                 'medication': medication,
-                'stock_history': medication.stock_records.order_by('-last_restocked'),
-                'prescription_history': medication.prescription_items.select_related(
-                    'prescription__patient',
-                    'prescription__doctor'
-                ).order_by('-prescription__prescription_date'),
-                'purchase_history': medication.purchase_orders.select_related(
-                    'supplier'
-                ).order_by('-order_date'),
+                'stock_history': medication.stock,  # Changed from stock_records
+                'purchase_history': medication.purchaseorderitem_set.select_related(
+                    'purchase_order__supplier'
+                ).order_by('-purchase_order__order_date'),
                 'current_stock': self.get_current_stock(medication),
                 'usage_statistics': self.get_usage_statistics(medication),
             }
@@ -206,13 +191,8 @@ class MedicationDetailView(LoginRequiredMixin, View):
             now = timezone.now()
             month_start = now.replace(day=1)
             return {
-                'monthly_usage': Prescription.objects.filter(
-                    medication=medication,
-                    date__gte=month_start
-                ).count(),
-                'low_stock_alerts': medication.stock_records.filter(
-                    quantity__lte=F('reorder_level')
-                ).count(),
+                'monthly_usage': 0,
+                'low_stock_alerts': 1 if medication.stock.quantity <= medication.stock.reorder_level else 0
             }
         except Exception as e:
             logger.error(f"Error calculating usage statistics: {str(e)}")

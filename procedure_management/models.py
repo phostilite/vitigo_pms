@@ -1,7 +1,9 @@
-from django.db import models
+# Django imports
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import models
 
+# Get user model
 User = get_user_model()
 
 class ProcedureType(models.Model):
@@ -22,11 +24,11 @@ class Procedure(models.Model):
         ('CANCELLED', 'Cancelled'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='procedures', null=True, blank=True, limit_choices_to={'role': 'PATIENT'})
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='procedures', null=True, blank=True)
     procedure_type = models.ForeignKey(ProcedureType, on_delete=models.CASCADE)
     scheduled_date = models.DateTimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
-    performed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='performed_procedures')
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='performed_procedures')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,7 +1,9 @@
 # doctor_management/models.py
 from django.db import models
-from user_management.models import CustomUser
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Specialization(models.Model):
     """Base specialization model for categorizing doctors"""
@@ -53,7 +55,12 @@ class DoctorProfile(models.Model):
         ('15+', '15+ years'),
     )
 
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='doctor_profile')
+    user = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='doctor_profile', 
+        limit_choices_to={'role__name': 'Doctor'}
+    )
     registration_number = models.CharField(max_length=50, unique=True)
     qualification = models.CharField(max_length=200)
     experience = models.CharField(max_length=10, choices=EXPERIENCE_CHOICES)
@@ -114,7 +121,7 @@ class DoctorAvailability(models.Model):
 class DoctorReview(models.Model):
     """Patient reviews and ratings for doctors"""
     doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='reviews')
-    patient = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    patient = models.ForeignKey(User, on_delete=models.CASCADE)
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     review = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

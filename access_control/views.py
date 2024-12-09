@@ -35,7 +35,7 @@ def get_template_path(base_template, role, module=''):
 
 class AccessControlDashboardView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get_template_name(self):
         return get_template_path('dashboard.html', self.request.user.role, 'access_control')
@@ -57,7 +57,7 @@ class AccessControlDashboardView(UserPassesTestMixin, View):
 
 class CreateRoleView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get_template_name(self):
         return get_template_path('create_role.html', self.request.user.role, 'access_control')
@@ -96,7 +96,7 @@ class CreateRoleView(UserPassesTestMixin, View):
 
 class RoleDetailView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get_template_name(self):
         return get_template_path('role_detail.html', self.request.user.role, 'access_control')
@@ -151,7 +151,7 @@ class RoleDetailView(UserPassesTestMixin, View):
 
 class EditRoleView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get_template_name(self):
         return get_template_path('edit_role.html', self.request.user.role, 'access_control')
@@ -222,14 +222,14 @@ class EditRoleView(UserPassesTestMixin, View):
 
 class DeleteRoleView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def post(self, request, role_id):
         try:
             role = Role.objects.get(id=role_id)
             
             # Don't allow deletion of SUPER_ADMIN or ADMIN roles
-            if role.name in ['SUPER_ADMIN', 'ADMIN']:
+            if role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']:
                 messages.error(request, 'Cannot delete system roles.')
                 return redirect('access_control_dashboard')
             
@@ -250,7 +250,7 @@ class DeleteRoleView(UserPassesTestMixin, View):
 
 class ModuleListView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get_template_name(self):
         return get_template_path('modules.html', self.request.user.role, 'access_control')
@@ -267,7 +267,7 @@ class ModuleListView(UserPassesTestMixin, View):
 
 class ManageRolesView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get_template_name(self):
         return get_template_path('manage_roles.html', self.request.user.role, 'access_control')
@@ -280,14 +280,14 @@ class ManageRolesView(UserPassesTestMixin, View):
 
 class BulkUpdateView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get_template_name(self):
         return get_template_path('bulk_update.html', self.request.user.role, 'access_control')
 
     def get(self, request):
         context = {
-            'roles': Role.objects.exclude(name__in=['SUPER_ADMIN', 'ADMIN']),
+            'roles': Role.objects.exclude(name__in=['SUPER_ADMIN', 'ADMINISTRATOR']),
             'modules': Module.objects.filter(is_active=True).order_by('order', 'display_name')
         }
         return render(request, self.get_template_name(), context)
@@ -329,7 +329,7 @@ class BulkUpdateView(UserPassesTestMixin, View):
 
 class ExportDataView(UserPassesTestMixin, View):
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMIN']
+        return self.request.user.is_authenticated and self.request.user.role.name in ['SUPER_ADMIN', 'ADMINISTRATOR']
 
     def get(self, request):
         export_format = request.GET.get('format', 'csv')

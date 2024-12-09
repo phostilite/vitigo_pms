@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from access_control.models import Role
-from doctor_management.models import DoctorProfile, DoctorAvailability
+, DoctorAvailability
 from appointment_management.models import DoctorTimeSlot
 from datetime import datetime, timedelta
 import random

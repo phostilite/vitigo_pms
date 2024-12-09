@@ -1,6 +1,9 @@
 from django.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Query(models.Model):
     PRIORITY_CHOICES = [
@@ -37,9 +40,9 @@ class Query(models.Model):
 
     # Existing fields
     query_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                             related_name='queries')
-    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                   related_name='assigned_queries')
     subject = models.CharField(max_length=255)
     description = models.TextField()
@@ -75,7 +78,7 @@ class Query(models.Model):
 
 class QueryUpdate(models.Model):
     query = models.ForeignKey(Query, on_delete=models.CASCADE, related_name='updates')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,5 +1,8 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class SupportCategory(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -23,7 +26,7 @@ class SupportTicket(models.Model):
         ('URGENT', 'Urgent'),
     ]
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='support_tickets')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_tickets')
     category = models.ForeignKey(SupportCategory, on_delete=models.SET_NULL, null=True, related_name='tickets')
     subject = models.CharField(max_length=255)
     description = models.TextField()
@@ -37,7 +40,7 @@ class SupportTicket(models.Model):
 
 class SupportResponse(models.Model):
     ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name='responses')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -66,7 +69,7 @@ class KnowledgeBaseArticle(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()
     category = models.ForeignKey(SupportCategory, on_delete=models.SET_NULL, null=True, related_name='articles')
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_articles')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_articles')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
