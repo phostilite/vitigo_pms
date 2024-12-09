@@ -52,8 +52,8 @@ def get_template_path(base_template, role, module=''):
         role_folder = role.template_folder
     
     if module:
-        return f'dashboard/{role_folder}/{module}/{base_template}'
-    return f'dashboard/{role_folder}/{base_template}'
+        return f'{role_folder}/{module}/{base_template}'
+    return f'{role_folder}/{base_template}'
 
 class QueryManagementView(LoginRequiredMixin, View):
     def get_query_trend_data(self, queryset, days=30):

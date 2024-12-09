@@ -10,6 +10,7 @@ from django.db.models import F, Count, Sum, Q
 from django.shortcuts import render
 from django.utils import timezone
 from django.views import View
+from django.contrib import messages
 
 # Local application imports
 from access_control.models import Role
@@ -18,6 +19,7 @@ from appointment_management.models import Appointment
 from consultation_management.models import Consultation
 
 from patient_management.models import Patient, TreatmentPlan
+from doctor_management.models import DoctorProfile
 from phototherapy_management.models import PhototherapySession
 from stock_management.models import StockItem
 
@@ -27,13 +29,37 @@ from error_handling.views import handler403, handler404, handler500
 # Get custom user model
 User = get_user_model()
 
+def get_template_path(base_template, role, module=''):
+    """
+    Resolves template path based on user role.
+    Now uses the template_folder from Role model.
+    """
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
+    
+    if module:
+        return f'{role_folder}/{module}/{base_template}'
+    return f'{role_folder}/{base_template}'
+
 class DashboardView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.role:
+            return handler403(self.request, exception="No role assigned")
+        if not PermissionManager.check_module_access(request.user, 'dashboard'):
+            messages.error(request, "You don't have permission to access the dashboard")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_template_name(self):
-        return f'dashboard/{self.request.user.role.template_folder}/dashboard.html'
-        
+        return get_template_path('dashboard.html', self.request.user.role, 'dashboard')
+
     def get_context_for_admin(self):
         # Check if user has admin access
-        admin_roles = ['SUPER_ADMIN', 'ADMIN', 'MANAGER']
+        admin_roles = ['SUPER_ADMIN', 'ADMINISTRATOR', 'MANAGER']
         if not self.request.user.role or self.request.user.role.name not in admin_roles:
             return handler403(self.request, exception="You do not have permission to access the admin dashboard.")
         
@@ -252,9 +278,6 @@ class DashboardView(LoginRequiredMixin, View):
         return {}
         
     def get(self, request):
-        if not request.user.role:
-            return handler403(self.request, exception="No role assigned")
-            
         try:
             role_name = request.user.role.name
             

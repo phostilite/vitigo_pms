@@ -1,8 +1,8 @@
 from django.core.management.base import BaseCommand
-from access_control.models import Module, Role
+from access_control.models import Module, Role, ModulePermission
 
 class Command(BaseCommand):
-    help = 'Populate initial modules and roles for access control'
+    help = 'Populate initial modules, roles and permissions for access control'
 
     def handle(self, *args, **kwargs):
         # Define modules with their attributes
@@ -27,6 +27,7 @@ class Command(BaseCommand):
             {'name': 'financial_management', 'display_name': 'Finance', 'url_name': 'financial_dashboard', 'order': 30},
             {'name': 'hr_management', 'display_name': 'HR Management', 'url_name': 'hr_dashboard', 'order': 31},
             {'name': 'reporting_and_analytics', 'display_name': 'Reports & Analytics', 'url_name': 'reporting_dashboard', 'order': 32},
+            {'name': 'access_control', 'display_name': 'Access Control', 'url_name': 'access_control_dashboard', 'order': 33},
             
             # Support & Settings
             {'name': 'help_support', 'display_name': 'Help & Support', 'url_name': 'help_support_dashboard', 'order': 40},
@@ -36,13 +37,14 @@ class Command(BaseCommand):
             {'name': 'telemedicine_management', 'display_name': 'Telemedicine', 'url_name': 'telemedicine_dashboard', 'order': 50},
             {'name': 'research_management', 'display_name': 'Research', 'url_name': 'research_dashboard', 'order': 51},
             {'name': 'query_management', 'display_name': 'Queries', 'url_name': 'query_dashboard', 'order': 52},
+            {'name': 'user_management', 'display_name': 'User Management', 'url_name': 'user_dashboard', 'order': 53},
         ]
 
         # Define roles with their attributes
         roles = [
             # Administrative Roles
             {'name': 'SUPER_ADMIN', 'display_name': 'Super Administrator', 'template_folder': 'admin'},
-            {'name': 'ADMIN', 'display_name': 'Administrator', 'template_folder': 'admin'},
+            {'name': 'ADMINISTRATOR', 'display_name': 'Administrator', 'template_folder': 'administrator'},
             {'name': 'MANAGER', 'display_name': 'Clinic Manager', 'template_folder': 'admin'},
             
             # Medical Staff
@@ -63,11 +65,15 @@ class Command(BaseCommand):
             # Support Roles
             {'name': 'SUPPORT_MANAGER', 'display_name': 'Support Manager', 'template_folder': 'support'},
             {'name': 'SUPPORT_STAFF', 'display_name': 'Support Staff', 'template_folder': 'support'},
+
+            # Additional Roles
+            {'name': 'PATIENT', 'display_name': 'Patient', 'template_folder': 'patient'},
         ]
 
         # Create Modules
+        created_modules = []
         for module_data in modules:
-            Module.objects.get_or_create(
+            module, created = Module.objects.get_or_create(
                 name=module_data['name'],
                 defaults={
                     'display_name': module_data['display_name'],
@@ -75,13 +81,15 @@ class Command(BaseCommand):
                     'order': module_data['order']
                 }
             )
+            created_modules.append(module)
             self.stdout.write(
-                self.style.SUCCESS(f'Successfully created module "{module_data["display_name"]}"')
+                self.style.SUCCESS(f'{"Created" if created else "Already exists"}: module "{module_data["display_name"]}"')
             )
 
-        # Create Roles
+        # Create Roles and Permissions
+        admin_roles = ['SUPER_ADMIN', 'ADMINISTRATOR']
         for role_data in roles:
-            Role.objects.get_or_create(
+            role, created = Role.objects.get_or_create(
                 name=role_data['name'],
                 defaults={
                     'display_name': role_data['display_name'],
@@ -89,5 +97,28 @@ class Command(BaseCommand):
                 }
             )
             self.stdout.write(
-                self.style.SUCCESS(f'Successfully created role "{role_data["display_name"]}"')
+                self.style.SUCCESS(f'{"Created" if created else "Already exists"}: role "{role_data["display_name"]}"')
             )
+
+            # Create module permissions for admin roles
+            if role.name in admin_roles:
+                for module in created_modules:
+                    permission, created = ModulePermission.objects.get_or_create(
+                        module=module,
+                        role=role,
+                        defaults={
+                            'can_access': True,
+                            'can_modify': True,
+                            'can_delete': True
+                        }
+                    )
+                    if created:
+                        self.stdout.write(
+                            self.style.SUCCESS(f'Created permissions for {role.name} on {module.name}')
+                        )
+
+        self.stdout.write(self.style.SUCCESS('Finished populating access control data'))
+        
+        # Create template directories
+        from django.core.management import call_command
+        call_command('create_template_directories')

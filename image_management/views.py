@@ -51,7 +51,7 @@ def get_template_path(base_template, role, module='image_management'):
         role = Role.objects.get(name=role)
         role_folder = role.template_folder
     
-    return f'dashboard/{role_folder}/{module}/{base_template}'
+    return f'{role_folder}/{module}/{base_template}'
 
 class ImageManagementView(LoginRequiredMixin, View):
     def get(self, request):
