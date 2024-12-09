@@ -280,11 +280,14 @@
                                 </li>
                             </ul>
                             <div class="py-2">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-user-slash text-red-500"></i> Delete Consultation
-                                </a>
+                                <button data-modal-target="deleteModal{{ consultation.id }}" data-modal-toggle="deleteModal{{ consultation.id }}" class="block w-full px-4 py-2 text-sm text-red-700 hover:bg-gray-100">
+                                    <i class="fas fa-trash-alt mr-2"></i> Delete Consultation
+                                </button>
                             </div>
                         </div>
+
+
+                        {% include './consultation_dashboard_modals.html' %}
                         {% endfor %}
                     </tbody>
                 </table>

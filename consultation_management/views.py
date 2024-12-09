@@ -1,18 +1,24 @@
+# 
+import logging
+
 # Standard library imports
-from django.views.generic import ListView
+from django.views.generic import ListView, View
 from django.db.models import Count, Avg, Q
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.detail import DetailView
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from datetime import timedelta
+from django.db import transaction
 
 # Local application imports
 from .models import Consultation
 from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
+
+logger = logging.getLogger(__name__)
 
 def get_template_path(base_template, role, module=''):
     """
@@ -262,3 +268,42 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
         except Exception as e:
             messages.error(self.request, "Error loading consultation details")
             return handler500(self.request, exception=str(e))
+
+class ConsultationDeleteView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_delete(request.user, 'consultation_management'):
+            messages.error(request, "You don't have permission to delete consultations")
+            return handler403(request, exception="Insufficient Permissions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, consultation_id):
+        try:
+            consultation = get_object_or_404(Consultation, id=consultation_id)
+            
+            # Store info for message
+            patient_name = consultation.patient.get_full_name()
+            consultation_date = consultation.date_time.strftime('%Y-%m-%d')
+            
+            # Additional permission check for doctors
+            if request.user.role.name == 'DOCTOR' and consultation.doctor != request.user:
+                messages.error(request, "You can only delete your own consultations")
+                return redirect('consultation_management')
+            
+            with transaction.atomic():
+                # Delete associated records first
+                if hasattr(consultation, 'treatment_instruction'):
+                    consultation.treatment_instruction.delete()
+                if hasattr(consultation, 'follow_up_plan'):
+                    consultation.follow_up_plan.delete()
+                
+                # Delete prescriptions and attachments through cascade
+                consultation.delete()
+            
+            messages.success(request, f"Consultation for {patient_name} on {consultation_date} has been deleted successfully")
+            logger.info(f"Consultation {consultation_id} deleted by {request.user.email}")
+            return redirect('consultation_management')
+            
+        except Exception as e:
+            logger.error(f"Error deleting consultation: {str(e)}")
+            messages.error(request, f"Error deleting consultation: {str(e)}")
+            return redirect('consultation_management')
