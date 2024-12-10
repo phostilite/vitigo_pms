@@ -231,8 +231,10 @@
                               class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
                           <i class="fas fa-plus mr-2"></i>New Prescription
                       </button>
-                      <button class="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors flex items-center">
-                        <i class="fas fa-copy mr-2"></i>Use Template
+                      <button data-modal-target="templateModal" 
+                              data-modal-toggle="templateModal"
+                              class="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors flex items-center">
+                          <i class="fas fa-copy mr-2"></i>Use Template
                       </button>
                     </div>
                   </div>
@@ -718,6 +720,51 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Template Selection Modal -->
+<div id="templateModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative w-full max-w-2xl max-h-full">
+        <div class="relative bg-white rounded-lg shadow">
+            <div class="flex items-center justify-between p-4 border-b rounded-t">
+                <h3 class="text-xl font-semibold text-gray-900">
+                    Select Prescription Template
+                </h3>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="templateModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-6">
+                {% if prescription_templates %}
+                    {% for template in prescription_templates %}
+                        <div class="bg-gray-50 p-4 rounded-lg hover:bg-gray-100 cursor-pointer mb-4">
+                            <form action="{% url 'use_prescription_template' consultation.id template.id %}" method="POST" class="w-full">
+                                {% csrf_token %}
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h4 class="text-lg font-medium text-gray-900">{{ template.name }}</h4>
+                                        <p class="text-sm text-gray-600">{{ template.description }}</p>
+                                        <div class="mt-2">
+                                            {% if template.items.all %}
+                                                <p class="text-sm text-gray-500">
+                                                    {{ template.items.count }} medication(s)
+                                                </p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="px-4 py-2 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600">
+                                        Use Template
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center text-gray-500">No prescription templates available</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

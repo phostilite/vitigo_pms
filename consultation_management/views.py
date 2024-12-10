@@ -1068,3 +1068,55 @@ class PrescriptionCreateView(LoginRequiredMixin, View):
             logger.error(f"Error creating prescription: {str(e)}")
             messages.error(request, "An error occurred while creating the prescription")
             return redirect('consultation_detail', pk=consultation_id)
+
+class UsePrescriptionTemplateView(LoginRequiredMixin, View):
+    def post(self, request, consultation_id, template_id):
+        try:
+            consultation = get_object_or_404(Consultation, id=consultation_id)
+            template = get_object_or_404(PrescriptionTemplate, id=template_id)
+            
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to create prescriptions")
+                return redirect('consultation_detail', pk=consultation_id)
+
+            with transaction.atomic():
+                # Create prescription from template
+                prescription = Prescription.objects.create(
+                    consultation=consultation,
+                    template_used=template,
+                    notes=f"Created from template: {template.name}"
+                )
+
+                # Create prescription items from template items
+                for template_item in template.items.all():
+                    # Check if medication is in stock (optional)
+                    stock_item = None
+                    try:
+                        stock_item = StockItem.objects.filter(
+                            name=template_item.medication.name,
+                            current_quantity__gt=0
+                        ).first()
+                    except Exception as e:
+                        logger.warning(f"Could not find stock item for medication {template_item.medication.id}: {str(e)}")
+
+                    PrescriptionItem.objects.create(
+                        prescription=prescription,
+                        medication=template_item.medication,
+                        stock_item=stock_item,
+                        dosage=template_item.dosage,
+                        frequency=template_item.frequency,
+                        duration=template_item.duration,
+                        instructions=template_item.instructions,
+                        quantity_prescribed=1,
+                        order=template_item.order
+                    )
+
+                messages.success(request, f"Prescription created from template '{template.name}'")
+                logger.info(f"Prescription created from template {template.id} for consultation {consultation_id}")
+
+            return redirect('consultation_detail', pk=consultation_id)
+
+        except Exception as e:
+            logger.error(f"Error creating prescription from template: {str(e)}")
+            messages.error(request, "An error occurred while creating the prescription")
+            return redirect('consultation_detail', pk=consultation_id)
