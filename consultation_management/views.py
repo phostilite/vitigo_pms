@@ -1345,3 +1345,109 @@ class PrescriptionExportView(LoginRequiredMixin, View):
             writer.writerow([prescription.notes])
 
         return response
+
+class PrescriptionDashboardExportView(LoginRequiredMixin, View):
+    def get(self, request):
+        try:
+            # Get all prescriptions with related data
+            prescriptions = Prescription.objects.select_related(
+                'consultation__patient',
+                'consultation__doctor'
+            ).prefetch_related('items__medication').all()
+
+            # Get export format from query params
+            export_format = request.GET.get('format', 'pdf')
+
+            if export_format == 'pdf':
+                return self._export_pdf(prescriptions)
+            elif export_format == 'csv':
+                return self._export_csv(prescriptions)
+            else:
+                messages.error(request, "Invalid export format")
+                return redirect('prescription_dashboard')
+
+        except Exception as e:
+            logger.error(f"Error exporting prescription dashboard: {str(e)}")
+            messages.error(request, "Error exporting prescriptions")
+            return redirect('prescription_dashboard')
+
+    def _export_pdf(self, prescriptions):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="prescriptions_report.pdf"'
+
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title and Header
+        elements.append(Paragraph('Prescriptions Report', styles['Heading1']))
+        elements.append(Paragraph(f'Generated on: {timezone.now().strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Summary Statistics
+        total_count = prescriptions.count()
+        today = timezone.now()
+        recent_count = prescriptions.filter(created_at__gte=today - timedelta(days=7)).count()
+
+        stats = [
+            ['Total Prescriptions:', str(total_count)],
+            ['Recent (7 days):', str(recent_count)],
+        ]
+
+        stats_table = Table(stats, colWidths=[120, 100])
+        stats_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ]))
+        elements.append(stats_table)
+        elements.append(Spacer(1, 20))
+
+        # Main Prescriptions Table
+        data = [['Date', 'Patient', 'Doctor', 'Medications']]
+
+        for prescription in prescriptions:
+            medications = ", ".join([item.medication.name for item in prescription.items.all()])
+            data.append([
+                prescription.created_at.strftime("%Y-%m-%d"),
+                prescription.consultation.patient.get_full_name(),
+                f"Dr. {prescription.consultation.doctor.get_full_name()}",
+                medications[:100] + "..." if len(medications) > 100 else medications
+            ])
+
+        table = Table(data, colWidths=[80, 120, 120, 180])
+        table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ]))
+        elements.append(table)
+
+        doc.build(elements)
+        return response
+
+    def _export_csv(self, prescriptions):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="prescriptions_report.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Date', 'Patient', 'Doctor', 'Medications', 'Notes'])
+
+        for prescription in prescriptions:
+            medications = "; ".join([
+                f"{item.medication.name} ({item.dosage}, {item.frequency}, {item.duration})"
+                for item in prescription.items.all()
+            ])
+            writer.writerow([
+                prescription.created_at.strftime("%Y-%m-%d"),
+                prescription.consultation.patient.get_full_name(),
+                f"Dr. {prescription.consultation.doctor.get_full_name()}",
+                medications,
+                prescription.notes
+            ])
+
+        return response
