@@ -1120,3 +1120,88 @@ class UsePrescriptionTemplateView(LoginRequiredMixin, View):
             logger.error(f"Error creating prescription from template: {str(e)}")
             messages.error(request, "An error occurred while creating the prescription")
             return redirect('consultation_detail', pk=consultation_id)
+
+class PrescriptionEditView(LoginRequiredMixin, View):
+    def get(self, request, consultation_id, prescription_id):
+        try:
+            consultation = get_object_or_404(Consultation, id=consultation_id)
+            prescription = get_object_or_404(Prescription, id=prescription_id, consultation=consultation)
+            
+            data = {
+                'prescription': {
+                    'id': prescription.id,
+                    'notes': prescription.notes,
+                    'items': list(prescription.items.values(
+                        'id',
+                        'medication_id',
+                        'dosage',
+                        'frequency',
+                        'duration',
+                        'instructions',
+                        'quantity_prescribed',
+                        'order'
+                    ))
+                }
+            }
+            return JsonResponse(data)
+        except Exception as e:
+            logger.error(f"Error fetching prescription data: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=400)
+
+    def post(self, request, consultation_id, prescription_id):
+        try:
+            consultation = get_object_or_404(Consultation, id=consultation_id)
+            prescription = get_object_or_404(Prescription, id=prescription_id, consultation=consultation)
+            
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to edit prescriptions")
+                return redirect('consultation_detail', pk=consultation_id)
+
+            with transaction.atomic():
+                # Update prescription notes
+                prescription.notes = request.POST.get('notes', '')
+                prescription.save()
+
+                # Delete existing items and create new ones
+                prescription.items.all().delete()
+
+                # Process medication items
+                medications = request.POST.getlist('medications[]')
+                dosages = request.POST.getlist('dosages[]')
+                frequencies = request.POST.getlist('frequencies[]')
+                durations = request.POST.getlist('durations[]')
+
+                for i in range(len(medications)):
+                    if medications[i]:
+                        medication_id = medications[i]
+                        
+                        # Find stock item for this medication, if available
+                        stock_item = None
+                        try:
+                            stock_item = StockItem.objects.filter(
+                                name=Medication.objects.get(id=medication_id).name,
+                                current_quantity__gt=0
+                            ).first()
+                        except Exception as e:
+                            logger.warning(f"Could not find stock item for medication {medication_id}: {str(e)}")
+
+                        PrescriptionItem.objects.create(
+                            prescription=prescription,
+                            medication_id=medication_id,
+                            stock_item=stock_item,
+                            dosage=dosages[i],
+                            frequency=frequencies[i],
+                            duration=durations[i],
+                            quantity_prescribed=1,
+                            order=i
+                        )
+
+                messages.success(request, "Prescription updated successfully")
+                logger.info(f"Prescription {prescription_id} updated for consultation {consultation_id}")
+
+            return redirect('consultation_detail', pk=consultation_id)
+
+        except Exception as e:
+            logger.error(f"Error updating prescription: {str(e)}")
+            messages.error(request, "An error occurred while updating the prescription")
+            return redirect('consultation_detail', pk=consultation_id)
