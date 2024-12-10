@@ -329,3 +329,61 @@ class ConsultationAttachment(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.consultation}"
+
+class ConsultationFeedback(models.Model):
+    """Patient feedback and ratings for consultations"""
+    consultation = models.OneToOneField(
+        Consultation,
+        on_delete=models.CASCADE,
+        related_name='feedback'
+    )
+    rating = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(5)
+        ],
+        help_text="Patient satisfaction rating (0-5)"
+    )
+    comments = models.TextField(
+        blank=True,
+        help_text="Patient comments and feedback"
+    )
+    service_quality = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="Rating for service quality (1-5)"
+    )
+    doctor_communication = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="Rating for doctor's communication (1-5)"
+    )
+    wait_time_satisfaction = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="Rating for wait time satisfaction (1-5)"
+    )
+    would_recommend = models.BooleanField(
+        default=True,
+        help_text="Whether patient would recommend the doctor"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='consultation_feedbacks'
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['consultation', 'rating']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"Feedback for {self.consultation}"
+
+    def clean(self):
+        if self.consultation.status != 'COMPLETED':
+            raise ValidationError("Feedback can only be given for completed consultations")

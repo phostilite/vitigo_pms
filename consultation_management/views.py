@@ -5,7 +5,8 @@ from django.utils import timezone
 
 # Standard library imports
 from django.views.generic import ListView, View, DetailView, CreateView, UpdateView
-from django.db.models import Count, Avg, Q
+from django.db.models import Count, Avg, Q, FloatField
+from django.db.models.functions import Cast
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -19,7 +20,7 @@ from django.http import Http404
 # Local application imports
 from .models import (
     Consultation, DoctorPrivateNotes, ConsultationType,
-    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate
+    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback
 )
 from .forms import ConsultationForm
 from access_control.models import Role
@@ -64,7 +65,84 @@ class ConsultationDashboardView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Add your context data here
+        today = timezone.now()
+        start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Calculate total consultations this month
+        context['total_consultations'] = Consultation.objects.filter(
+            scheduled_datetime__gte=start_of_month,
+            scheduled_datetime__lte=today
+        ).count()
+
+        # Calculate upcoming follow-ups (next 7 days)
+        next_week = today + timedelta(days=7)
+        context['upcoming_followups'] = Consultation.objects.filter(
+            follow_up_date__gte=today,
+            follow_up_date__lte=next_week
+        ).count()
+
+        # Calculate average consultation duration (last 30 days)
+        last_month = today - timedelta(days=30)
+        completed_consultations = Consultation.objects.filter(
+            status='COMPLETED',
+            actual_end_time__gte=last_month
+        ).exclude(actual_start_time=None)
+        
+        total_duration = timedelta()
+        consultation_count = 0
+        
+        for consultation in completed_consultations:
+            if consultation.actual_end_time and consultation.actual_start_time:
+                duration = consultation.actual_end_time - consultation.actual_start_time
+                total_duration += duration
+                consultation_count += 1
+        
+        if consultation_count > 0:
+            avg_minutes = total_duration.total_seconds() / (consultation_count * 60)
+            context['avg_duration'] = round(avg_minutes)
+        else:
+            context['avg_duration'] = 0
+
+        # Calculate patient satisfaction metrics from feedback
+        last_month = today - timedelta(days=30)
+        feedback_metrics = ConsultationFeedback.objects.filter(
+            created_at__gte=last_month,
+            consultation__status='COMPLETED'
+        ).aggregate(
+            avg_rating=Avg('rating'),
+            avg_service=Avg('service_quality'),
+            avg_communication=Avg('doctor_communication'),
+            total_feedbacks=Count('id'),
+            recommendation_rate=Avg(Cast('would_recommend', FloatField())) * 100
+        )
+        
+        context.update({
+            'patient_satisfaction': round(feedback_metrics['avg_rating'] or 0, 1),
+            'total_ratings': feedback_metrics['total_feedbacks'],
+            'satisfaction_metrics': {
+                'service': round(feedback_metrics['avg_service'] or 0, 1),
+                'communication': round(feedback_metrics['avg_communication'] or 0, 1),
+                'recommendation_rate': round(feedback_metrics['recommendation_rate'] or 0)
+            }
+        })
+
+        # Calculate month-over-month growth
+        previous_month = start_of_month - timedelta(days=1)
+        previous_month_start = previous_month.replace(day=1)
+        
+        current_month_count = context['total_consultations']
+        previous_month_count = Consultation.objects.filter(
+            scheduled_datetime__gte=previous_month_start,
+            scheduled_datetime__lte=previous_month
+        ).count()
+        
+        if previous_month_count > 0:
+            context['consultation_growth'] = round(
+                ((current_month_count - previous_month_count) / previous_month_count) * 100
+            )
+        else:
+            context['consultation_growth'] = 0
+            
         return context
     
 

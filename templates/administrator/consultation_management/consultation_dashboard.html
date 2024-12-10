@@ -35,8 +35,8 @@
                     <span class="text-base font-medium text-gray-500">Total Consultations</span>
                 </div>
                 <div class="mt-4 flex items-center text-sm">
-                    <span class="text-green-500 flex items-center">
-                        <i class="fas fa-arrow-up mr-1"></i>12%
+                    <span class="{% if consultation_growth >= 0 %}text-green-500{% else %}text-red-500{% endif %} flex items-center">
+                        <i class="fas fa-arrow-{% if consultation_growth >= 0 %}up{% else %}down{% endif %} mr-1"></i>{{ consultation_growth }}%
                     </span>
                     <span class="text-gray-400 ml-2">vs last month</span>
                 </div>
@@ -69,7 +69,7 @@
                     <span class="text-sm font-medium text-gray-400">Average</span>
                 </div>
                 <div class="flex flex-col">
-                    <h3 class="text-2xl font-bold text-gray-700">35 min</h3>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ avg_duration }} min</h3>
                     <span class="text-base font-medium text-gray-500">Consultation Duration</span>
                 </div>
                 <div class="mt-4 flex items-center text-sm">
@@ -83,17 +83,30 @@
                     <div class="rounded-full bg-yellow-100 p-3">
                         <i class="fas fa-star text-yellow-500 text-xl"></i>
                     </div>
-                    <span class="text-sm font-medium text-gray-400">Rating</span>
+                    <span class="text-sm font-medium text-gray-400">Satisfaction</span>
                 </div>
                 <div class="flex flex-col">
-                    <h3 class="text-2xl font-bold text-gray-700">4.8/5.0</h3>
-                    <span class="text-base font-medium text-gray-500">Patient Satisfaction</span>
+                    {% if total_ratings > 0 %}
+                        <h3 class="text-2xl font-bold text-gray-700">{{ patient_satisfaction }}/5.0</h3>
+                        <span class="text-base font-medium text-gray-500">Overall Rating</span>
+                        <div class="mt-2 space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Service Quality:</span>
+                                <span class="text-gray-700">{{ satisfaction_metrics.service }}/5</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Communication:</span>
+                                <span class="text-gray-700">{{ satisfaction_metrics.communication }}/5</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <h3 class="text-2xl font-bold text-gray-700">No ratings</h3>
+                        <span class="text-base font-medium text-gray-500">Patient Satisfaction</span>
+                    {% endif %}
                 </div>
-                <div class="mt-4 flex items-center text-sm">
-                    <span class="text-green-500 flex items-center">
-                        <i class="fas fa-arrow-up mr-1"></i>0.3
-                    </span>
-                    <span class="text-gray-400 ml-2">vs last month</span>
+                <div class="mt-4 flex items-center justify-between text-sm">
+                    <span class="text-gray-400">Last 30 days</span>
+                    <span class="text-gray-500">{{ total_ratings }} reviews</span>
                 </div>
             </div>
         </div>
