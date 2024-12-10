@@ -460,7 +460,7 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             # Add creation event
             history.append({
                 'timestamp': consultation.created_at,
-                'description': f'Consultation scheduled by {consultation.created_by.get_full_name()}'
+                'description': f'Consultation scheduled by {consultation.created_by.get_full_name() if consultation.created_by else "System"}'
             })
             
             # Add status changes
@@ -520,3 +520,48 @@ class ConsultationDeleteView(LoginRequiredMixin, View):
             logger.error(f"Error deleting consultation {consultation_id}: {str(e)}")
             messages.error(request, "Error deleting consultation")
             return redirect('consultation_dashboard')
+
+class ConsultationStatusUpdateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            consultation = get_object_or_404(Consultation, pk=pk)
+            new_status = request.POST.get('status')
+            
+            # Get choices from model directly
+            valid_statuses = [status[0] for status in Consultation.STATUS_CHOICES]
+            
+            if not new_status or new_status not in valid_statuses:
+                messages.error(request, "Invalid status provided")
+                return redirect('consultation_detail', pk=pk)
+
+            # Additional validation for status transitions
+            current_status = consultation.status
+            valid_transition = True
+            
+            if new_status == 'IN_PROGRESS' and current_status != 'SCHEDULED':
+                valid_transition = False
+            elif new_status == 'COMPLETED' and current_status != 'IN_PROGRESS':
+                valid_transition = False
+            elif new_status == 'CANCELLED' and current_status in ['COMPLETED', 'CANCELLED']:
+                valid_transition = False
+
+            if not valid_transition:
+                messages.error(request, f"Cannot change status from {current_status} to {new_status}")
+                return redirect('consultation_detail', pk=pk)
+
+            # Update status and timestamps
+            consultation.status = new_status
+            if new_status == 'IN_PROGRESS':
+                consultation.actual_start_time = timezone.now()
+            elif new_status == 'COMPLETED':
+                consultation.actual_end_time = timezone.now()
+
+            consultation.save()
+            messages.success(request, f"Consultation status updated to {consultation.get_status_display()}")
+            
+            return redirect('consultation_detail', pk=pk)
+
+        except Exception as e:
+            logger.error(f"Error updating consultation status: {str(e)}")
+            messages.error(request, "An error occurred while updating the consultation status")
+            return redirect('consultation_detail', pk=pk)

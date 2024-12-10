@@ -36,6 +36,14 @@ class PaymentStatus(models.TextChoices):
     CANCELLED = 'CANCELLED', 'Payment Cancelled'
 
 class Consultation(models.Model):
+    STATUS_CHOICES = [
+        ('SCHEDULED', 'Scheduled'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+        ('NO_SHOW', 'No Show')
+    ]
+    
     # Base Information
     patient = models.ForeignKey(
         User,
@@ -81,15 +89,15 @@ class Consultation(models.Model):
     follow_up_notes = models.TextField(blank=True)
     
     # Metadata
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_consultations'
+    )
     status = models.CharField(
         max_length=20,
-        choices=[
-            ('SCHEDULED', 'Scheduled'),
-            ('IN_PROGRESS', 'In Progress'),
-            ('COMPLETED', 'Completed'),
-            ('CANCELLED', 'Cancelled'),
-            ('NO_SHOW', 'No Show')
-        ],
+        choices=STATUS_CHOICES,
         default='SCHEDULED'
     )
     created_at = models.DateTimeField(auto_now_add=True)
