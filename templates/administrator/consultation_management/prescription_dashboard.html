@@ -201,12 +201,29 @@
                                     <div class="text-sm text-gray-500">{{ prescription.created_at|time:"g:i A" }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button data-modal-target="editTemplateModal{{ template.id }}" 
-                                            data-modal-toggle="editTemplateModal{{ template.id }}"
-                                            class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                                    <button data-modal-target="deleteTemplateModal{{ template.id }}" 
-                                            data-modal-toggle="deleteTemplateModal{{ template.id }}"
-                                            class="text-red-600 hover:text-red-900">Delete</button>
+                                    <div class="flex items-center space-x-3">
+                                        <div class="dropdown">
+                                            <button class="text-gray-600 hover:text-gray-900">
+                                                <i class="fas fa-download"></i> Export
+                                            </button>
+                                            <div class="dropdown-menu hidden absolute bg-white shadow-lg rounded-lg mt-2 py-2">
+                                                <a href="{% url 'export_prescription' prescription.id %}?format=pdf" 
+                                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                    <i class="fas fa-file-pdf mr-2 text-red-500"></i>PDF
+                                                </a>
+                                                <a href="{% url 'export_prescription' prescription.id %}?format=csv" 
+                                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                    <i class="fas fa-file-csv mr-2 text-green-500"></i>CSV
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <button data-modal-target="editTemplateModal{{ template.id }}" 
+                                                data-modal-toggle="editTemplateModal{{ template.id }}"
+                                                class="text-blue-600 hover:text-blue-900">Edit</button>
+                                        <button data-modal-target="deleteTemplateModal{{ template.id }}" 
+                                                data-modal-toggle="deleteTemplateModal{{ template.id }}"
+                                                class="text-red-600 hover:text-red-900">Delete</button>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -427,6 +444,23 @@
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.remove-medication').forEach(button => {
             button.onclick = function() { this.closest('.medication-item').remove(); };
+        });
+    });
+
+    // Initialize dropdowns
+    const dropdowns = document.querySelectorAll('.dropdown');
+    dropdowns.forEach(dropdown => {
+        const button = dropdown.querySelector('button');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', () => {
+            menu.classList.add('hidden');
         });
     });
 </script>

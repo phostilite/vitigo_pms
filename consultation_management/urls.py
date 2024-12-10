@@ -24,4 +24,5 @@ urlpatterns = [
     path('prescriptions/template/<int:pk>/edit/', views.PrescriptionTemplateEditView.as_view(), name='edit_prescription_template'),
     path('prescriptions/template/<int:pk>/delete/', views.PrescriptionTemplateDeleteView.as_view(), name='delete_prescription_template'),
     path('export/', views.ConsultationExportView.as_view(), name='consultation_export'),
+    path('prescription/<int:prescription_id>/export/', views.PrescriptionExportView.as_view(), name='export_prescription'),
 ]

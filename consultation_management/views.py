@@ -1227,3 +1227,121 @@ class PrescriptionDeleteView(LoginRequiredMixin, View):
             logger.error(f"Error deleting prescription: {str(e)}")
             messages.error(request, "An error occurred while deleting the prescription")
             return redirect('consultation_detail', pk=consultation_id)
+
+class PrescriptionExportView(LoginRequiredMixin, View):
+    def get(self, request, prescription_id):
+        try:
+            prescription = get_object_or_404(Prescription.objects.select_related(
+                'consultation__patient',
+                'consultation__doctor'
+            ).prefetch_related('items__medication'), id=prescription_id)
+
+            export_format = request.GET.get('format', 'pdf')
+
+            if export_format == 'pdf':
+                return self._export_pdf(prescription)
+            elif export_format == 'csv':
+                return self._export_csv(prescription)
+            else:
+                messages.error(request, "Invalid export format")
+                return redirect('prescription_dashboard')
+
+        except Exception as e:
+            logger.error(f"Error exporting prescription: {str(e)}")
+            messages.error(request, "Error exporting prescription")
+            return redirect('prescription_dashboard')
+
+    def _export_pdf(self, prescription):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="prescription_{prescription.id}.pdf"'
+
+        # Create the PDF object using ReportLab
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Add hospital/clinic header
+        elements.append(Paragraph('Your Clinic Name', styles['Heading1']))
+        elements.append(Paragraph('Address Line 1<br/>Address Line 2<br/>Phone: XXX-XXX-XXXX', styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Add prescription details
+        elements.append(Paragraph(f'Prescription #{prescription.id}', styles['Heading2']))
+        elements.append(Paragraph(f'Date: {prescription.created_at.strftime("%Y-%m-%d")}', styles['Normal']))
+        elements.append(Spacer(1, 10))
+
+        # Patient and Doctor info
+        elements.append(Paragraph('Patient Details:', styles['Heading3']))
+        elements.append(Paragraph(f"Name: {prescription.consultation.patient.get_full_name()}", styles['Normal']))
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph('Doctor:', styles['Heading3']))
+        elements.append(Paragraph(f"Dr. {prescription.consultation.doctor.get_full_name()}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Medications table
+        data = [['Medication', 'Dosage', 'Frequency', 'Duration']]
+        for item in prescription.items.all():
+            data.append([
+                item.medication.name,
+                item.dosage,
+                item.frequency,
+                item.duration
+            ])
+
+        table = Table(data, colWidths=[*[doc.width/4]*4])
+        table.setStyle(TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(table)
+
+        # Add notes if any
+        if prescription.notes:
+            elements.append(Spacer(1, 20))
+            elements.append(Paragraph('Notes:', styles['Heading3']))
+            elements.append(Paragraph(prescription.notes, styles['Normal']))
+
+        # Build and return the PDF
+        doc.build(elements)
+        return response
+
+    def _export_csv(self, prescription):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="prescription_{prescription.id}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Prescription Details'])
+        writer.writerow(['ID', 'Date', 'Patient', 'Doctor'])
+        writer.writerow([
+            prescription.id,
+            prescription.created_at.strftime("%Y-%m-%d"),
+            prescription.consultation.patient.get_full_name(),
+            f"Dr. {prescription.consultation.doctor.get_full_name()}"
+        ])
+        writer.writerow([])
+        writer.writerow(['Medications'])
+        writer.writerow(['Name', 'Dosage', 'Frequency', 'Duration'])
+        for item in prescription.items.all():
+            writer.writerow([
+                item.medication.name,
+                item.dosage,
+                item.frequency,
+                item.duration
+            ])
+
+        if prescription.notes:
+            writer.writerow([])
+            writer.writerow(['Notes'])
+            writer.writerow([prescription.notes])
+
+        return response
