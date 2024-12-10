@@ -29,11 +29,12 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 # Local application imports
 from .models import (
     Consultation, DoctorPrivateNotes, ConsultationType,
-    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback, StaffInstruction, TemplateItem
+    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback, StaffInstruction, TemplateItem, PrescriptionItem
 )
 from .forms import ConsultationForm
 from access_control.models import Role
 from access_control.permissions import PermissionManager
+from stock_management.models import StockItem
 from pharmacy_management.models import Medication
 from error_handling.views import handler403, handler404, handler500
 
@@ -457,6 +458,9 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             
             # Add consultation priority choices for staff instructions form
             context['consultation_priority_choices'] = ConsultationPriority.choices
+
+            # Add all active medications for prescription creation
+            context['medications'] = Medication.objects.filter(is_active=True).order_by('name')
             
             return context
             
@@ -1007,3 +1011,60 @@ class ConsultationExportView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Export error: {str(e)}")
             messages.error(request, "An error occurred during export")
             return redirect('consultation_dashboard')
+
+class PrescriptionCreateView(LoginRequiredMixin, View):
+    def post(self, request, consultation_id):
+        try:
+            consultation = get_object_or_404(Consultation, id=consultation_id)
+            
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to create prescriptions")
+                return redirect('consultation_detail', pk=consultation_id)
+
+            with transaction.atomic():
+                # Create prescription
+                prescription = Prescription.objects.create(
+                    consultation=consultation,
+                    notes=request.POST.get('notes', '')
+                )
+
+                # Process medication items
+                medications = request.POST.getlist('medications[]')
+                dosages = request.POST.getlist('dosages[]')
+                frequencies = request.POST.getlist('frequencies[]')
+                durations = request.POST.getlist('durations[]')
+
+                for i in range(len(medications)):
+                    if medications[i]:  # Only create if medication is selected
+                        medication_id = medications[i]
+                        
+                        # Find stock item for this medication, if available
+                        stock_item = None
+                        try:
+                            stock_item = StockItem.objects.filter(
+                                name=Medication.objects.get(id=medication_id).name,
+                                current_quantity__gt=0
+                            ).first()
+                        except Exception as e:
+                            logger.warning(f"Could not find stock item for medication {medication_id}: {str(e)}")
+
+                        PrescriptionItem.objects.create(
+                            prescription=prescription,
+                            medication_id=medication_id,
+                            stock_item=stock_item,  # Can be None if not in stock
+                            dosage=dosages[i],
+                            frequency=frequencies[i],
+                            duration=durations[i],
+                            quantity_prescribed=1,  # Default value
+                            order=i
+                        )
+
+                messages.success(request, "Prescription created successfully")
+                logger.info(f"Prescription created for consultation {consultation_id} by user {request.user.id}")
+
+            return redirect('consultation_detail', pk=consultation_id)
+
+        except Exception as e:
+            logger.error(f"Error creating prescription: {str(e)}")
+            messages.error(request, "An error occurred while creating the prescription")
+            return redirect('consultation_detail', pk=consultation_id)
