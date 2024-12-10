@@ -184,61 +184,62 @@ class UserManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
     def get_template_name(self):
         return get_template_path('users_dashboard.html', self.request.user.role, 'user_management')
 
+    def get_queryset(self):
+        queryset = User.objects.select_related('role').all()
+        
+        # Get filter parameters from URL
+        role = self.request.GET.get('role')
+        status = self.request.GET.get('status')
+        date_range = self.request.GET.get('date_range')
+        search = self.request.GET.get('search')
+
+        # Apply role filter
+        if role:
+            queryset = queryset.filter(role__name=role)
+
+        # Apply status filter
+        if status:
+            is_active = status == 'active'
+            queryset = queryset.filter(is_active=is_active)
+
+        # Apply date range filter
+        if date_range:
+            if date_range == '7':
+                date_threshold = timezone.now() - timedelta(days=7)
+            elif date_range == '30':
+                date_threshold = timezone.now() - timedelta(days=30)
+            elif date_range == '90':
+                date_threshold = timezone.now() - timedelta(days=90)
+            queryset = queryset.filter(date_joined__gte=date_threshold)
+
+        # Apply search filter
+        if search:
+            queryset = queryset.filter(
+                Q(email__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(phone_number__icontains=search)
+            )
+
+        return queryset.order_by('-date_joined')
+
     def get(self, request):
         try:
-            # Get base queryset
-            queryset = User.objects.select_related('role').all()
+            # Get filtered queryset
+            users = self.get_queryset()
             
-            # Get filter parameters
-            role_filter = request.GET.get('role')
-            status_filter = request.GET.get('status')
-            date_filter = request.GET.get('date_range')
-            search_query = request.GET.get('search')
-
-            # Apply filters
-            if role_filter:
-                queryset = queryset.filter(role__name=role_filter)
-            if status_filter:
-                is_active = status_filter == 'active'
-                queryset = queryset.filter(is_active=is_active)
-            if date_filter:
-                if date_filter == '7':
-                    date_threshold = timezone.now() - timedelta(days=7)
-                elif date_filter == '30':
-                    date_threshold = timezone.now() - timedelta(days=30)
-                elif date_filter == '90':
-                    date_threshold = timezone.now() - timedelta(days=90)
-                queryset = queryset.filter(date_joined__gte=date_threshold)
-            
-            # Apply search
-            if search_query:
-                queryset = queryset.filter(
-                    Q(email__icontains=search_query) |
-                    Q(first_name__icontains=search_query) |
-                    Q(last_name__icontains=search_query) |
-                    Q(phone_number__icontains=search_query)
-                )
-
-            users = queryset  # Update users with filtered queryset
-
-            # Update role-based queries
-            patient_role = Role.objects.get(name='PATIENT')
-            doctor_role = Role.objects.get(name='DOCTOR')
-            
-            # Get all roles for the filter dropdown
-            roles = Role.objects.all()
-            
+            # Get role-based counts from the filtered queryset
             total_users = users.filter(is_active=True).count()
-            doctor_count = users.filter(role=doctor_role, is_active=True).count()
-            available_doctors = doctor_count
+            doctor_count = users.filter(role__name='DOCTOR', is_active=True).count()
+            available_doctors = doctor_count  # You might want to modify this based on your availability logic
             new_users = users.filter(date_joined__gte=timezone.now().replace(day=1)).count()
             new_patients = users.filter(
-                role=patient_role, 
+                role__name='PATIENT',
                 date_joined__gte=timezone.now().replace(day=1)
             ).count()
 
-            # Pagination for users
-            paginator = Paginator(users, 10)  # Show 10 users per page
+            # Pagination
+            paginator = Paginator(users, 10)
             page = request.GET.get('page')
             try:
                 users = paginator.page(page)
@@ -247,10 +248,9 @@ class UserManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
             except EmptyPage:
                 users = paginator.page(paginator.num_pages)
 
-            # Context data to be passed to the template
             context = {
                 'users': users,
-                'roles': roles,  # Add roles to context
+                'roles': Role.objects.all(),
                 'total_users': total_users,
                 'doctor_count': doctor_count,
                 'available_doctors': available_doctors,
@@ -258,22 +258,12 @@ class UserManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'new_patients': new_patients,
                 'paginator': paginator,
                 'page_obj': users,
-                'user_role': request.user.role,
                 'current_filters': {
-                    'role': role_filter or '',
-                    'status': status_filter or '',
-                    'date_range': date_filter or '',
-                    'search': search_query or '',
-                },
-                'date_ranges': [
-                    ('7', 'Last 7 Days'),
-                    ('30', 'Last 30 Days'),
-                    ('90', 'Last 90 Days'),
-                ],
-                'status_choices': [
-                    ('active', 'Active'),
-                    ('inactive', 'Inactive'),
-                ],
+                    'role': request.GET.get('role', ''),
+                    'status': request.GET.get('status', ''),
+                    'date_range': request.GET.get('date_range', ''),
+                    'search': request.GET.get('search', ''),
+                }
             }
 
             return render(request, self.get_template_name(), context)
