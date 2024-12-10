@@ -1205,3 +1205,25 @@ class PrescriptionEditView(LoginRequiredMixin, View):
             logger.error(f"Error updating prescription: {str(e)}")
             messages.error(request, "An error occurred while updating the prescription")
             return redirect('consultation_detail', pk=consultation_id)
+
+class PrescriptionDeleteView(LoginRequiredMixin, View):
+    def post(self, request, consultation_id, prescription_id):
+        try:
+            consultation = get_object_or_404(Consultation, id=consultation_id)
+            prescription = get_object_or_404(Prescription, id=prescription_id, consultation=consultation)
+            
+            if not PermissionManager.check_module_delete(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to delete prescriptions")
+                return redirect('consultation_detail', pk=consultation_id)
+
+            with transaction.atomic():
+                prescription.delete()
+                messages.success(request, "Prescription deleted successfully")
+                logger.info(f"Prescription {prescription_id} deleted from consultation {consultation_id}")
+
+            return redirect('consultation_detail', pk=consultation_id)
+
+        except Exception as e:
+            logger.error(f"Error deleting prescription: {str(e)}")
+            messages.error(request, "An error occurred while deleting the prescription")
+            return redirect('consultation_detail', pk=consultation_id)
