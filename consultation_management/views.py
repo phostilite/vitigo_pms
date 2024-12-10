@@ -16,6 +16,7 @@ from datetime import timedelta
 from django.db import transaction
 from django.urls import reverse_lazy
 from django.http import Http404
+from django.contrib.auth import get_user_model
 
 # Local application imports
 from .models import (
@@ -28,6 +29,7 @@ from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 def get_template_path(base_template, role, module='consultation_management'):
     """
@@ -60,11 +62,74 @@ class ConsultationDashboardView(LoginRequiredMixin, ListView):
         return [get_template_path('consultation_dashboard.html', self.request.user.role, 'consultation_management')]
 
     def get_queryset(self):
-        # Add your queryset filters here
-        return Consultation.objects.select_related('patient', 'doctor').all()
+        queryset = Consultation.objects.select_related('patient', 'doctor').all()
+        
+        # Get filter parameters
+        consultation_type = self.request.GET.get('consultation_type')
+        status = self.request.GET.get('status')
+        date_range = self.request.GET.get('date_range')
+        search = self.request.GET.get('search')
+        doctor = self.request.GET.get('doctor')
+
+        # Apply consultation type filter
+        if consultation_type:
+            queryset = queryset.filter(consultation_type=consultation_type)
+
+        # Apply status filter
+        if status:
+            queryset = queryset.filter(status=status)
+
+        # Apply date range filter
+        if date_range:
+            today = timezone.now()
+            if date_range == '7':
+                date_threshold = today - timedelta(days=7)
+            elif date_range == '30':
+                date_threshold = today - timedelta(days=30)
+            elif date_range == '90':
+                date_threshold = today - timedelta(days=90)
+            queryset = queryset.filter(scheduled_datetime__gte=date_threshold)
+
+        # Apply doctor filter
+        if doctor:
+            queryset = queryset.filter(doctor_id=doctor)
+
+        # Apply search filter
+        if search:
+            queryset = queryset.filter(
+                Q(patient__first_name__icontains=search) |
+                Q(patient__last_name__icontains=search) |
+                Q(doctor__first_name__icontains=search) |
+                Q(doctor__last_name__icontains=search) |
+                Q(diagnosis__icontains=search) |
+                Q(chief_complaint__icontains=search)
+            )
+
+        return queryset.order_by('-scheduled_datetime')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
+        # Add filter choices to context
+        context.update({
+            'consultation_types': ConsultationType.choices,
+            'status_choices': [
+                ('SCHEDULED', 'Scheduled'),
+                ('IN_PROGRESS', 'In Progress'),
+                ('COMPLETED', 'Completed'),
+                ('CANCELLED', 'Cancelled'),
+                ('NO_SHOW', 'No Show')
+            ],
+            'doctors': User.objects.filter(role__name='DOCTOR'),
+            'current_filters': {
+                'consultation_type': self.request.GET.get('consultation_type', ''),
+                'status': self.request.GET.get('status', ''),
+                'date_range': self.request.GET.get('date_range', ''),
+                'doctor': self.request.GET.get('doctor', ''),
+                'search': self.request.GET.get('search', ''),
+            }
+        })
+        
         today = timezone.now()
         start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         

@@ -113,43 +113,88 @@
 
         <!-- Filters and Search -->
         <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                <!-- Left side filters -->
-                <div class="flex flex-wrap items-center gap-4">
-                    <!-- Consultation Type Filter -->
-                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <!-- Consultation Type Filter -->
+                <div>
+                    <label for="consultation_type" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <select name="consultation_type" id="consultation_type" onchange="this.form.submit()" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                         <option value="">All Types</option>
-                        <option value="INITIAL">Initial Consultation</option>
-                        <option value="FOLLOW_UP">Follow-up</option>
-                        <option value="EMERGENCY">Emergency</option>
-                        <option value="TELE">Tele-consultation</option>
+                        {% for type_value, type_label in consultation_types %}
+                            <option value="{{ type_value }}" {% if current_filters.consultation_type == type_value %}selected{% endif %}>
+                                {{ type_label }}
+                            </option>
+                        {% endfor %}
                     </select>
+                </div>
 
-                    <!-- Date Range Picker -->
-                    <div class="relative">
-                        <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                            <i class="fas fa-calendar text-gray-500"></i>
-                        </div>
-                        <input type="date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 ps-10">
-                    </div>
+                <!-- Status Filter -->
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select name="status" id="status" onchange="this.form.submit()" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="">All Status</option>
+                        {% for status_value, status_label in status_choices %}
+                            <option value="{{ status_value }}" {% if current_filters.status == status_value %}selected{% endif %}>
+                                {{ status_label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-                    <!-- Status Filter -->
-                    <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
-                        <option value="">All Statuses</option>
-                        <option value="completed">Completed</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="cancelled">Cancelled</option>
+                <!-- Doctor Filter -->
+                <div>
+                    <label for="doctor" class="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                    <select name="doctor" id="doctor" onchange="this.form.submit()" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="">All Doctors</option>
+                        {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}" {% if current_filters.doctor == doctor.id|stringformat:"s" %}selected{% endif %}>
+                                Dr. {{ doctor.get_full_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Date Range Filter -->
+                <div>
+                    <label for="date_range" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                    <select name="date_range" id="date_range" onchange="this.form.submit()" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="">All Time</option>
+                        <option value="7" {% if current_filters.date_range == '7' %}selected{% endif %}>Last 7 days</option>
+                        <option value="30" {% if current_filters.date_range == '30' %}selected{% endif %}>Last 30 days</option>
+                        <option value="90" {% if current_filters.date_range == '90' %}selected{% endif %}>Last 90 days</option>
                     </select>
                 </div>
 
                 <!-- Search -->
-                <div class="relative">
-                    <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                        <i class="fas fa-search text-gray-500"></i>
+                <div>
+                    <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" 
+                               id="search"
+                               name="search" 
+                               value="{{ current_filters.search }}"
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5" 
+                               placeholder="Search consultations..."
+                               oninput="handleSearch(this)">
                     </div>
-                    <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5" placeholder="Search consultations...">
                 </div>
-            </div>
+
+                {% if current_filters.consultation_type or current_filters.status or current_filters.date_range or current_filters.doctor or current_filters.search %}
+                <div class="md:col-span-5">
+                    <a href="{% url 'consultation_dashboard' %}" 
+                       class="inline-flex items-center text-sm text-red-600 hover:text-red-800">
+                        <i class="fas fa-times-circle mr-1"></i>
+                        Clear Filters
+                    </a>
+                </div>
+                {% endif %}
+            </form>
         </div>
 
         <!-- Consultation List -->
@@ -357,7 +402,17 @@
 {% endblock %}
 
 {% block scripts %}
+{{ block.super }}
 <script>
-    // Add any custom JavaScript here
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add debounce function for search
+        let searchTimeout;
+        window.handleSearch = function(input) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                input.form.submit();
+            }, 500);
+        }
+    });
 </script>
 {% endblock %}
