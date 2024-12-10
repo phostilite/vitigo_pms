@@ -405,6 +405,9 @@ class QueryCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
         
 
 class QueryUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'query_management')
+    
     def dispatch(self, request, *args, **kwargs):
         if not PermissionManager.check_module_modify(self.request.user, 'query_management'):
             messages.error(request, "You don't have permission to update queries")
