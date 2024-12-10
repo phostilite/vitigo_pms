@@ -2,150 +2,470 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<div class="px-4 mt-14 sm:ml-64">
-    {% if error %}
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <p>{{ error }}</p>
-        </div>
-    {% else %}
-        <div class="bg-white shadow rounded-lg p-6">
-            <!-- Header Section -->
-            <div class="border-b pb-4 mb-4">
-                <h1 class="text-2xl font-bold mb-2">Consultation Details</h1>
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-gray-600">
-                            <a href="{% url 'user_detail' user_id=consultation.patient.id %}">
-                                Patient: {{ consultation.patient.get_full_name }}
-                            </a>
-                        </p>
-                        <p class="text-gray-600">
-                            <a href="{% url 'user_detail' user_id=consultation.doctor.id %}">
-                                Doctor: {{ consultation.doctor.get_full_name }}</p>
-                            </a>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-gray-600">Date: {{ consultation.scheduled_datetime|date:"F j, Y" }}</p>
-                        <p class="text-gray-600">Time: {{ consultation.scheduled_datetime|time:"g:i A" }}</p>
-                    </div>
-                </div>
-            </div>
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'consultation_dashboard' %}" class="hover:text-blue-600"><i class="fas fa-stethoscope mr-2"></i>Consultations</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Consultation Details</li>
+        </ol>
+    </nav>
 
-            <!-- Status and Type -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div class="bg-gray-50 p-4 rounded">
-                    <h3 class="font-semibold mb-2">Status</h3>
-                    <span class="px-3 py-1 rounded-full text-sm 
-                        {% if consultation.status == 'COMPLETED' %}bg-green-100 text-green-800
-                        {% elif consultation.status == 'CANCELLED' %}bg-red-100 text-red-800
-                        {% else %}bg-blue-100 text-blue-800{% endif %}">
+    <!-- Status Banner - Updated to match appointment style -->
+    <div class="mb-6 p-4 rounded-lg {% if consultation.status == 'COMPLETED' %}bg-green-50 border-green-200{% elif consultation.status == 'IN_PROGRESS' %}bg-yellow-50 border-yellow-200{% elif consultation.status == 'CANCELLED' %}bg-red-50 border-red-200{% else %}bg-blue-50 border-blue-200{% endif %} border">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="{% if consultation.status == 'COMPLETED' %}bg-green-100{% elif consultation.status == 'IN_PROGRESS' %}bg-yellow-100{% elif consultation.status == 'CANCELLED' %}bg-red-100{% else %}bg-blue-100{% endif %} rounded-full p-2">
+                    <i class="fas {% if consultation.status == 'COMPLETED' %}fa-check-circle text-green-600{% elif consultation.status == 'IN_PROGRESS' %}fa-clock text-yellow-600{% elif consultation.status == 'CANCELLED' %}fa-times-circle text-red-600{% else %}fa-calendar-check text-blue-600{% endif %} text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold {% if consultation.status == 'COMPLETED' %}text-green-800{% elif consultation.status == 'IN_PROGRESS' %}text-yellow-800{% elif consultation.status == 'CANCELLED' %}text-red-800{% else %}text-blue-800{% endif %}">
                         {{ consultation.get_status_display }}
-                    </span>
-                </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <h3 class="font-semibold mb-2">Type</h3>
-                    <p>{{ consultation.get_consultation_type_display }}</p>
+                    </h2>
+                    <p class="text-sm text-gray-600">Scheduled for {{ consultation.scheduled_datetime|date:"F j, Y g:i A" }}</p>
                 </div>
             </div>
-
-            <!-- Clinical Information -->
-            <div class="mb-6">
-                <h2 class="text-xl font-semibold mb-4">Clinical Information</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <h3 class="font-medium mb-2">Chief Complaint</h3>
-                        <p class="text-gray-700">{{ consultation.chief_complaint|default:"Not provided" }}</p>
-                    </div>
-                    <div>
-                        <h3 class="font-medium mb-2">Diagnosis</h3>
-                        <p class="text-gray-700">{{ consultation.diagnosis|default:"Not provided" }}</p>
-                    </div>
-                </div>
-                {% if consultation.symptoms %}
-                    <div class="mt-4">
-                        <h3 class="font-medium mb-2">Symptoms</h3>
-                        <p class="text-gray-700">{{ consultation.symptoms }}</p>
-                    </div>
+            
+            <!-- Action Buttons - Updated to match appointment style -->
+            <div class="flex space-x-2">
+                {% if consultation.status == 'SCHEDULED' %}
+                <button onclick="updateStatus('IN_PROGRESS')" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                    <i class="fas fa-play-circle mr-2"></i>Start Consultation
+                </button>
                 {% endif %}
-                {% if consultation.clinical_notes %}
-                    <div class="mt-4">
-                        <h3 class="font-medium mb-2">Clinical Notes</h3>
-                        <p class="text-gray-700">{{ consultation.clinical_notes }}</p>
-                    </div>
+
+                {% if consultation.status == 'IN_PROGRESS' %}
+                <button onclick="updateStatus('COMPLETED')" class="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i>Complete
+                </button>
                 {% endif %}
-            </div>
 
-            <!-- Prescriptions -->
-            {% if prescriptions %}
-                <div class="mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Prescriptions</h2>
-                    {% for prescription in prescriptions %}
-                        <div class="bg-gray-50 p-4 rounded mb-4">
-                            <h3 class="font-medium mb-2">Prescription #{{ forloop.counter }}</h3>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full">
-                                    <thead>
-                                        <tr>
-                                            <th class="text-left">Medication</th>
-                                            <th class="text-left">Dosage</th>
-                                            <th class="text-left">Frequency</th>
-                                            <th class="text-left">Duration</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for item in prescription.items.all %}
-                                            <tr>
-                                                <td>{{ item.medication.name }}</td>
-                                                <td>{{ item.dosage }}</td>
-                                                <td>{{ item.frequency }}</td>
-                                                <td>{{ item.duration }}</td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% elif prescription_error %}
-                <div class="text-red-600 mb-4">{{ prescription_error }}</div>
-            {% endif %}
+                <button data-modal-target="exportModal{{ consultation.id }}" 
+                        data-modal-toggle="exportModal{{ consultation.id }}"
+                        class="px-4 py-2 text-white bg-purple-500 rounded-lg hover:bg-purple-600 transition-colors flex items-center">
+                    <i class="fas fa-file-export mr-2"></i>Export
+                </button>
 
-            <!-- Treatment Plan -->
-            {% if consultation.treatment_plan %}
-                <div class="mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Treatment Plan</h2>
-                    <div class="bg-gray-50 p-4 rounded">
-                        <p><strong>Duration:</strong> {{ consultation.treatment_plan.duration_weeks }} weeks</p>
-                        <p><strong>Description:</strong> {{ consultation.treatment_plan.description }}</p>
-                        {% if treatment_plan_items %}
-                            <h3 class="font-medium mt-4 mb-2">Treatment Items</h3>
-                            <ul class="list-disc pl-5">
-                                {% for item in treatment_plan_items %}
-                                    <li>{{ item.name }} - {{ item.description }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endif %}
-
-            <!-- Action Buttons -->
-            <div class="flex justify-end space-x-4 mt-6">
-                {% if can_edit %}
-                    <a href="#" 
-                       class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                        Edit Consultation
-                    </a>
-                {% endif %}
-                {% if can_delete %}
-                    <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600" data-modal-target="deleteModal{{ consultation.id }}" data-modal-toggle="deleteModal{{ consultation.id }}">
-                        Delete Consultation
-                    </button>
+                {% if consultation.status != 'CANCELLED' and consultation.status != 'COMPLETED' %}
+                <button data-modal-target="cancelModal{{ consultation.id }}" 
+                        data-modal-toggle="cancelModal{{ consultation.id }}"
+                        class="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors flex items-center">
+                    <i class="fas fa-times-circle mr-2"></i>Cancel
+                </button>
                 {% endif %}
             </div>
         </div>
-    {% endif %}
+    </div>
+
+    <!-- Main Content Grid - Updated to match appointment layout -->
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Left Column - Main Information -->
+        <div class="col-span-2 space-y-6">
+            <!-- Basic Information Card -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                    Consultation Information
+                </h3>
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Date & Time</label>
+                        <p class="font-medium text-gray-800">{{ consultation.scheduled_datetime|date:"l, F d, Y g:i A" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Type</label>
+                        <span class="px-3 py-1 text-sm font-semibold rounded-full inline-block
+                            {% if consultation.consultation_type == 'INITIAL' %}bg-blue-100 text-blue-800
+                            {% elif consultation.consultation_type == 'FOLLOW_UP' %}bg-green-100 text-green-800
+                            {% else %}bg-purple-100 text-purple-800{% endif %}">
+                            {{ consultation.get_consultation_type_display }}
+                        </span>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Priority</label>
+                        <span class="px-3 py-1 text-sm font-semibold rounded-full inline-block
+                            {% if consultation.priority == 'A' %}bg-blue-100 text-blue-800
+                            {% elif consultation.priority == 'B' %}bg-green-100 text-green-800
+                            {% else %}bg-red-100 text-red-800{% endif %}">
+                            Priority {{ consultation.get_priority_display }}
+                        </span>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Duration</label>
+                        <p class="font-medium text-gray-800">{{ consultation.duration_minutes }} minutes</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient User Details -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-user text-blue-500 mr-2"></i>
+                    Patient Information
+                </h3>
+                <div class="flex items-center space-x-4 mb-4">
+                    {% if consultation.patient.profile_picture %}
+                        <img src="{{ consultation.patient.profile_picture.url }}" alt="Patient" class="w-16 h-16 rounded-full object-cover">
+                    {% else %}
+                        <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                            <i class="fas fa-user text-gray-400 text-2xl"></i>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <h4 class="font-medium text-gray-800">{{ consultation.patient.first_name }} {{ consultation.patient.last_name }}</h4>
+                        <p class="text-sm text-gray-600">{{ consultation.patient.email }}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Phone</label>
+                        <p class="font-medium text-gray-800">{{ consultation.patient.phone_number }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Gender</label>
+                        <p class="font-medium text-gray-800">{{ consultation.patient.get_gender_display }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Doctor User Details -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-user-md text-blue-500 mr-2"></i>
+                    Doctor Information
+                </h3>
+                <div class="flex items-center space-x-4 mb-4">
+                    {% if consultation.doctor.profile_picture %}
+                        <img src="{{ consultation.doctor.profile_picture.url }}" alt="Doctor" class="w-16 h-16 rounded-full object-cover">
+                    {% else %}
+                        <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                            <i class="fas fa-user-md text-gray-400 text-2xl"></i>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <h4 class="font-medium text-gray-800">Dr. {{ consultation.doctor.first_name }} {{ consultation.doctor.last_name }}</h4>
+                        <p class="text-sm text-gray-600">{{ consultation.doctor.email }}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Phone</label>
+                        <p class="font-medium text-gray-800">{{ consultation.doctor.phone_number }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Gender</label>
+                        <p class="font-medium text-gray-800">{{ consultation.doctor.get_gender_display }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clinical Information - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-notes-medical text-blue-500 mr-2"></i>
+                    Clinical Information
+                </h3>
+                <div class="space-y-6">
+                    {% if consultation.vitals %}
+                    <div class="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                        {% for key, value in consultation.vitals.items %}
+                        <div>
+                            <label class="text-sm text-gray-600">{{ key|title }}</label>
+                            <p class="font-medium text-gray-900">{{ value }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Chief Complaint & Symptoms -->
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">Chief Complaint</h3>
+                            <p class="text-gray-900 bg-gray-50 p-3 rounded">
+                                {{ consultation.chief_complaint|default:"Not provided" }}
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">Symptoms</h3>
+                            <p class="text-gray-900 bg-gray-50 p-3 rounded">
+                                {{ consultation.symptoms|default:"Not recorded" }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Diagnosis & Clinical Notes -->
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Diagnosis</h3>
+                        <p class="text-gray-900 bg-gray-50 p-3 rounded">
+                            {{ consultation.diagnosis|default:"Pending diagnosis" }}
+                        </p>
+                    </div>
+
+                    {% if request.user.role.name == 'DOCTOR' and consultation.private_notes %}
+                    <div class="border-t pt-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Doctor's Private Notes</h3>
+                        <div class="bg-yellow-50 p-3 rounded">
+                            {{ consultation.private_notes.clinical_observations|default:"No private notes" }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Prescriptions Section - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                      <i class="fas fa-prescription text-blue-500 mr-2"></i>
+                      Prescriptions
+                    </h3>
+                    <div class="flex space-x-2">  <!-- Changed this line to add "flex" -->
+                      <button class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                        <i class="fas fa-plus mr-2"></i>New Prescription
+                      </button>
+                      <button class="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors flex items-center">
+                        <i class="fas fa-copy mr-2"></i>Use Template
+                      </button>
+                    </div>
+                  </div>
+                
+                {% if prescriptions %}
+                    <div class="mb-6">
+                        {% for prescription in prescriptions %}
+                            <div class="bg-gray-50 p-4 rounded mb-4">
+                                <h3 class="font-medium mb-2">Prescription #{{ forloop.counter }}</h3>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-left">Medication</th>
+                                                <th class="text-left">Dosage</th>
+                                                <th class="text-left">Frequency</th>
+                                                <th class="text-left">Duration</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in prescription.items.all %}
+                                                <tr>
+                                                    <td>{{ item.medication.name }}</td>
+                                                    <td>{{ item.dosage }}</td>
+                                                    <td>{{ item.frequency }}</td>
+                                                    <td>{{ item.duration }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">No prescriptions added yet</p>
+                {% endif %}
+            </div>
+
+            <!-- Treatment Plan Section - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>
+                        Treatment Plan
+                    </h3>
+                    <button class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                        <i class="fas fa-edit mr-2"></i>Update Plan
+                    </button>
+                </div>
+                
+                {% if consultation.treatment_plan %}
+                    <div class="mb-6">
+                        <div class="bg-gray-50 p-4 rounded">
+                            <p><strong>Duration:</strong> {{ consultation.treatment_plan.duration_weeks }} weeks</p>
+                            <p><strong>Description:</strong> {{ consultation.treatment_plan.description }}</p>
+                            {% if treatment_plan_items %}
+                                <h3 class="font-medium mt-4 mb-2">Treatment Items</h3>
+                                <ul class="list-disc pl-5">
+                                    {% for item in treatment_plan_items %}
+                                        <li>{{ item.name }} - {{ item.description }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">No treatment plan created yet</p>
+                {% endif %}
+            </div>
+
+            <!-- Phototherapy Section - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-sun text-blue-500 mr-2"></i>
+                        Phototherapy Sessions
+                    </h3>
+                    <button class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                        <i class="fas fa-plus mr-2"></i>Schedule Session
+                    </button>
+                </div>
+                
+                {% if phototherapy_sessions %}
+                    <div class="space-y-4">
+                        {% for session in phototherapy_sessions %}
+                        <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900">
+                                    Session #{{ forloop.counter }}
+                                </p>
+                                <p class="text-sm text-gray-600">
+                                    {{ session.schedule|date:"M d, Y g:i A" }}
+                                </p>
+                            </div>
+                            <span class="px-3 py-1 text-sm rounded-full 
+                                {% if session.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                {% elif session.status == 'SCHEDULED' %}bg-blue-100 text-blue-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ session.get_status_display }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">No phototherapy sessions scheduled</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column - Additional Information -->
+        <div class="space-y-6">
+            <!-- Staff Instructions - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-clipboard-check text-blue-500 mr-2"></i>
+                        Staff Instructions
+                    </h3>
+                    <button class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                        <i class="fas fa-edit mr-2"></i>Edit
+                    </button>
+                </div>
+                
+                {% if consultation.staff_instructions %}
+                <div class="space-y-4">
+                    {% if consultation.staff_instructions.pre_consultation %}
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Pre-Consultation</h3>
+                        <p class="text-gray-900 bg-gray-50 p-3 rounded">
+                            {{ consultation.staff_instructions.pre_consultation }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if consultation.staff_instructions.during_consultation %}
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">During Consultation</h3>
+                        <p class="text-gray-900 bg-gray-50 p-3 rounded">
+                            {{ consultation.staff_instructions.during_consultation }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if consultation.staff_instructions.post_consultation %}
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Post-Consultation</h3>
+                        <p class="text-gray-900 bg-gray-50 p-3 rounded">
+                            {{ consultation.staff_instructions.post_consultation }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-4">No staff instructions added</p>
+                {% endif %}
+            </div>
+
+            <!-- Previous Consultations - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-history text-blue-500 mr-2"></i>
+                    Previous Consultations
+                </h3>
+                {% if previous_consultations %}
+                    <div class="space-y-4">
+                        {% for prev_consult in previous_consultations %}
+                            <div class="p-4 bg-gray-50 rounded-lg">
+                                <div class="flex justify-between items-center mb-2">
+                                    <p class="font-medium">{{ prev_consult.scheduled_datetime|date:"M d, Y" }}</p>
+                                    <span class="px-3 py-1 text-sm rounded-full 
+                                        {% if prev_consult.priority == 'A' %}bg-blue-100 text-blue-800
+                                        {% elif prev_consult.priority == 'B' %}bg-green-100 text-green-800
+                                        {% else %}bg-red-100 text-red-800{% endif %}">
+                                        Priority {{ prev_consult.get_priority_display }}
+                                    </span>
+                                </div>
+                                <p class="text-sm text-gray-600">{{ prev_consult.diagnosis|default:"No diagnosis recorded" }}</p>
+                                <div class="mt-2">
+                                    <a href="{% url 'consultation_detail' pk=prev_consult.id %}" 
+                                       class="text-blue-600 hover:text-blue-800 text-sm">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">No previous consultations found</p>
+                {% endif %}
+            </div>
+
+            <!-- Patient Instructions - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-user-md text-blue-500 mr-2"></i>  <!-- Fixed the malformed icon class -->
+                        Patient Instructions
+                    </h3>
+                    {% if can_edit %}
+                    <button class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                        <i class="fas fa-edit mr-2"></i>Edit Instructions
+                    </button>
+                    {% endif %}
+                </div>
+                {% if consultation.patient_instructions %}
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-4 rounded">
+                            {{ consultation.patient_instructions|linebreaks }}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">No instructions added for patient</p>
+                {% endif %}
+            </div>
+
+            <!-- Consultation Timeline - Updated styling -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-clock text-blue-500 mr-2"></i>
+                    Consultation Timeline
+                </h3>
+                {% if consultation_history %}
+                    <div class="space-y-4">
+                        {% for event in consultation_history %}
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-500"></div>
+                                <div>
+                                    <p class="text-sm text-gray-600">{{ event.timestamp|date:"M d, Y H:i" }}</p>
+                                    <p class="text-gray-900">{{ event.description }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">No history available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
-{% include './consultation_delete_modal.html' %}
+
 {% endblock %}

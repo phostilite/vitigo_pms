@@ -19,7 +19,7 @@ from django.http import Http404
 # Local application imports
 from .models import (
     Consultation, DoctorPrivateNotes, ConsultationType,
-    ConsultationPriority, PaymentStatus
+    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate
 )
 from .forms import ConsultationForm
 from access_control.models import Role
@@ -229,19 +229,46 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             # Base consultation information
             context['page_title'] = f'Consultation Details - {consultation.patient.get_full_name()}'
             
-            # Get prescriptions with items
+            # Get previous consultations
             try:
-                prescriptions = consultation.prescriptions.prefetch_related('items__medication').all()
-                context['prescriptions'] = prescriptions
+                context['previous_consultations'] = Consultation.objects.filter(
+                    patient=consultation.patient,
+                    scheduled_datetime__lt=consultation.scheduled_datetime
+                ).order_by('-scheduled_datetime')[:5]
             except Exception as e:
-                logger.warning(f"Error fetching prescriptions: {str(e)}")
+                logger.warning(f"Error fetching previous consultations: {str(e)}")
+                context['previous_consultations'] = []
+            
+            # Get prescriptions with stock information
+            try:
+                prescriptions = consultation.prescriptions.prefetch_related(
+                    'items__medication',
+                    'items__stock_item'
+                ).all()
+                context['prescriptions'] = prescriptions
+                
+                # Get previous consultations' prescriptions for templates
+                previous_prescriptions = Prescription.objects.filter(
+                    consultation__patient=consultation.patient,
+                    consultation__scheduled_datetime__lt=consultation.scheduled_datetime
+                ).prefetch_related('items__medication')[:5]
+                context['previous_prescriptions'] = previous_prescriptions
+                
+                # Get prescription templates
+                context['prescription_templates'] = PrescriptionTemplate.objects.filter(
+                    Q(doctor=consultation.doctor) | Q(is_global=True)
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching prescriptions data: {str(e)}")
                 context['prescriptions'] = None
                 context['prescription_error'] = "Unable to load prescriptions"
             
-            # Get treatment plan details
+            # Get treatment plan details with costing
             try:
                 if hasattr(consultation, 'treatment_plan'):
                     context['treatment_plan_items'] = consultation.treatment_plan.items.all()
+                    context['treatment_plan_cost'] = consultation.treatment_plan.total_cost
+                    context['payment_status'] = consultation.treatment_plan.get_payment_status_display()
             except Exception as e:
                 logger.warning(f"Error fetching treatment plan: {str(e)}")
                 context['treatment_plan_items'] = None
@@ -249,19 +276,20 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             
             # Get phototherapy sessions
             try:
-                context['phototherapy_sessions'] = consultation.phototherapy_sessions.all()
+                context['phototherapy_sessions'] = consultation.phototherapy_sessions.select_related(
+                    'phototherapy_session'
+                ).all()
             except Exception as e:
                 logger.warning(f"Error fetching phototherapy sessions: {str(e)}")
                 context['phototherapy_sessions'] = None
                 context['phototherapy_error'] = "Unable to load phototherapy sessions"
             
-            # Get attachments
+            # Get consultation history timeline
             try:
-                context['attachments'] = consultation.attachments.all()
+                context['consultation_history'] = self._get_consultation_history(consultation)
             except Exception as e:
-                logger.warning(f"Error fetching attachments: {str(e)}")
-                context['attachments'] = None
-                context['attachments_error'] = "Unable to load attachments"
+                logger.warning(f"Error generating consultation history: {str(e)}")
+                context['consultation_history'] = None
             
             # Add permissions context
             context['can_edit'] = PermissionManager.check_module_modify(
@@ -272,10 +300,7 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
                 self.request.user, 
                 'consultation_management'
             )
-            
-            # Add consultation status context
-            context['is_upcoming'] = consultation.scheduled_datetime > timezone.now()
-            context['is_completed'] = consultation.status == 'COMPLETED'
+            context['is_doctor'] = self.request.user.role.name == 'DOCTOR'
             
             return context
             
@@ -283,6 +308,52 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             logger.error(f"Error getting consultation detail context: {str(e)}")
             messages.error(self.request, "Error loading consultation details")
             return {'error': 'Error loading consultation data'}
+
+    def _get_consultation_history(self, consultation):
+        """Generate a timeline of consultation events"""
+        try:
+            history = []
+            
+            # Add creation event
+            history.append({
+                'timestamp': consultation.created_at,
+                'description': f'Consultation scheduled by {consultation.created_by.get_full_name()}'
+            })
+            
+            # Add status changes
+            if consultation.actual_start_time:
+                history.append({
+                    'timestamp': consultation.actual_start_time,
+                    'description': 'Consultation started'
+                })
+            
+            if consultation.actual_end_time:
+                history.append({
+                    'timestamp': consultation.actual_end_time,
+                    'description': 'Consultation completed'
+                })
+            
+            # Add prescription events
+            for prescription in consultation.prescriptions.all():
+                history.append({
+                    'timestamp': prescription.created_at,
+                    'description': 'Prescription added'
+                })
+            
+            # Add treatment plan events
+            if hasattr(consultation, 'treatment_plan'):
+                history.append({
+                    'timestamp': consultation.treatment_plan.created_at,
+                    'description': 'Treatment plan created'
+                })
+            
+            # Sort by timestamp
+            history.sort(key=lambda x: x['timestamp'], reverse=True)
+            
+            return history
+        except Exception as e:
+            logger.error(f"Error generating consultation history: {str(e)}")
+            return []
         
 
 class ConsultationDeleteView(LoginRequiredMixin, View):
