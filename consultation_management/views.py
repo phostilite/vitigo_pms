@@ -21,7 +21,7 @@ from django.contrib.auth import get_user_model
 # Local application imports
 from .models import (
     Consultation, DoctorPrivateNotes, ConsultationType,
-    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback
+    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback, StaffInstruction
 )
 from .forms import ConsultationForm
 from access_control.models import Role
@@ -445,6 +445,9 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
             )
             context['is_doctor'] = self.request.user.role.name == 'DOCTOR'
             
+            # Add consultation priority choices for staff instructions form
+            context['consultation_priority_choices'] = ConsultationPriority.choices
+            
             return context
             
         except Exception as e:
@@ -562,6 +565,46 @@ class ConsultationStatusUpdateView(LoginRequiredMixin, View):
             return redirect('consultation_detail', pk=pk)
 
         except Exception as e:
+
             logger.error(f"Error updating consultation status: {str(e)}")
             messages.error(request, "An error occurred while updating the consultation status")
             return redirect('consultation_detail', pk=pk)
+        
+
+class StaffInstructionsUpdateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            consultation = get_object_or_404(Consultation, pk=pk)
+            
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to modify staff instructions")
+                return redirect('consultation_detail', pk=pk)
+            
+            # Validate priority
+            priority = request.POST.get('priority')
+            if priority not in dict(ConsultationPriority.choices):
+                messages.error(request, "Invalid priority level")
+                return redirect('consultation_detail', pk=pk)
+            
+            # Get or create staff instructions
+            staff_instructions, created = StaffInstruction.objects.get_or_create(
+                consultation=consultation
+            )
+            
+            # Update all fields
+            staff_instructions.pre_consultation = request.POST.get('pre_consultation', '')
+            staff_instructions.during_consultation = request.POST.get('during_consultation', '')
+            staff_instructions.post_consultation = request.POST.get('post_consultation', '')
+            staff_instructions.priority = priority
+            
+            # Save changes
+            staff_instructions.save()
+            
+            messages.success(request, "Staff instructions updated successfully")
+            logger.info(f"Staff instructions updated for consultation {pk} by user {request.user.id}")
+            
+        except Exception as e:
+            logger.error(f"Error updating staff instructions: {str(e)}")
+            messages.error(request, "An error occurred while updating staff instructions")
+        
+        return redirect('consultation_detail', pk=pk)
