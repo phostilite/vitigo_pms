@@ -852,36 +852,42 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize each edit prescription modal's functionality
-    {% for prescription in prescriptions %}
-    const modalId = 'editPrescriptionModal{{ prescription.id }}';
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        const addButton = modal.querySelector('.add-medication');
-        const itemsContainer = modal.querySelector('.medication-items');
+    // Common function for adding medication fields
+    function initializeMedicationControls(container, addButton) {
+        if (!container || !addButton) return;
         
         addButton.addEventListener('click', function() {
-            const template = itemsContainer.children[0].cloneNode(true);
+            const template = container.children[0].cloneNode(true);
             // Clear input values
             template.querySelectorAll('input').forEach(input => input.value = '');
             template.querySelector('select').selectedIndex = 0;
             
             // Show remove button
             const removeBtn = template.querySelector('.remove-medication');
-            removeBtn.style.display = 'block';
+            if (removeBtn) removeBtn.style.display = 'block';
             
-            itemsContainer.appendChild(template);
+            container.appendChild(template);
         });
         
         // Handle remove medication buttons
-        itemsContainer.addEventListener('click', function(e) {
-            if (e.target.closest('.remove-medication')) {
-                if (itemsContainer.children.length > 1) {
-                    e.target.closest('.medication-item').remove();
-                }
+        container.addEventListener('click', function(e) {
+            const removeBtn = e.target.closest('.remove-medication');
+            if (removeBtn && container.children.length > 1) {
+                removeBtn.closest('.medication-item').remove();
             }
         });
     }
+
+    // Initialize create prescription modal
+    const createContainer = document.querySelector('#prescriptionModal .medication-items');
+    const createAddButton = document.getElementById('addMedication');
+    initializeMedicationControls(createContainer, createAddButton);
+
+    // Initialize edit prescription modals
+    {% for prescription in prescriptions %}
+    const editContainer{{ prescription.id }} = document.querySelector('#editPrescriptionModal{{ prescription.id }} .medication-items');
+    const editAddButton{{ prescription.id }} = document.querySelector('#editPrescriptionModal{{ prescription.id }} .add-medication');
+    initializeMedicationControls(editContainer{{ prescription.id }}, editAddButton{{ prescription.id }});
     {% endfor %}
 });
 </script>
