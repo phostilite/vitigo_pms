@@ -11,4 +11,5 @@ urlpatterns = [
     path('staff-instructions/<int:pk>/', views.StaffInstructionsUpdateView.as_view(), name='staff_instructions_update'),
     path('prescriptions/', views.PrescriptionDashboardView.as_view(), name='prescription_dashboard'),
     path('prescriptions/template/create/', views.PrescriptionTemplateCreateView.as_view(), name='create_prescription_template'),
+    path('prescriptions/template/<int:pk>/edit/', views.PrescriptionTemplateEditView.as_view(), name='edit_prescription_template'),
 ]

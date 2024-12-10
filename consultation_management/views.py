@@ -17,6 +17,7 @@ from django.db import transaction
 from django.urls import reverse_lazy
 from django.http import Http404
 from django.contrib.auth import get_user_model
+from django.http import JsonResponse
 
 # Local application imports
 from .models import (
@@ -28,6 +29,7 @@ from access_control.models import Role
 from access_control.permissions import PermissionManager
 from pharmacy_management.models import Medication
 from error_handling.views import handler403, handler404, handler500
+
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -714,4 +716,76 @@ class PrescriptionTemplateCreateView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while creating the template")
 
         return redirect('prescription_dashboard')
+
+
+class PrescriptionTemplateEditView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        try:
+            template = get_object_or_404(PrescriptionTemplate, pk=pk)
+            data = {
+                'template': {
+                    'id': template.id,
+                    'name': template.name,
+                    'description': template.description,
+                    'is_active': template.is_active,
+                    'is_global': template.is_global,
+                    'items': list(template.items.values(
+                        'id',
+                        'medication_id',
+                        'dosage',
+                        'frequency',
+                        'duration',
+                        'order'
+                    ))
+                }
+            }
+            return JsonResponse(data)
+        except Exception as e:
+            logger.error(f"Error fetching template data: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=400)
+
+    def post(self, request, pk):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                return JsonResponse({
+                    'error': "You don't have permission to modify prescription templates"
+                }, status=403)
+
+            template = get_object_or_404(PrescriptionTemplate, pk=pk)
+
+            with transaction.atomic():
+                # Update basic information
+                template.name = request.POST.get('name')
+                template.description = request.POST.get('description', '')
+                template.is_active = request.POST.get('is_active') == 'on'
+                template.is_global = request.POST.get('is_global') == 'on'
+                template.save()
+
+                # Delete existing items
+                template.items.all().delete()
+
+                # Add new items
+                medications = request.POST.getlist('medications[]')
+                dosages = request.POST.getlist('dosages[]')
+                frequencies = request.POST.getlist('frequencies[]')
+                durations = request.POST.getlist('durations[]')
+
+                for i in range(len(medications)):
+                    if medications[i]:
+                        TemplateItem.objects.create(
+                            template=template,
+                            medication_id=medications[i],
+                            dosage=dosages[i],
+                            frequency=frequencies[i],
+                            duration=durations[i],
+                            order=i
+                        )
+
+            messages.success(request, "Prescription template updated successfully")
+            return redirect('prescription_dashboard')
+
+        except Exception as e:
+            logger.error(f"Error updating prescription template: {str(e)}")
+            messages.error(request, "An error occurred while updating the template")
+            return redirect('prescription_dashboard')
 
