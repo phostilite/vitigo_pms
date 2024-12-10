@@ -12,4 +12,5 @@ urlpatterns = [
     path('prescriptions/', views.PrescriptionDashboardView.as_view(), name='prescription_dashboard'),
     path('prescriptions/template/create/', views.PrescriptionTemplateCreateView.as_view(), name='create_prescription_template'),
     path('prescriptions/template/<int:pk>/edit/', views.PrescriptionTemplateEditView.as_view(), name='edit_prescription_template'),
+    path('prescriptions/template/<int:pk>/delete/', views.PrescriptionTemplateDeleteView.as_view(), name='delete_prescription_template'),
 ]

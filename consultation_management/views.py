@@ -789,3 +789,29 @@ class PrescriptionTemplateEditView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while updating the template")
             return redirect('prescription_dashboard')
 
+class PrescriptionTemplateDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            if not PermissionManager.check_module_delete(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to delete prescription templates")
+                return redirect('prescription_dashboard')
+
+            template = get_object_or_404(PrescriptionTemplate, pk=pk)
+            
+            # Additional validation if needed (e.g., only owner can delete)
+            if not template.is_global and template.doctor != request.user:
+                messages.error(request, "You can only delete your own templates")
+                return redirect('prescription_dashboard')
+
+            template_name = template.name
+            template.delete()
+            
+            messages.success(request, f"Template '{template_name}' deleted successfully")
+            logger.info(f"Prescription template {pk} deleted by user {request.user.id}")
+            
+        except Exception as e:
+            logger.error(f"Error deleting prescription template: {str(e)}")
+            messages.error(request, "An error occurred while deleting the template")
+            
+        return redirect('prescription_dashboard')
+
