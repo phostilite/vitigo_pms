@@ -2,14 +2,15 @@
 import logging
 
 # Standard library imports
-from django.views.generic import ListView, View, DetailView
+from django.views.generic import ListView, View, DetailView, CreateView, UpdateView
 from django.db.models import Count, Avg, Q
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from datetime import timedelta
 from django.db import transaction
+from django.urls import reverse_lazy
 
 # Local application imports
 from .models import Consultation, DoctorPrivateNotes, Prescription, TreatmentPlan, StaffInstruction, ConsultationPhototherapy, ConsultationAttachment
@@ -19,90 +20,56 @@ from error_handling.views import handler403, handler404, handler500
 
 logger = logging.getLogger(__name__)
 
-def get_template_path(base_template, role, module=''):
+def get_template_path(base_template, role, module='consultation_management'):
     """
     Resolves template path based on user role.
+    Now uses the template_folder from Role model.
     """
     if isinstance(role, Role):
         role_folder = role.template_folder
     else:
-        try:
-            role = Role.objects.get(name=role)
-            role_folder = role.template_folder
-        except Role.DoesNotExist:
-            role_folder = 'default'
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
     
     if module:
         return f'{role_folder}/{module}/{base_template}'
     return f'{role_folder}/{base_template}'
 
-class ConsultationManagementView(LoginRequiredMixin, ListView):
+class ConsultationDashboardView(LoginRequiredMixin, ListView):
     model = Consultation
-    template_name = 'dashboard/administrator/consultation_management/consultation_dashboard.html'
     context_object_name = 'consultations'
     paginate_by = 10
 
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'consultation_management'):
+            messages.error(request, "You don't have permission to access Consultations")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_names(self):
+        return [get_template_path('consultation_dashboard.html', self.request.user.role, 'consultation_management')]
+
     def get_queryset(self):
-        return Consultation.objects.select_related(
-            'patient', 
-            'doctor'
-        ).prefetch_related(
-            'prescriptions',
-            'attachments'
-        ).order_by('-scheduled_datetime')
+        # Add your queryset filters here
+        return Consultation.objects.select_related('patient', 'doctor').all()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Get total consultations for current month
-        context['total_consultations'] = Consultation.objects.filter(
-            scheduled_datetime__month=timezone.now().month
-        ).count()
-
-        # Get upcoming followups for next 7 days
-        context['upcoming_followups'] = Consultation.objects.filter(
-            follow_up_date__range=[
-                timezone.now().date(),
-                timezone.now().date() + timezone.timedelta(days=7)
-            ]
-        ).count()
-
+        # Add your context data here
         return context
 
 class ConsultationDeleteView(LoginRequiredMixin, View):
-    def dispatch(self, request, *args, **kwargs):
+    def post(self, request, pk):
         if not PermissionManager.check_module_delete(request.user, 'consultation_management'):
             messages.error(request, "You don't have permission to delete consultations")
-            return handler403(request, exception="Insufficient Permissions")
-        return super().dispatch(request, *args, **kwargs)
+            return handler403(request, exception="Access Denied")
 
-    def post(self, request, consultation_id):
         try:
-            consultation = get_object_or_404(Consultation, id=consultation_id)
-            
-            # Store info for message
-            patient_name = consultation.patient.get_full_name()
-            consultation_date = consultation.scheduled_datetime.strftime('%Y-%m-%d')  # Changed from date_time to scheduled_datetime
-            
-            # Additional permission check for doctors
-            if request.user.role.name == 'DOCTOR' and consultation.doctor != request.user:
-                messages.error(request, "You can only delete your own consultations")
-                return redirect('consultation_management')
-            
-            with transaction.atomic():
-                # Delete associated records first
-                if hasattr(consultation, 'treatment_instruction'):
-                    consultation.treatment_instruction.delete()
-                if hasattr(consultation, 'follow_up_plan'):
-                    consultation.follow_up_plan.delete()
-                
-                # Delete prescriptions and attachments through cascade
-                consultation.delete()
-            
-            messages.success(request, f"Consultation for {patient_name} on {consultation_date} has been deleted successfully")
-            logger.info(f"Consultation {consultation_id} deleted by {request.user.email}")
-            return redirect('consultation_management')
-            
+            consultation = get_object_or_404(Consultation, pk=pk)
+            consultation.delete()
+            messages.success(request, "Consultation deleted successfully")
+            return redirect('consultation_dashboard')
         except Exception as e:
-            logger.error(f"Error deleting consultation: {str(e)}")
             messages.error(request, f"Error deleting consultation: {str(e)}")
-            return redirect('consultation_management')
+            return redirect('consultation_dashboard')
