@@ -18,6 +18,13 @@ from django.urls import reverse_lazy
 from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
+from django.http import HttpResponse
+from django.contrib.auth.mixins import UserPassesTestMixin
+import csv
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 # Local application imports
 from .models import (
@@ -815,3 +822,188 @@ class PrescriptionTemplateDeleteView(LoginRequiredMixin, View):
             
         return redirect('prescription_dashboard')
 
+
+class ConsultationExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'consultation_management')
+
+    def get_filtered_queryset(self):
+        """Get filtered queryset based on request parameters"""
+        try:
+            queryset = Consultation.objects.select_related('patient', 'doctor').all()
+            date_range = self.request.GET.get('date_range')
+            start_date = self.request.GET.get('start_date')
+            end_date = self.request.GET.get('end_date')
+
+            if date_range == 'custom' and start_date and end_date:
+                try:
+                    start_datetime = timezone.make_aware(datetime.strptime(start_date, '%Y-%m-%d'))
+                    end_datetime = timezone.make_aware(datetime.strptime(end_date, '%Y-%m-%d'))
+                    end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
+                    queryset = queryset.filter(scheduled_datetime__range=[start_datetime, end_datetime])
+                except ValueError:
+                    raise ValueError("Invalid date format")
+            elif date_range:
+                try:
+                    days = int(date_range)
+                    end_date = timezone.now()
+                    start_date = end_date - timedelta(days=days)
+                    queryset = queryset.filter(scheduled_datetime__range=[start_date, end_date])
+                except ValueError:
+                    raise ValueError("Invalid date range value")
+
+            return queryset.order_by('-scheduled_datetime')
+
+        except Exception as e:
+            logger.error(f"Error filtering consultations: {str(e)}")
+            raise
+
+    def export_csv(self, queryset):
+        try:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="consultations_export.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow([
+                'Consultation ID',
+                'Patient Name',
+                'Patient ID',
+                'Doctor Name',
+                'Type',
+                'Status',
+                'Scheduled Date',
+                'Start Time',
+                'End Time',
+                'Duration (min)',
+                'Chief Complaint',
+                'Diagnosis',
+                'Prescription Count',
+                'Follow-up Date'
+            ])
+
+            for consultation in queryset:
+                writer.writerow([
+                    consultation.id,
+                    consultation.patient.get_full_name(),
+                    consultation.patient.id,
+                    f"Dr. {consultation.doctor.get_full_name()}",
+                    consultation.get_consultation_type_display(),
+                    consultation.get_status_display(),
+                    consultation.scheduled_datetime.strftime('%Y-%m-%d'),
+                    consultation.actual_start_time.strftime('%H:%M') if consultation.actual_start_time else 'N/A',
+                    consultation.actual_end_time.strftime('%H:%M') if consultation.actual_end_time else 'N/A',
+                    consultation.duration_minutes,
+                    consultation.chief_complaint,
+                    consultation.diagnosis,
+                    consultation.prescriptions.count(),
+                    consultation.follow_up_date.strftime('%Y-%m-%d') if consultation.follow_up_date else 'N/A'
+                ])
+
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error exporting CSV: {str(e)}")
+            raise
+
+    def export_pdf(self, queryset):
+        try:
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="consultations_export.pdf"'
+
+            doc = SimpleDocTemplate(response, pagesize=letter)
+            elements = []
+            styles = getSampleStyleSheet()
+
+            # Title
+            elements.append(Paragraph('Consultation Report', styles['Heading1']))
+            elements.append(Spacer(1, 20))
+
+            # Date Range Info
+            date_range = self.request.GET.get('date_range')
+            if date_range == 'custom':
+                date_info = f"Custom Range: {self.request.GET.get('start_date')} to {self.request.GET.get('end_date')}"
+            else:
+                date_info = f"Last {date_range} days"
+            elements.append(Paragraph(f"Period: {date_info}", styles['Normal']))
+            elements.append(Paragraph(f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+            elements.append(Spacer(1, 20))
+
+            # Summary Statistics
+            stats = [
+                ['Total Consultations:', str(queryset.count())],
+                ['Completed:', str(queryset.filter(status='COMPLETED').count())],
+                ['Scheduled:', str(queryset.filter(status='SCHEDULED').count())],
+                ['In Progress:', str(queryset.filter(status='IN_PROGRESS').count())]
+            ]
+
+            stats_table = Table(stats, colWidths=[120, 100])
+            stats_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ]))
+            elements.append(stats_table)
+            elements.append(Spacer(1, 20))
+
+            # Main Consultations Table
+            data = [[
+                'Patient',
+                'Doctor',
+                'Type',
+                'Status',
+                'Date',
+                'Duration'
+            ]]
+
+            for consultation in queryset:
+                data.append([
+                    consultation.patient.get_full_name(),
+                    f"Dr. {consultation.doctor.get_full_name()}",
+                    consultation.get_consultation_type_display(),
+                    consultation.get_status_display(),
+                    consultation.scheduled_datetime.strftime('%Y-%m-%d'),
+                    f"{consultation.duration_minutes} min"
+                ])
+
+            table = Table(data, repeatRows=1)
+            table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ]))
+
+            elements.append(table)
+            doc.build(elements)
+            return response
+
+        except Exception as e:
+            logger.error(f"Error exporting PDF: {str(e)}")
+            raise
+
+    def get(self, request):
+        try:
+            # Get filtered queryset
+            queryset = self.get_filtered_queryset()
+            
+            # Get export format
+            export_format = request.GET.get('format', 'csv').lower()
+            
+            if export_format == 'csv':
+                return self.export_csv(queryset)
+            elif export_format == 'pdf':
+                return self.export_pdf(queryset)
+            else:
+                messages.error(request, "Invalid export format specified")
+                return redirect('consultation_dashboard')
+                
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('consultation_dashboard')
+        except Exception as e:
+            logger.error(f"Export error: {str(e)}")
+            messages.error(request, "An error occurred during export")
+            return redirect('consultation_dashboard')
