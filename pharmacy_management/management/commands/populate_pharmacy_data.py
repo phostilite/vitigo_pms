@@ -1,103 +1,242 @@
-# pharmacy_management/management/commands/populate_pharmacy_data.py
-
-import random
-from decimal import Decimal
 from django.core.management.base import BaseCommand
-from django.utils import timezone
-from faker import Faker
-from user_management.models import CustomUser
+from django.db import transaction
+from django.contrib.auth import get_user_model
 from pharmacy_management.models import (
-    Medication, MedicationStock, Supplier, PurchaseOrder, PurchaseOrderItem
+    Medication, MedicationStock, Supplier,
+    PurchaseOrder, PurchaseOrderItem
 )
-from access_control.models import Role
+from decimal import Decimal
+from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
+User = get_user_model()
 
 class Command(BaseCommand):
-    help = 'Generate sample pharmacy management data'
+    help = 'Populate sample data for pharmacy management system'
 
-    def add_arguments(self, parser):
-        parser.add_argument('--medications', type=int, default=50, help='Number of medications to create')
-        parser.add_argument('--suppliers', type=int, default=20, help='Number of suppliers to create')
-        parser.add_argument('--purchases', type=int, default=50, help='Number of purchase orders to create')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.medications_data = [
+            {
+                'name': 'Amoxicillin',
+                'generic_name': 'Amoxicillin',
+                'description': 'Antibiotic medication',
+                'dosage_form': 'Capsule',
+                'strength': '500mg',
+                'manufacturer': 'PharmaCorp',
+                'price': Decimal('15.99'),
+                'requires_prescription': True
+            },
+            {
+                'name': 'Paracetamol',
+                'generic_name': 'Acetaminophen',
+                'description': 'Pain reliever and fever reducer',
+                'dosage_form': 'Tablet',
+                'strength': '500mg',
+                'manufacturer': 'HealthCare Ltd',
+                'price': Decimal('5.99'),
+                'requires_prescription': False
+            },
+            {
+                'name': 'Lisinopril',
+                'generic_name': 'Lisinopril',
+                'description': 'ACE inhibitor for blood pressure control',
+                'dosage_form': 'Tablet',
+                'strength': '10mg',
+                'manufacturer': 'MedPharm',
+                'price': Decimal('25.50'),
+                'requires_prescription': True
+            },
+            {
+                'name': 'Metformin',
+                'generic_name': 'Metformin HCl',
+                'description': 'Oral diabetes medicine',
+                'dosage_form': 'Tablet',
+                'strength': '850mg',
+                'manufacturer': 'DiabeCare',
+                'price': Decimal('12.75'),
+                'requires_prescription': True
+            },
+            {
+                'name': 'Ibuprofen',
+                'generic_name': 'Ibuprofen',
+                'description': 'NSAID pain reliever',
+                'dosage_form': 'Tablet',
+                'strength': '400mg',
+                'manufacturer': 'PainRelief Inc',
+                'price': Decimal('8.99'),
+                'requires_prescription': False
+            },
+            {
+                'name': 'Omeprazole',
+                'generic_name': 'Omeprazole',
+                'description': 'Proton pump inhibitor',
+                'dosage_form': 'Capsule',
+                'strength': '20mg',
+                'manufacturer': 'GastroHealth',
+                'price': Decimal('18.50'),
+                'requires_prescription': True
+            },
+            {
+                'name': 'Cetirizine',
+                'generic_name': 'Cetirizine HCl',
+                'description': 'Antihistamine for allergies',
+                'dosage_form': 'Tablet',
+                'strength': '10mg',
+                'manufacturer': 'AllergyMed',
+                'price': Decimal('9.99'),
+                'requires_prescription': False
+            },
+            {
+                'name': 'Salbutamol',
+                'generic_name': 'Albuterol',
+                'description': 'Bronchodilator',
+                'dosage_form': 'Inhaler',
+                'strength': '100mcg',
+                'manufacturer': 'RespiraCare',
+                'price': Decimal('35.00'),
+                'requires_prescription': True
+            },
+            {
+                'name': 'Vitamin D3',
+                'generic_name': 'Cholecalciferol',
+                'description': 'Vitamin D supplement',
+                'dosage_form': 'Tablet',
+                'strength': '1000IU',
+                'manufacturer': 'VitaHealth',
+                'price': Decimal('7.50'),
+                'requires_prescription': False
+            },
+            {
+                'name': 'Sertraline',
+                'generic_name': 'Sertraline HCl',
+                'description': 'SSRI antidepressant',
+                'dosage_form': 'Tablet',
+                'strength': '50mg',
+                'manufacturer': 'MentalCare',
+                'price': Decimal('28.99'),
+                'requires_prescription': True
+            }
+        ]
 
-    def handle(self, *args, **kwargs):
-        fake = Faker()
-        self.stdout.write('Generating sample pharmacy management data...')
+        self.suppliers_data = [
+            {
+                'name': 'MedSupply Co',
+                'contact_person': 'John Doe',
+                'email': 'john@medsupply.com',
+                'phone': '123-456-7890',
+                'address': '123 Medical Street, Healthcare City'
+            },
+            {
+                'name': 'PharmaCorp International',
+                'contact_person': 'Jane Smith',
+                'email': 'jane@pharmacorp.com',
+                'phone': '098-765-4321',
+                'address': '456 Pharma Avenue, Medicine Town'
+            },
+        ]
 
-        # Get roles
-        pharmacist_role = Role.objects.get(name='PHARMACIST')
-
-        # Create medications
-        medication_forms = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Ointment', 'Drops']
-        manufacturers = [fake.company() for _ in range(10)]
-        
-        for _ in range(kwargs['medications']):
-            strength_units = ['mg', 'g', 'ml', 'mcg', '%']
-            med = Medication.objects.create(
-                name=fake.unique.word() + ' ' + fake.word(),
-                generic_name=fake.word(),
-                description=fake.text(max_nb_chars=200),
-                dosage_form=random.choice(medication_forms),
-                strength=f"{random.randint(1, 1000)}{random.choice(strength_units)}",
-                manufacturer=random.choice(manufacturers),
-                price=Decimal(str(random.uniform(0.1, 1000.0))).quantize(Decimal('0.01')),
-                requires_prescription=random.choice([True, False]),
-                is_active=True
+    def create_admin_user(self):
+        try:
+            admin_user = User.objects.create_superuser(
+                email='admin@example.com',
+                password='admin123'
             )
-            MedicationStock.objects.create(
-                medication=med,
-                quantity=random.randint(0, 1000),
-                reorder_level=random.randint(10, 100)
-            )
+            self.stdout.write(self.style.SUCCESS('Successfully created admin user'))
+            return admin_user
+        except Exception as e:
+            logger.error(f'Error creating admin user: {str(e)}')
+            raise
 
-        # Create suppliers
-        for _ in range(kwargs['suppliers']):
-            Supplier.objects.create(
-                name=fake.company(),
-                contact_person=fake.name(),
-                email=fake.company_email(),
-                phone=fake.phone_number(),
-                address=fake.address(),
-                is_active=True
-            )
-
-        # Fetch required data
-        medications = list(Medication.objects.all())
-        suppliers = list(Supplier.objects.all())
-        pharmacists = list(CustomUser.objects.filter(role=pharmacist_role))
-
-        if not all([medications, suppliers, pharmacists]):
-            self.stdout.write(self.style.ERROR('Missing required data. Ensure you have medications, suppliers, and pharmacists.'))
-            return
-
-        # Generate purchase orders
-        for _ in range(kwargs['purchases']):
-            po_items = []
-            supplier = random.choice(suppliers)
-            created_by = random.choice(pharmacists)
-            total_amount = Decimal('0.00')
-            
-            purchase_order = PurchaseOrder.objects.create(
-                supplier=supplier,
-                status=random.choice(['PENDING', 'ORDERED', 'RECEIVED', 'CANCELLED']),
-                total_amount=total_amount,
-                expected_delivery_date=fake.date_between(start_date='today', end_date='+30d'),
-                created_by=created_by
-            )
-
-            for _ in range(random.randint(1, 10)):
-                medication = random.choice(medications)
-                quantity = random.randint(10, 500)
-                unit_price = medication.price
-                total_amount += unit_price * quantity
-                po_items.append(PurchaseOrderItem(
-                    purchase_order=purchase_order,
+    @transaction.atomic
+    def create_medications(self):
+        created_medications = []
+        try:
+            for med_data in self.medications_data:
+                medication = Medication.objects.create(**med_data)
+                created_medications.append(medication)
+                
+                # Create corresponding stock
+                MedicationStock.objects.create(
                     medication=medication,
-                    quantity=quantity,
-                    unit_price=unit_price
-                ))
+                    quantity=100,
+                    reorder_level=20
+                )
+            self.stdout.write(self.style.SUCCESS(f'Created {len(created_medications)} medications with stock'))
+            return created_medications
+        except Exception as e:
+            logger.error(f'Error creating medications: {str(e)}')
+            raise
 
-            PurchaseOrderItem.objects.bulk_create(po_items)
-            purchase_order.total_amount = total_amount
-            purchase_order.save()
+    @transaction.atomic
+    def create_suppliers(self):
+        created_suppliers = []
+        try:
+            for supplier_data in self.suppliers_data:
+                supplier = Supplier.objects.create(**supplier_data)
+                created_suppliers.append(supplier)
+            self.stdout.write(self.style.SUCCESS(f'Created {len(created_suppliers)} suppliers'))
+            return created_suppliers
+        except Exception as e:
+            logger.error(f'Error creating suppliers: {str(e)}')
+            raise
 
-        self.stdout.write(self.style.SUCCESS('Successfully generated sample pharmacy management data'))
+    @transaction.atomic
+    def create_purchase_orders(self, admin_user, medications, suppliers):
+        try:
+            for supplier in suppliers:
+                po = PurchaseOrder.objects.create(
+                    supplier=supplier,
+                    status='ORDERED',
+                    total_amount=Decimal('0'),
+                    expected_delivery_date=datetime.now().date() + timedelta(days=7),
+                    created_by=admin_user
+                )
+
+                total_amount = Decimal('0')
+                for medication in medications[:2]:  # Create items for first two medications
+                    quantity = 50
+                    unit_price = medication.price
+                    total_amount += quantity * unit_price
+
+                    PurchaseOrderItem.objects.create(
+                        purchase_order=po,
+                        medication=medication,
+                        quantity=quantity,
+                        unit_price=unit_price
+                    )
+
+                po.total_amount = total_amount
+                po.save()
+
+            self.stdout.write(self.style.SUCCESS('Created purchase orders with items'))
+        except Exception as e:
+            logger.error(f'Error creating purchase orders: {str(e)}')
+            raise
+
+    def handle(self, *args, **options):
+        try:
+            self.stdout.write('Starting to populate pharmacy data...')
+            
+            # Clear existing data
+            self.stdout.write('Clearing existing data...')
+            PurchaseOrderItem.objects.all().delete()
+            PurchaseOrder.objects.all().delete()
+            MedicationStock.objects.all().delete()
+            Medication.objects.all().delete()
+            Supplier.objects.all().delete()
+
+            # Create new data
+            with transaction.atomic():
+                admin_user = self.create_admin_user()
+                medications = self.create_medications()
+                suppliers = self.create_suppliers()
+                self.create_purchase_orders(admin_user, medications, suppliers)
+
+            self.stdout.write(self.style.SUCCESS('Successfully populated all pharmacy data'))
+
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Failed to populate data: {str(e)}'))
+            logger.error(f'Population script failed: {str(e)}')
+            raise

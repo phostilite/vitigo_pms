@@ -21,11 +21,12 @@ from django.contrib.auth import get_user_model
 # Local application imports
 from .models import (
     Consultation, DoctorPrivateNotes, ConsultationType,
-    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback, StaffInstruction
+    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback, StaffInstruction, TemplateItem
 )
 from .forms import ConsultationForm
 from access_control.models import Role
 from access_control.permissions import PermissionManager
+from pharmacy_management.models import Medication
 from error_handling.views import handler403, handler404, handler500
 
 logger = logging.getLogger(__name__)
@@ -608,3 +609,109 @@ class StaffInstructionsUpdateView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while updating staff instructions")
         
         return redirect('consultation_detail', pk=pk)
+
+class PrescriptionDashboardView(LoginRequiredMixin, ListView):
+    model = Prescription
+    context_object_name = 'prescriptions'
+    paginate_by = 10
+
+    def get_template_names(self):
+        return [get_template_path('prescription_dashboard.html', self.request.user.role)]
+
+    def get_queryset(self):
+        queryset = Prescription.objects.select_related(
+            'consultation__patient', 
+            'consultation__doctor'
+        ).prefetch_related('items__medication')
+        
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(consultation__patient__first_name__icontains=search) |
+                Q(consultation__patient__last_name__icontains=search) |
+                Q(items__medication__name__icontains=search)
+            ).distinct()
+            
+        return queryset.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.now()
+        last_month = today - timedelta(days=30)
+        
+        # Get templates
+        templates = PrescriptionTemplate.objects.filter(
+            Q(doctor=self.request.user) | Q(is_global=True)
+        )
+        
+        # Analytics data
+        context.update({
+            'templates': templates,
+            'total_templates': templates.count(),
+            'active_templates': templates.filter(is_active=True).count(),
+            'total_prescriptions': Prescription.objects.count(),
+            'recent_prescriptions': Prescription.objects.filter(
+                created_at__gte=today - timedelta(days=7)
+            ).count()
+        })
+        
+        # Add medications list for template creation
+        context['medications'] = Medication.objects.filter(is_active=True)
+        
+        return context
+
+class PrescriptionTemplateCreateView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to create prescription templates")
+                return redirect('prescription_dashboard')
+
+            # Extract basic information
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            is_active = request.POST.get('is_active') == 'on'
+            is_global = request.POST.get('is_global') == 'on'
+
+            # Validate required fields
+            if not name:
+                messages.error(request, "Template name is required")
+                return redirect('prescription_dashboard')
+
+            # Create the template
+            with transaction.atomic():
+                template = PrescriptionTemplate.objects.create(
+                    name=name,
+                    description=description,
+                    doctor=request.user,
+                    is_active=is_active,
+                    is_global=is_global
+                )
+
+                # Process medications
+                medications = request.POST.getlist('medications[]')
+                dosages = request.POST.getlist('dosages[]')
+                frequencies = request.POST.getlist('frequencies[]')
+                durations = request.POST.getlist('durations[]')
+
+                # Create template items
+                for i in range(len(medications)):
+                    if medications[i]:  # Only create if medication is selected
+                        TemplateItem.objects.create(
+                            template=template,
+                            medication_id=medications[i],
+                            dosage=dosages[i],
+                            frequency=frequencies[i],
+                            duration=durations[i],
+                            order=i
+                        )
+
+            messages.success(request, "Prescription template created successfully")
+            logger.info(f"Prescription template '{name}' created by user {request.user.id}")
+            
+        except Exception as e:
+            logger.error(f"Error creating prescription template: {str(e)}")
+            messages.error(request, "An error occurred while creating the template")
+
+        return redirect('prescription_dashboard')
+

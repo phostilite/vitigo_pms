@@ -1,5 +1,3 @@
-# pharmacy_management/models.py
-
 # Python standard library imports
 from decimal import Decimal
 
