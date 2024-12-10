@@ -27,7 +27,7 @@ from .models import (
 # Logger configuration
 logger = logging.getLogger(__name__)
 
-def get_template_path(base_template, role, module='notifications'):
+def get_template_path(base_template, role, module='notification_management'):
     """
     Resolves template path based on user role.
     Now uses the template_folder from Role model.
@@ -45,7 +45,7 @@ def get_template_path(base_template, role, module='notifications'):
 
 class NotificationManagementView(LoginRequiredMixin, View):
     def dispatch(self, request, *args, **kwargs):
-        if not PermissionManager.check_module_access(request.user, 'notifications'):
+        if not PermissionManager.check_module_access(request.user, 'notification_management'):
             messages.error(request, "You don't have permission to access Notifications")
             return handler403(request, exception="You don't have permission to access notifications")
         return super().dispatch(request, *args, **kwargs)

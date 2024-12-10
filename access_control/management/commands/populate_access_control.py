@@ -38,6 +38,7 @@ class Command(BaseCommand):
             {'name': 'research_management', 'display_name': 'Research', 'url_name': 'research_dashboard', 'order': 51},
             {'name': 'query_management', 'display_name': 'Queries', 'url_name': 'query_dashboard', 'order': 52},
             {'name': 'user_management', 'display_name': 'User Management', 'url_name': 'user_dashboard', 'order': 53},
+            {'name': 'notification_management', 'display_name': 'Notification Management', 'url_name': 'notification_dashboard', 'order': 54},
         ]
 
         # Define roles with their attributes
