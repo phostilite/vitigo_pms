@@ -10,8 +10,7 @@ from django.db import models
 from django.utils import timezone
 
 # Local application imports
-
-from patient_management.models import Patient, Medication
+from pharmacy_management.models import Medication
 from phototherapy_management.models import PhototherapySession
 from stock_management.models import StockItem
 
