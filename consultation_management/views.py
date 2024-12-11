@@ -608,3 +608,38 @@ class StaffInstructionsUpdateView(LoginRequiredMixin, View):
         
         return redirect('consultation_detail', pk=pk)
 
+class ClinicalInformationUpdateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            consultation = get_object_or_404(Consultation, pk=pk)
+            
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to modify clinical information")
+                return redirect('consultation_detail', pk=pk)
+            
+            # Update vitals
+            vitals = {
+                'bp': request.POST.get('vitals_bp', ''),
+                'temperature': request.POST.get('vitals_temp', ''),
+                'pulse': request.POST.get('vitals_pulse', ''),
+                'weight': request.POST.get('vitals_weight', '')
+            }
+            
+            # Update consultation fields
+            consultation.vitals = vitals
+            consultation.chief_complaint = request.POST.get('chief_complaint', '')
+            consultation.symptoms = request.POST.get('symptoms', '')
+            consultation.clinical_notes = request.POST.get('clinical_notes', '')
+            consultation.diagnosis = request.POST.get('diagnosis', '')
+            
+            consultation.save()
+            
+            messages.success(request, "Clinical information updated successfully")
+            logger.info(f"Clinical information updated for consultation {pk} by user {request.user.id}")
+            
+        except Exception as e:
+            logger.error(f"Error updating clinical information: {str(e)}")
+            messages.error(request, "An error occurred while updating clinical information")
+            
+        return redirect('consultation_detail', pk=pk)
+

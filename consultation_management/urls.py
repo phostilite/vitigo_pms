@@ -12,6 +12,7 @@ urlpatterns = [
     name='consultation_status_update'),
     path('staff-instructions/<int:pk>/', views.StaffInstructionsUpdateView.as_view(), name='staff_instructions_update'),
     
+    path('clinical-info/<int:pk>/update/', views.ClinicalInformationUpdateView.as_view(), name='update_clinical_info'),
     
     path('prescriptions/', prescription_views.PrescriptionDashboardView.as_view(), name='prescription_dashboard'),
     path('prescription/create/<int:consultation_id>/', prescription_views.PrescriptionCreateView.as_view(), name='create_prescription'),

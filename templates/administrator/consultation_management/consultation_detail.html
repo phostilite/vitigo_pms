@@ -118,10 +118,17 @@
 
             <!-- Clinical Information - Updated styling -->
             <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-notes-medical text-blue-500 mr-2"></i>
-                    Clinical Information
-                </h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-notes-medical text-blue-500 mr-2"></i>
+                        Clinical Information
+                    </h3>
+                    <button data-modal-target="clinicalInfoModal" 
+                            data-modal-toggle="clinicalInfoModal"
+                            class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                        <i class="fas fa-edit mr-2"></i>Update Details
+                    </button>
+                </div>
                 <div class="space-y-6">
                     {% if consultation.vitals %}
                     <div class="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
@@ -421,6 +428,7 @@
 {% include './consultation_detail/status_update_modals.html' %}
 {% include './consultation_detail/staff_instructions_modal.html' %}
 {% include './consultation_detail/prescription_modals.html' %}
+{% include './consultation_detail/clinic_information_modal.html' %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
