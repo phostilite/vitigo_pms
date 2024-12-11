@@ -42,4 +42,5 @@ urlpatterns = [
     path('treatment-plan/<int:pk>/update/', 
          views.TreatmentPlanUpdateView.as_view(), 
          name='update_treatment_plan'),
+    path('edit/<int:pk>/', views.ConsultationEditView.as_view(), name='consultation_edit'),
 ]

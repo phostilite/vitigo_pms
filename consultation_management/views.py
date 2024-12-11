@@ -773,3 +773,101 @@ class TreatmentPlanUpdateView(LoginRequiredMixin, View):
             
         return redirect('consultation_detail', pk=pk)
 
+class ConsultationEditView(LoginRequiredMixin, UpdateView):
+    model = Consultation
+    form_class = ConsultationForm
+    template_name = 'administrator/consultation_management/consultation_edit.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            self.consultation = get_object_or_404(Consultation, pk=kwargs['pk'])
+            
+            # Check permissions
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to edit consultations")
+                return redirect('consultation_detail', pk=self.consultation.pk)
+            
+            # Prevent editing completed or cancelled consultations
+            if self.consultation.status in ['COMPLETED', 'CANCELLED']:
+                messages.error(request, "Cannot edit completed or cancelled consultations")
+                return redirect('consultation_detail', pk=self.consultation.pk)
+            
+            # Prevent editing past consultations
+            if self.consultation.scheduled_datetime < timezone.now():
+                messages.error(request, "Cannot edit past consultations")
+                return redirect('consultation_detail', pk=self.consultation.pk)
+                
+            return super().dispatch(request, *args, **kwargs)
+            
+        except Http404:
+            messages.error(request, "Consultation not found")
+            return redirect('consultation_dashboard')
+        except Exception as e:
+            logger.error(f"Error in consultation edit dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the consultation")
+            return redirect('consultation_dashboard')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'consultation': self.consultation,
+            'page_title': 'Edit Consultation',
+            'submit_text': 'Update Consultation'
+        })
+        return context
+
+    def form_valid(self, form):
+        try:
+            with transaction.atomic():
+                consultation = form.save(commit=False)
+                
+                # Validate scheduled datetime
+                if consultation.scheduled_datetime <= timezone.now():
+                    form.add_error('scheduled_datetime', 'Consultation must be scheduled for a future time')
+                    return self.form_invalid(form)
+                
+                # If doctor is changed, validate availability
+                if 'doctor' in form.changed_data:
+                    if not self._is_doctor_available(consultation.doctor, consultation.scheduled_datetime):
+                        form.add_error('doctor', 'Selected doctor is not available at this time')
+                        return self.form_invalid(form)
+                
+                consultation.save()
+                
+                messages.success(self.request, "Consultation updated successfully")
+                logger.info(f"Consultation {consultation.id} updated by user {self.request.user.id}")
+                
+                return redirect('consultation_detail', pk=consultation.pk)
+                
+        except ValidationError as e:
+            logger.error(f"Validation error in consultation update: {str(e)}")
+            messages.error(self.request, str(e))
+            return self.form_invalid(form)
+        except Exception as e:
+            logger.error(f"Error updating consultation: {str(e)}")
+            messages.error(self.request, "An error occurred while updating the consultation")
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below")
+        return super().form_invalid(form)
+
+    def _is_doctor_available(self, doctor, scheduled_time):
+        """Check if doctor is available at the scheduled time"""
+        buffer_time = timedelta(minutes=30)  # 30 minutes before and after
+        start_check = scheduled_time - buffer_time
+        end_check = scheduled_time + buffer_time
+        
+        existing_consultations = Consultation.objects.filter(
+            doctor=doctor,
+            scheduled_datetime__range=(start_check, end_check),
+            status__in=['SCHEDULED', 'IN_PROGRESS']
+        ).exclude(pk=self.consultation.pk)
+        
+        return not existing_consultations.exists()
+
