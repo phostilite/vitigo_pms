@@ -290,7 +290,7 @@ class DeleteImageView(LoginRequiredMixin, UserPassesTestMixin, View):
             
             # Store image details for logging
             image_details = {
-                'patient': image.patient.user.get_full_name(),
+                'patient': image.patient.get_full_name(),
                 'file_name': image.image_file.name,
                 'uploaded_by': image.uploaded_by.get_full_name() if image.uploaded_by else 'Unknown'
             }

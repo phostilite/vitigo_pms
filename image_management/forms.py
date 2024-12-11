@@ -6,11 +6,6 @@ from consultation_management.models import Consultation
 from django.contrib.auth import get_user_model
 
 class PatientImageUploadForm(forms.ModelForm):
-    patient = forms.ModelChoiceField(
-        queryset=Patient.objects.all(),
-        widget=forms.Select(attrs={'class': 'form-select rounded-lg'}),
-        help_text='Select the patient whose image you want to upload'
-    )
     consultation = forms.ModelChoiceField(
         queryset=Consultation.objects.all(), 
         widget=forms.Select(attrs={
