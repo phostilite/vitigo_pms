@@ -29,7 +29,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 # Local application imports
 from .models import (
     Consultation, DoctorPrivateNotes, ConsultationType,
-    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback, StaffInstruction, TemplateItem, PrescriptionItem
+    ConsultationPriority, PaymentStatus, Prescription, PrescriptionTemplate, ConsultationFeedback, StaffInstruction, TemplateItem, PrescriptionItem, TreatmentPlan, TreatmentPlanItem
 )
 from .forms import ConsultationForm
 from .utils import get_template_path
@@ -709,6 +709,67 @@ class PatientInstructionsUpdateView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error updating patient instructions: {str(e)}")
             messages.error(request, "An error occurred while updating patient instructions")
+            
+        return redirect('consultation_detail', pk=pk)
+
+class TreatmentPlanUpdateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            consultation = get_object_or_404(Consultation, pk=pk)
+            
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to modify treatment plan")
+                return redirect('consultation_detail', pk=pk)
+            
+            with transaction.atomic():
+                # Get or create treatment plan
+                treatment_plan, created = TreatmentPlan.objects.get_or_create(
+                    consultation=consultation
+                )
+                
+                # Update basic information
+                treatment_plan.description = request.POST.get('description', '')
+                treatment_plan.duration_weeks = int(request.POST.get('duration_weeks', 0))
+                treatment_plan.goals = request.POST.get('goals', '')
+                treatment_plan.lifestyle_modifications = request.POST.get('lifestyle_modifications', '')
+                treatment_plan.dietary_recommendations = request.POST.get('dietary_recommendations', '')
+                treatment_plan.exercise_recommendations = request.POST.get('exercise_recommendations', '')
+                
+                # Calculate total cost from items
+                total_cost = 0
+                
+                # Clear existing items to replace with new ones
+                treatment_plan.items.all().delete()
+                
+                # Process treatment items
+                item_names = request.POST.getlist('item_names[]')
+                item_descriptions = request.POST.getlist('item_descriptions[]')
+                item_costs = request.POST.getlist('item_costs[]')
+                
+                for i in range(len(item_names)):
+                    if item_names[i] and item_costs[i]:  # Only create if name and cost exist
+                        cost = float(item_costs[i])
+                        total_cost += cost
+                        TreatmentPlanItem.objects.create(
+                            treatment_plan=treatment_plan,
+                            name=item_names[i],
+                            description=item_descriptions[i],
+                            cost=cost,
+                            order=i
+                        )
+                
+                treatment_plan.total_cost = total_cost
+                treatment_plan.save()
+                
+                messages.success(request, "Treatment plan updated successfully")
+                logger.info(f"Treatment plan updated for consultation {pk} by user {request.user.id}")
+                
+        except ValueError as e:
+            messages.error(request, "Invalid values provided for treatment plan")
+            logger.error(f"Value error updating treatment plan: {str(e)}")
+        except Exception as e:
+            messages.error(request, "An error occurred while updating the treatment plan")
+            logger.error(f"Error updating treatment plan: {str(e)}")
             
         return redirect('consultation_detail', pk=pk)
 

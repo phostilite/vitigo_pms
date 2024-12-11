@@ -355,7 +355,9 @@
                         <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>
                         Treatment Plan
                     </h3>
-                    <button class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                    <button data-modal-target="treatmentPlanModal" 
+                            data-modal-toggle="treatmentPlanModal"
+                            class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
                         <i class="fas fa-edit mr-2"></i>Update Plan
                     </button>
                 </div>
@@ -539,6 +541,7 @@
 {% include './consultation_detail/clinic_information_modal.html' %}
 {% include './consultation_detail/doctor_notes_modal.html' %}
 {% include './consultation_detail/patient_instructions_modal.html' %}
+{% include './consultation_detail/treatment_plan_modal.html' %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
