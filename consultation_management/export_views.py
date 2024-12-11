@@ -292,6 +292,26 @@ class ConsultationDetailExportView(LoginRequiredMixin, View):
         elements.append(Paragraph(f"Diagnosis: {consultation.diagnosis}", styles['Normal']))
         elements.append(Spacer(1, 20))
 
+        # Add Patient Instructions
+        elements.append(Paragraph('Patient Instructions', styles['Heading2']))
+        if consultation.patient_instructions or consultation.lifestyle_instructions or consultation.care_instructions:
+            if consultation.patient_instructions:
+                elements.append(Paragraph("General Instructions:", styles['Heading3']))
+                elements.append(Paragraph(consultation.patient_instructions, styles['Normal']))
+                elements.append(Spacer(1, 10))
+            
+            if consultation.lifestyle_instructions:
+                elements.append(Paragraph("Lifestyle & Dietary Instructions:", styles['Heading3']))
+                elements.append(Paragraph(consultation.lifestyle_instructions, styles['Normal']))
+                elements.append(Spacer(1, 10))
+            
+            if consultation.care_instructions:
+                elements.append(Paragraph("Care & Precautions:", styles['Heading3']))
+                elements.append(Paragraph(consultation.care_instructions, styles['Normal']))
+        else:
+            elements.append(Paragraph("No patient instructions provided", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
         # Doctor's Notes
         if consultation.private_notes:
             elements.append(Paragraph("Doctor's Notes", styles['Heading2']))
@@ -352,6 +372,13 @@ class ConsultationDetailExportView(LoginRequiredMixin, View):
         writer.writerow(['Chief Complaint', consultation.chief_complaint])
         writer.writerow(['Symptoms', consultation.symptoms])
         writer.writerow(['Diagnosis', consultation.diagnosis])
+        writer.writerow([])
+
+        # Patient Instructions
+        writer.writerow(['Patient Instructions'])
+        writer.writerow(['General Instructions', consultation.patient_instructions or 'Not provided'])
+        writer.writerow(['Lifestyle & Dietary Instructions', consultation.lifestyle_instructions or 'Not provided'])
+        writer.writerow(['Care & Precautions', consultation.care_instructions or 'Not provided'])
         writer.writerow([])
 
         # Prescriptions
