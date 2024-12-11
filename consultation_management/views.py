@@ -687,3 +687,28 @@ class DoctorNotesUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
             
         return redirect('consultation_detail', pk=pk)
 
+class PatientInstructionsUpdateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            consultation = get_object_or_404(Consultation, pk=pk)
+            
+            if not PermissionManager.check_module_modify(request.user, 'consultation_management'):
+                messages.error(request, "You don't have permission to modify patient instructions")
+                return redirect('consultation_detail', pk=pk)
+            
+            # Update instructions
+            consultation.patient_instructions = request.POST.get('patient_instructions', '')
+            consultation.lifestyle_instructions = request.POST.get('lifestyle_instructions', '')
+            consultation.care_instructions = request.POST.get('care_instructions', '')
+            
+            consultation.save()
+            
+            messages.success(request, "Patient instructions updated successfully")
+            logger.info(f"Patient instructions updated for consultation {pk} by user {request.user.id}")
+            
+        except Exception as e:
+            logger.error(f"Error updating patient instructions: {str(e)}")
+            messages.error(request, "An error occurred while updating patient instructions")
+            
+        return redirect('consultation_detail', pk=pk)
+

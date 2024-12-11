@@ -88,6 +88,20 @@ class Consultation(models.Model):
     follow_up_date = models.DateField(null=True, blank=True)
     follow_up_notes = models.TextField(blank=True)
     
+    # Patient Instructions
+    patient_instructions = models.TextField(
+        blank=True,
+        help_text="Instructions for the patient to follow"
+    )
+    lifestyle_instructions = models.TextField(
+        blank=True,
+        help_text="Lifestyle and dietary instructions for the patient"
+    )
+    care_instructions = models.TextField(
+        blank=True,
+        help_text="Care and precaution instructions"
+    )
+    
     # Metadata
     created_by = models.ForeignKey(
         User,
