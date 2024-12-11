@@ -322,16 +322,17 @@ class DeleteImageView(LoginRequiredMixin, UserPassesTestMixin, View):
 class ImageDetailView(LoginRequiredMixin, View):
     def get(self, request, image_id):
         try:
-            # Replace get_permissions() with check_module_access()
             if not PermissionManager.check_module_access(request.user, 'image_management'):
                 messages.error(request, "You don't have permission to view image details")
                 return handler403(request, exception="Access Denied")
 
             template_path = get_template_path('image_detail.html', request.user.role)
-            # No need to check template_path existence since get_template_path was simplified
 
+            # Updated select_related to match correct relationships
             image = PatientImage.objects.select_related(
-                'patient', 'patient__user', 'body_part', 'uploaded_by'
+                'patient',  # Directly relates to CustomUser
+                'body_part',
+                'uploaded_by'
             ).get(id=image_id)
 
             file_size = None
@@ -387,7 +388,9 @@ class ImageExportView(LoginRequiredMixin, UserPassesTestMixin, View):
 
             # Get filtered queryset
             queryset = PatientImage.objects.select_related(
-                'patient', 'patient__user', 'body_part', 'uploaded_by'
+                'patient',  # Directly relates to CustomUser
+                'body_part', 
+                'uploaded_by'
             ).order_by('-date_taken')
 
             if date_from:
@@ -422,7 +425,7 @@ class ImageExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         for image in queryset:
             writer.writerow([
                 image.id,
-                image.patient.user.get_full_name(),
+                image.patient.get_full_name(),  # Updated to use patient directly
                 image.body_part.name if image.body_part else 'N/A',
                 image.get_image_type_display(),
                 image.date_taken.strftime('%Y-%m-%d'),
@@ -525,7 +528,12 @@ class ImageComparisonListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
     
     def get_queryset(self):
         queryset = ImageComparison.objects.select_related('created_by')\
-            .prefetch_related('images')\
+            .prefetch_related(
+                Prefetch(
+                    'images',
+                    queryset=PatientImage.objects.select_related('patient', 'body_part')
+                )
+            )\
             .annotate(image_count=Count('images'))\
             .order_by('-created_at')
             
@@ -573,11 +581,11 @@ class ImageComparisonCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
         consultations = Consultation.objects.prefetch_related(
             Prefetch(
                 'patientimage_set',
-                queryset=PatientImage.objects.select_related('body_part')
+                queryset=PatientImage.objects.select_related('body_part', 'patient')
             )
         ).select_related(
-            'patient__patient_profile',  # Changed from patient__user
-            'doctor__doctor_profile'     # Changed from doctor
+            'patient',  # Updated to directly reference CustomUser
+            'doctor'    # Updated to directly reference CustomUser
         ).order_by('-date_time')
 
         # Apply filters

@@ -17,7 +17,7 @@
                 <i class="fas fa-download"></i>
                 <span>Download</span>
             </a>
-            {% if user.role == 'ADMIN' %}
+            {% if user.role == 'ADMINISTRATOR' %}
             <button data-modal-target="deleteModal{{ image.id }}" data-modal-toggle="deleteModal{{ image.id }}" 
                     class="flex items-center space-x-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors">
                 <i class="fas fa-trash-alt"></i>
@@ -132,7 +132,7 @@
                 <div class="divide-y divide-gray-100">
                     <div class="py-3">
                         <p class="text-sm text-gray-600">Name</p>
-                        <p class="font-medium text-gray-900">{{ image.patient.user.get_full_name }}</p>
+                        <p class="font-medium text-gray-900">{{ image.patient.get_full_name }}</p>
                     </div>
                     <div class="py-3">
                         <p class="text-sm text-gray-600">Body Part</p>

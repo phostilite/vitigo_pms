@@ -219,7 +219,7 @@
             <div class="p-4">
                 <div class="flex justify-between items-start mb-2">
                     <div>
-                        <h3 class="text-sm font-semibold text-gray-900">{{ image.patient.user.get_full_name }}</h3>
+                        <h3 class="text-sm font-semibold text-gray-900">{{ image.patient.get_full_name }}</h3>
                         <p class="text-xs text-gray-500">{{ image.body_part.name }}</p>
                     </div>
                     <span class="text-xs text-gray-500">{{ image.date_taken|date:"M d, Y" }}</span>
@@ -288,7 +288,7 @@
                                 </div>
                                 <div>
                                     <h3 class="text-lg font-semibold text-gray-900">
-                                        {{ image.patient.user.get_full_name }}
+                                        {{ image.patient.get_full_name }}
                                     </h3>
                                     <p class="text-sm text-gray-500">
                                         {{ image.body_part.name }} - {{ image.date_taken|date:"M d, Y" }}
