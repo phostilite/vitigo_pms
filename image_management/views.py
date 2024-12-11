@@ -584,16 +584,15 @@ class ImageComparisonCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
                 queryset=PatientImage.objects.select_related('body_part', 'patient')
             )
         ).select_related(
-            'patient',  # Updated to directly reference CustomUser
-            'doctor'    # Updated to directly reference CustomUser
-        ).order_by('-date_time')
+            'patient',
+            'doctor'
+        ).order_by('-scheduled_datetime')  # Changed from date_time to scheduled_datetime
 
         # Apply filters
         filters = Q()
         
         # Patient search
-        patient_search = request.GET.get('patient_search')
-        if patient_search:
+        if patient_search := request.GET.get('patient_search'):
             filters |= (
                 Q(patient__first_name__icontains=patient_search) |
                 Q(patient__last_name__icontains=patient_search) |
@@ -606,26 +605,21 @@ class ImageComparisonCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
         if start_date:
             try:
                 start_date = datetime.strptime(start_date, '%Y-%m-%d')
-                filters &= Q(date_time__date__gte=start_date)
+                filters &= Q(scheduled_datetime__date__gte=start_date)  # Updated field name
             except ValueError:
                 pass
         if end_date:
             try:
                 end_date = datetime.strptime(end_date, '%Y-%m-%d')
-                filters &= Q(date_time__date__lte=end_date)
+                filters &= Q(scheduled_datetime__date__lte=end_date)  # Updated field name
             except ValueError:
                 pass
 
         # Doctor filter
-        doctor_id = request.GET.get('doctor')
-        if doctor_id:
+        if doctor_id := request.GET.get('doctor'):
             filters &= Q(doctor_id=doctor_id)
 
-        # Apply all filters
-        if filters:
-            consultations = consultations.filter(filters)
-
-        return consultations
+        return consultations.filter(filters) if filters else consultations
 
     def get(self, request):
         try:
@@ -676,18 +670,19 @@ class ImageComparisonCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def post(self, request):
         try:
             with transaction.atomic():
-                # Get selected consultation IDs
                 consultation_ids = request.POST.getlist('consultation_ids')
-                
                 if not consultation_ids:
                     messages.error(request, "Please select at least one consultation to compare.")
                     return redirect('comparison_create')
-                
+
                 # Get all images from selected consultations
                 images = PatientImage.objects.filter(
                     consultation_id__in=consultation_ids
-                ).order_by('consultation__date_time', 'id')
-                
+                ).select_related('consultation').order_by(
+                    'consultation__scheduled_datetime',  # Changed from date_time
+                    'id'
+                )
+
                 if not images.exists():
                     messages.error(request, "No images found in selected consultations.")
                     return redirect('comparison_create')
@@ -740,7 +735,7 @@ class ImageComparisonDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailV
         # Get ordered comparison images with their consultation info
         comparison_images = (ComparisonImage.objects
             .filter(comparison=self.object)
-            .select_related('image', 'image__consultation', 'image__body_part')
+            .select_related('image', 'image__consultation', 'image__body_part', 'image__patient')
             .order_by('order'))
         
         # Group images by consultation date for better organization
@@ -748,7 +743,7 @@ class ImageComparisonDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailV
         for comp_image in comparison_images:
             consultation = comp_image.image.consultation
             if consultation:
-                date_key = consultation.date_time.date()
+                date_key = consultation.scheduled_datetime.date()  # Changed from date_time
                 if date_key not in grouped_images:
                     grouped_images[date_key] = {
                         'consultation': consultation,
