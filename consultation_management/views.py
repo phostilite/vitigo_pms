@@ -643,3 +643,47 @@ class ClinicalInformationUpdateView(LoginRequiredMixin, View):
             
         return redirect('consultation_detail', pk=pk)
 
+class DoctorNotesUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        # Allow both doctors and administrators
+        return self.request.user.role.name in ['DOCTOR', 'ADMINISTRATOR']
+
+    def handle_no_permission(self):
+        messages.error(self.request, "Only doctors and administrators can modify these notes")
+        return redirect('consultation_detail', pk=self.kwargs['pk'])
+
+    def post(self, request, pk):
+        try:
+            consultation = get_object_or_404(Consultation, pk=pk)
+            
+            # Add logging for who made the changes
+            logger.info(
+                f"Doctor's notes update initiated by {request.user.role.name} "
+                f"({request.user.get_full_name()}) for consultation {pk}"
+            )
+            
+            # Get or create private notes
+            private_notes, created = DoctorPrivateNotes.objects.get_or_create(
+                consultation=consultation
+            )
+            
+            # Update all fields
+            private_notes.clinical_observations = request.POST.get('clinical_observations', '')
+            private_notes.differential_diagnosis = request.POST.get('differential_diagnosis', '')
+            private_notes.treatment_rationale = request.POST.get('treatment_rationale', '')
+            private_notes.private_remarks = request.POST.get('private_remarks', '')
+            
+            private_notes.save()
+            
+            messages.success(request, "Doctor's notes updated successfully")
+            logger.info(
+                f"Doctor's notes updated for consultation {pk} by "
+                f"{request.user.role.name} ({request.user.get_full_name()})"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error updating doctor's notes: {str(e)}")
+            messages.error(request, "An error occurred while updating the notes")
+            
+        return redirect('consultation_detail', pk=pk)
+

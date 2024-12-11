@@ -32,4 +32,5 @@ urlpatterns = [
     path('export/', export_views.ConsultationExportView.as_view(), name='consultation_export'),
     path('prescription/<int:prescription_id>/export/', export_views.PrescriptionExportView.as_view(), name='export_prescription'),
     path('prescriptions/export/', export_views.PrescriptionDashboardExportView.as_view(), name='export_prescription_dashboard'),
+    path('doctor-notes/<int:pk>/update/', views.DoctorNotesUpdateView.as_view(), name='update_doctor_notes'),
 ]
