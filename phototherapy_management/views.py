@@ -90,7 +90,7 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'protocol__phototherapy_type',  
                 'created_by'
             ).prefetch_related(
-                'sessions__device'
+                'sessions'  # Removed device since it will be included in sessions
             )
 
             context = {

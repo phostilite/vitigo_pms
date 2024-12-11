@@ -46,26 +46,7 @@ class PhototherapyPlan(models.Model):
 
     def __str__(self):
         return f"Phototherapy Plan for {self.patient.get_full_name()} - {self.protocol.phototherapy_type.name}"
-
-class PhototherapySession(models.Model):
-    COMPLIANCE_CHOICES = [
-        ('COMPLETED', 'Completed'),
-        ('MISSED', 'Missed'),
-        ('RESCHEDULED', 'Rescheduled'),
-    ]
-
-    plan = models.ForeignKey(PhototherapyPlan, on_delete=models.CASCADE, related_name='sessions')
-    session_date = models.DateField()
-    actual_dose = models.FloatField(help_text="Actual dose administered in mJ/cm²")
-    duration = models.PositiveIntegerField(help_text="Duration of session in seconds")
-    compliance = models.CharField(max_length=20, choices=COMPLIANCE_CHOICES)
-    side_effects = models.TextField(blank=True)
-    notes = models.TextField(blank=True)
-    administered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-
-    def __str__(self):
-        return f"Session for {self.plan.patient.get_full_name()} on {self.session_date}"
-
+    
 class PhototherapyDevice(models.Model):
     name = models.CharField(max_length=100)
     model = models.CharField(max_length=100)
@@ -78,6 +59,27 @@ class PhototherapyDevice(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.model} ({self.serial_number})"
+    
+
+class PhototherapySession(models.Model):
+    COMPLIANCE_CHOICES = [
+        ('COMPLETED', 'Completed'),
+        ('MISSED', 'Missed'),
+        ('RESCHEDULED', 'Rescheduled'),
+    ]
+
+    plan = models.ForeignKey(PhototherapyPlan, on_delete=models.CASCADE, related_name='sessions')
+    session_date = models.DateField()
+    actual_dose = models.FloatField(help_text="Actual dose administered in mJ/cm²")
+    device = models.ForeignKey(PhototherapyDevice, on_delete=models.SET_NULL, null=True)
+    duration = models.PositiveIntegerField(help_text="Duration of session in seconds")
+    compliance = models.CharField(max_length=20, choices=COMPLIANCE_CHOICES)
+    side_effects = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    administered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"Session for {self.plan.patient.get_full_name()} on {self.session_date}"
 
 class HomePhototherapyLog(models.Model):
     plan = models.ForeignKey(PhototherapyPlan, on_delete=models.CASCADE, related_name='home_logs')
