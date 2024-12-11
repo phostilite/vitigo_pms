@@ -54,64 +54,71 @@
                 </div>
             </div>
 
-            <!-- Patient User Details -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-user text-blue-500 mr-2"></i>
-                    Patient Information
-                </h3>
-                <div class="flex items-center space-x-4 mb-4">
-                    {% if consultation.patient.profile_picture %}
-                        <img src="{{ consultation.patient.profile_picture.url }}" alt="Patient" class="w-16 h-16 rounded-full object-cover">
-                    {% else %}
-                        <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                            <i class="fas fa-user text-gray-400 text-2xl"></i>
+            <!-- User Information Cards -->
+            <div class="grid grid-cols-2 gap-6">
+                <!-- Patient Information Card -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-user text-blue-500 mr-2"></i>
+                        Patient Information
+                    </h3>
+                    <a href="{% url 'user_detail' user_id=consultation.patient.id %}">
+                        <div class="flex items-center space-x-4 mb-4">
+                            {% if consultation.patient.profile_picture %}
+                                <img src="{{ consultation.patient.profile_picture.url }}" alt="Patient" class="w-16 h-16 rounded-full object-cover">
+                            {% else %}
+                                <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <i class="fas fa-user text-gray-400 text-2xl"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <h4 class="font-medium text-gray-800">{{ consultation.patient.first_name }} {{ consultation.patient.last_name }}</h4>
+                                <p class="text-sm text-gray-600">{{ consultation.patient.email }}</p>
+                            </div>
                         </div>
-                    {% endif %}
-                    <div>
-                        <h4 class="font-medium text-gray-800">{{ consultation.patient.first_name }} {{ consultation.patient.last_name }}</h4>
-                        <p class="text-sm text-gray-600">{{ consultation.patient.email }}</p>
+                    </a>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Phone</label>
+                            <p class="font-medium text-gray-800">{{ consultation.patient.phone_number }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Gender</label>
+                            <p class="font-medium text-gray-800">{{ consultation.patient.get_gender_display }}</p>
+                        </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="text-sm text-gray-600 block mb-1">Phone</label>
-                        <p class="font-medium text-gray-800">{{ consultation.patient.phone_number }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm text-gray-600 block mb-1">Gender</label>
-                        <p class="font-medium text-gray-800">{{ consultation.patient.get_gender_display }}</p>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Doctor User Details -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-user-md text-blue-500 mr-2"></i>
-                    Doctor Information
-                </h3>
-                <div class="flex items-center space-x-4 mb-4">
-                    {% if consultation.doctor.profile_picture %}
-                        <img src="{{ consultation.doctor.profile_picture.url }}" alt="Doctor" class="w-16 h-16 rounded-full object-cover">
-                    {% else %}
-                        <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                            <i class="fas fa-user-md text-gray-400 text-2xl"></i>
+                <!-- Doctor Information Card -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-user-md text-blue-500 mr-2"></i>
+                        Doctor Information
+                    </h3>
+                    <a href="{% url 'user_detail' user_id=consultation.doctor.id %}">
+                        <div class="flex items-center space-x-4 mb-4">
+                            {% if consultation.doctor.profile_picture %}
+                                <img src="{{ consultation.doctor.profile_picture.url }}" alt="Doctor" class="w-16 h-16 rounded-full object-cover">
+                            {% else %}
+                                <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <i class="fas fa-user-md text-gray-400 text-2xl"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <h4 class="font-medium text-gray-800">Dr. {{ consultation.doctor.first_name }} {{ consultation.doctor.last_name }}</h4>
+                                <p class="text-sm text-gray-600">{{ consultation.doctor.email }}</p>
+                            </div>
                         </div>
-                    {% endif %}
-                    <div>
-                        <h4 class="font-medium text-gray-800">Dr. {{ consultation.doctor.first_name }} {{ consultation.doctor.last_name }}</h4>
-                        <p class="text-sm text-gray-600">{{ consultation.doctor.email }}</p>
-                    </div>
-                </div>
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="text-sm text-gray-600 block mb-1">Phone</label>
-                        <p class="font-medium text-gray-800">{{ consultation.doctor.phone_number }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm text-gray-600 block mb-1">Gender</label>
-                        <p class="font-medium text-gray-800">{{ consultation.doctor.get_gender_display }}</p>
+                    </a>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Phone</label>
+                            <p class="font-medium text-gray-800">{{ consultation.doctor.phone_number }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Gender</label>
+                            <p class="font-medium text-gray-800">{{ consultation.doctor.get_gender_display }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
