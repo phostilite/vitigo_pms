@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+from cryptography.fernet import Fernet
 
 load_dotenv()
 
@@ -33,7 +34,6 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     # 'django_ratelimit',
     'crispy_forms',
     'crispy_tailwind',
+    'encrypted_model_fields',
 
     # Custom apps
     'user_management',
@@ -247,18 +248,13 @@ LOGGING = {
 }
 
 # Email settings for Gmail - Change this section
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Remove the DEBUG condition
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-
-# Remove or comment out this section
-# if DEBUG:
-#     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-#     EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
 
 # Add email templates directory
 TEMPLATES[0]['DIRS'].append(os.path.join(BASE_DIR, 'templates', 'emails'))
@@ -279,7 +275,6 @@ SWAGGER_SETTINGS = {
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
 
-
 WHATSAPP_API_VERSION = os.getenv('WHATSAPP_API_VERSION', 'v1.0')
 WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID')
 WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN')
@@ -296,3 +291,6 @@ INSTAGRAM_BUSINESS_ACCOUNT_ID = os.getenv('INSTAGRAM_BUSINESS_ACCOUNT_ID')
 INSTAGRAM_ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN')
 INSTAGRAM_APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
 INSTAGRAM_VERIFY_TOKEN = os.getenv('INSTAGRAM_VERIFY_TOKEN')
+
+# Default encryption key for encrypted fields
+FIELD_ENCRYPTION_KEY = os.getenv('FIELD_ENCRYPTION_KEY', Fernet.generate_key().decode())

@@ -3,6 +3,7 @@ asgiref==3.8.1
 billiard==4.2.1
 celery==5.4.0
 certifi==2024.8.30
+cffi==1.17.1
 chardet==5.2.0
 charset-normalizer==3.4.0
 click==8.1.7
@@ -10,10 +11,12 @@ click-didyoumean==0.3.1
 click-plugins==1.1.1
 click-repl==0.3.0
 crispy-tailwind==1.0.3
+cryptography==44.0.0
 Django==5.1.2
 django-allauth==65.0.2
 django-cors-headers==4.5.0
 django-crispy-forms==2.3
+django-encrypted-model-fields==0.6.5
 django-filter==24.3
 django-ratelimit==4.1.0
 django-redis==5.4.0
@@ -28,6 +31,7 @@ packaging==24.1
 pillow==10.4.0
 prompt_toolkit==3.0.48
 psycopg2-binary==2.9.9
+pycparser==2.22
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.2
