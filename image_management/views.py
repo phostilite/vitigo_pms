@@ -63,7 +63,6 @@ class ImageManagementView(LoginRequiredMixin, View):
 
             # Get template path
             template_path = get_template_path('image_dashboard.html', request.user.role)
-            logger.info(f"Template path resolved to: {template_path}")
             
             # Get filter parameters
             image_type = request.GET.get('image_type', '')
@@ -75,9 +74,11 @@ class ImageManagementView(LoginRequiredMixin, View):
             # Get all body parts for filter dropdown
             body_parts = BodyPart.objects.all().order_by('name')
 
-            # Base queryset
+            # Base queryset - Update the select_related fields
             patient_images = PatientImage.objects.select_related(
-                'patient', 'patient__user', 'body_part'
+                'patient',  # This refers to the User model directly
+                'body_part',
+                'uploaded_by'
             ).order_by('-date_taken')
 
             # Apply filters
@@ -91,8 +92,8 @@ class ImageManagementView(LoginRequiredMixin, View):
                 patient_images = patient_images.filter(date_taken__lte=date_to)
             if search_query:
                 patient_images = patient_images.filter(
-                    Q(patient__user__first_name__icontains=search_query) |
-                    Q(patient__user__last_name__icontains=search_query) |
+                    Q(patient__first_name__icontains=search_query) |
+                    Q(patient__last_name__icontains=search_query) |
                     Q(body_part__name__icontains=search_query) |
                     Q(notes__icontains=search_query)
                 )
