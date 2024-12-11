@@ -211,6 +211,166 @@ class ConsultationExportView(LoginRequiredMixin, UserPassesTestMixin, View):
             messages.error(request, "An error occurred during export")
             return redirect('consultation_dashboard')
 
+class ConsultationDetailExportView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        try:
+            consultation = get_object_or_404(Consultation.objects.select_related(
+                'patient', 
+                'doctor',
+                'private_notes',
+                'treatment_plan',
+                'staff_instructions'
+            ).prefetch_related(
+                'prescriptions__items__medication',
+                'phototherapy_sessions'
+            ), pk=pk)
+
+            export_format = request.GET.get('format', 'pdf')
+
+            if export_format == 'pdf':
+                return self._export_pdf(consultation)
+            elif export_format == 'csv':
+                return self._export_csv(consultation)
+            else:
+                messages.error(request, "Invalid export format")
+                return redirect('consultation_detail', pk=pk)
+
+        except Exception as e:
+            logger.error(f"Error exporting consultation detail: {str(e)}")
+            messages.error(request, "Error exporting consultation details")
+            return redirect('consultation_detail', pk=pk)
+
+    def _export_pdf(self, consultation):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="consultation_{consultation.id}_detail.pdf"'
+
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Clinic Header
+        elements.append(Paragraph('Vitiligo PMS Clinic', styles['Heading1']))
+        elements.append(Spacer(1, 20))
+
+        # Basic Consultation Info
+        elements.append(Paragraph('Consultation Details', styles['Heading2']))
+        elements.append(Paragraph(f"ID: {consultation.id}", styles['Normal']))
+        elements.append(Paragraph(f"Date: {consultation.scheduled_datetime.strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        elements.append(Paragraph(f"Status: {consultation.get_status_display()}", styles['Normal']))
+        elements.append(Paragraph(f"Type: {consultation.get_consultation_type_display()}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Patient Information
+        elements.append(Paragraph('Patient Information', styles['Heading2']))
+        patient_data = [
+            ['Name', f"{consultation.patient.get_full_name()}"],
+            ['Email', consultation.patient.email],
+            ['Phone', consultation.patient.phone_number],
+            ['Gender', consultation.patient.get_gender_display()]
+        ]
+        elements.append(Table(patient_data, colWidths=[100, 400]))
+        elements.append(Spacer(1, 20))
+
+        # Doctor Information
+        elements.append(Paragraph('Doctor Information', styles['Heading2']))
+        doctor_data = [
+            ['Name', f"Dr. {consultation.doctor.get_full_name()}"],
+            ['Email', consultation.doctor.email],
+            ['Phone', consultation.doctor.phone_number]
+        ]
+        elements.append(Table(doctor_data, colWidths=[100, 400]))
+        elements.append(Spacer(1, 20))
+
+        # Clinical Information
+        elements.append(Paragraph('Clinical Information', styles['Heading2']))
+        if consultation.vitals:
+            elements.append(Paragraph('Vitals:', styles['Heading3']))
+            vitals_data = [[k, v] for k, v in consultation.vitals.items()]
+            elements.append(Table(vitals_data, colWidths=[100, 400]))
+        elements.append(Paragraph(f"Chief Complaint: {consultation.chief_complaint}", styles['Normal']))
+        elements.append(Paragraph(f"Symptoms: {consultation.symptoms}", styles['Normal']))
+        elements.append(Paragraph(f"Diagnosis: {consultation.diagnosis}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Doctor's Notes
+        if consultation.private_notes:
+            elements.append(Paragraph("Doctor's Notes", styles['Heading2']))
+            elements.append(Paragraph(f"Clinical Observations: {consultation.private_notes.clinical_observations}", styles['Normal']))
+            elements.append(Paragraph(f"Differential Diagnosis: {consultation.private_notes.differential_diagnosis}", styles['Normal']))
+            elements.append(Paragraph(f"Treatment Rationale: {consultation.private_notes.treatment_rationale}", styles['Normal']))
+            elements.append(Spacer(1, 20))
+
+        # Prescriptions
+        if consultation.prescriptions.exists():
+            elements.append(Paragraph('Prescriptions', styles['Heading2']))
+            for prescription in consultation.prescriptions.all():
+                elements.append(Paragraph(f'Prescription #{prescription.id}', styles['Heading3']))
+                prescription_data = [['Medication', 'Dosage', 'Frequency', 'Duration']]
+                for item in prescription.items.all():
+                    prescription_data.append([
+                        item.medication.name,
+                        item.dosage,
+                        item.frequency,
+                        item.duration
+                    ])
+                elements.append(Table(prescription_data, colWidths=[150, 100, 100, 150]))
+                elements.append(Spacer(1, 10))
+
+        # Build and return PDF
+        doc.build(elements)
+        return response
+
+    def _export_csv(self, consultation):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="consultation_{consultation.id}_detail.csv"'
+        writer = csv.writer(response)
+
+        # Basic Info
+        writer.writerow(['Consultation Details'])
+        writer.writerow(['ID', 'Date', 'Status', 'Type'])
+        writer.writerow([
+            consultation.id,
+            consultation.scheduled_datetime.strftime('%Y-%m-%d %H:%M'),
+            consultation.get_status_display(),
+            consultation.get_consultation_type_display()
+        ])
+        writer.writerow([])
+
+        # Patient Info
+        writer.writerow(['Patient Information'])
+        writer.writerow(['Name', consultation.patient.get_full_name()])
+        writer.writerow(['Email', consultation.patient.email])
+        writer.writerow(['Phone', consultation.patient.phone_number])
+        writer.writerow([])
+
+        # Clinical Info
+        writer.writerow(['Clinical Information'])
+        if consultation.vitals:
+            writer.writerow(['Vitals'])
+            for k, v in consultation.vitals.items():
+                writer.writerow([k, v])
+        writer.writerow(['Chief Complaint', consultation.chief_complaint])
+        writer.writerow(['Symptoms', consultation.symptoms])
+        writer.writerow(['Diagnosis', consultation.diagnosis])
+        writer.writerow([])
+
+        # Prescriptions
+        if consultation.prescriptions.exists():
+            writer.writerow(['Prescriptions'])
+            for prescription in consultation.prescriptions.all():
+                writer.writerow([f'Prescription #{prescription.id}'])
+                writer.writerow(['Medication', 'Dosage', 'Frequency', 'Duration'])
+                for item in prescription.items.all():
+                    writer.writerow([
+                        item.medication.name,
+                        item.dosage,
+                        item.frequency,
+                        item.duration
+                    ])
+                writer.writerow([])
+
+        return response
+
 class PrescriptionDeleteView(LoginRequiredMixin, View):
     def post(self, request, consultation_id, prescription_id):
         try:
