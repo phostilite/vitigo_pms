@@ -4,7 +4,6 @@ from . import views
 from .views import UserExportView
 
 urlpatterns = [
-    path('register/', views.UserRegistrationView.as_view(), name='register'),
     path('login/', views.UserLoginView.as_view(), name='login'),
     path('logout/', views.user_logout, name='logout'),
     path('', views.UserManagementView.as_view(), name='user_management'),

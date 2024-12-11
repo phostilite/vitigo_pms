@@ -66,32 +66,6 @@ def get_template_path(base_template, role, module=''):
         return f'{role_folder}/{module}/{base_template}'
     return f'{role_folder}/{base_template}'
 
-class UserRegistrationView(View):
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
-
-    def get(self, request):
-        if request.user.is_authenticated:
-            return redirect('dashboard')
-        form = UserRegistrationForm()
-        return render(request, 'user_management/register.html', {'form': form})
-
-    def post(self, request):
-        try:
-            form = UserRegistrationForm(request.POST)
-            if form.is_valid():
-                user = form.save()
-                login(request, user)
-                logger.info(f"New patient registered: {user.email}.")
-                messages.success(request, 'Registration successful.')
-                return redirect('patient_dashboard')
-            else:
-                logger.warning(f"Registration failed. Errors: {form.errors}")
-                return render(request, 'user_management/register.html', {'form': form})
-        except Exception as e:
-            logger.error(f"Registration error: {str(e)}")
-            return handler500(request, exception=str(e))
-
 class UserLoginView(View):
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
