@@ -1,6 +1,6 @@
 # phototherapy_management/forms.py
 from django import forms
-from .models import PhototherapyProtocol, PhototherapyType
+from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance
 
 class ProtocolForm(forms.ModelForm):
     class Meta:
@@ -52,3 +52,81 @@ class ProtocolForm(forms.ModelForm):
                 raise forms.ValidationError("Initial dose cannot exceed maximum dose")
 
         return cleaned_data
+    
+
+class PhototherapyDeviceForm(forms.ModelForm):
+    class Meta:
+        model = PhototherapyDevice
+        fields = [
+            'name', 
+            'model_number', 
+            'serial_number',
+            'phototherapy_type',
+            'location',
+            'installation_date',
+            'last_maintenance_date',
+            'next_maintenance_date',
+            'maintenance_notes'
+        ]
+        widgets = {
+            'installation_date': forms.DateInput(attrs={'type': 'date'}),
+            'last_maintenance_date': forms.DateInput(attrs={'type': 'date'}),
+            'next_maintenance_date': forms.DateInput(attrs={'type': 'date'}),
+            'maintenance_notes': forms.Textarea(attrs={'rows': 3}),
+        }
+        help_texts = {
+            'name': 'Name of the phototherapy device or unit',
+            'model_number': 'Manufacturer model number of the device',
+            'serial_number': 'Unique serial number of the device',
+            'phototherapy_type': 'Type of phototherapy this device delivers',
+            'location': 'Physical location of the device in the facility',
+            'installation_date': 'Date when the device was installed',
+            'last_maintenance_date': 'Date of the most recent maintenance',
+            'next_maintenance_date': 'Scheduled date for next maintenance',
+            'maintenance_notes': 'Any additional notes about device maintenance'
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show active phototherapy types
+        self.fields['phototherapy_type'].queryset = PhototherapyType.objects.filter(is_active=True)
+        
+        # Add classes and placeholders
+        for field_name, field in self.fields.items():
+            field.widget.attrs['class'] = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
+            if field_name != 'maintenance_notes':  # Don't add required to optional field
+                field.widget.attrs['required'] = 'required'
+
+
+class ScheduleMaintenanceForm(forms.ModelForm):
+    class Meta:
+        model = DeviceMaintenance
+        fields = [
+            'device',
+            'maintenance_type',
+            'maintenance_date',
+            'performed_by',
+            'description',
+            'cost',
+            'next_maintenance_due',
+            'parts_replaced',
+            'notes'
+        ]
+        widgets = {
+            'maintenance_date': forms.DateInput(attrs={'type': 'date'}),
+            'next_maintenance_due': forms.DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'parts_replaced': forms.Textarea(attrs={'rows': 2}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show active devices
+        self.fields['device'].queryset = PhototherapyDevice.objects.filter(is_active=True)
+        
+        # Add classes and customize labels
+        for field_name, field in self.fields.items():
+            field.widget.attrs['class'] = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
+            if field_name in ['device', 'maintenance_type', 'maintenance_date', 'performed_by']:
+                field.widget.attrs['required'] = 'required'

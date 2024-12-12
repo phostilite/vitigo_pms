@@ -324,19 +324,19 @@
                     <p class="text-sm text-gray-500 mt-1">{{ protocols|length }} Active Protocols</p>
                 </div>
                 <div class="dropdown relative">
-                    <button class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600">
+                    <a href="{% url 'add_protocol' %}" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600">
                         <i class="fas fa-plus"></i>
-                    </button>
+                    </a>
                 </div>
             </div>
             <div class="mt-4 space-y-2">
                 <a href="{% url 'add_protocol' %}" class="block text-sm text-blue-500 hover:text-blue-600">
                     <i class="fas fa-plus-circle mr-2"></i>Add New Protocol
                 </a>
-                <a href="#" class="block text-sm text-blue-500 hover:text-blue-600">
+                <a href="{% url 'protocol_management' %}" class="block text-sm text-blue-500 hover:text-blue-600">
                     <i class="fas fa-edit mr-2"></i>Edit Protocols
                 </a>
-                <a href="#" class="block text-sm text-blue-500 hover:text-blue-600">
+                <a href="{% url 'protocol_management' %}" class="block text-sm text-blue-500 hover:text-blue-600">
                     <i class="fas fa-list mr-2"></i>View All Protocols
                 </a>
             </div>
@@ -350,19 +350,19 @@
                     <p class="text-sm text-gray-500 mt-1">{{ active_devices }} Active Devices</p>
                 </div>
                 <div class="dropdown relative">
-                    <button class="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600">
+                    <button onclick="window.location='{% url 'device_management' %}'" class="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600">
                         <i class="fas fa-cog"></i>
                     </button>
                 </div>
             </div>
             <div class="mt-4 space-y-2">
-                <a href="#" class="block text-sm text-green-500 hover:text-green-600">
+                <a href="{% url 'register_device' %}" class="block text-sm text-green-500 hover:text-green-600">
                     <i class="fas fa-plus-circle mr-2"></i>Register New Device
                 </a>
-                <a href="#" class="block text-sm text-green-500 hover:text-green-600">
+                <a href="{% url 'schedule_maintenance' %}" class="block text-sm text-green-500 hover:text-green-600">
                     <i class="fas fa-tools mr-2"></i>Schedule Maintenance
                 </a>
-                <a href="#" class="block text-sm text-green-500 hover:text-green-600">
+                <a href="{% url 'device_management' %}" class="block text-sm text-green-500 hover:text-green-600">
                     <i class="fas fa-history mr-2"></i>View Device History
                 </a>
             </div>

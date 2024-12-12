@@ -11,6 +11,9 @@ urlpatterns = [
     path('', v.PhototherapyManagementView.as_view(), name='phototherapy_management'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
+    path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),
+    path('devices/maintenance/schedule/', dv.ScheduleMaintenanceView.as_view(), name='schedule_maintenance'),
+
 
     path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
     path('protocols/add/', pv.AddProtocolView.as_view(), name='add_protocol'),
