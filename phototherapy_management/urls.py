@@ -1,8 +1,14 @@
 from django.urls import path
-from . import views, device_views
+from . import (
+    views as v, 
+    device_views as dv,
+    protocol_views as pv
+)
 
 urlpatterns = [
-    path('', views.PhototherapyManagementView.as_view(), name='phototherapy_management'),
+    path('', v.PhototherapyManagementView.as_view(), name='phototherapy_management'),
 
-    path('devices/', device_views.DeviceManagementView.as_view(), name='device_management'),
+    path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
+
+    path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
 ]
