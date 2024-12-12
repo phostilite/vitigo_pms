@@ -14,7 +14,7 @@ urlpatterns = [
 
     path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
     path('protocols/add/', pv.AddProtocolView.as_view(), name='add_protocol'),
-
+    path('protocols/<int:protocol_id>/edit/', pv.EditProtocolView.as_view(), name='edit_protocol'),
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
 

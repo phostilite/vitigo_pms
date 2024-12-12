@@ -15,7 +15,8 @@ class ProtocolForm(forms.ModelForm):
             'frequency_per_week',
             'duration_weeks',
             'contraindications',
-            'safety_guidelines'
+            'safety_guidelines',
+            'is_active'
         ]
         help_texts = {
             'name': 'A unique, descriptive name for the protocol',
@@ -27,7 +28,8 @@ class ProtocolForm(forms.ModelForm):
             'frequency_per_week': 'Number of sessions recommended per week',
             'duration_weeks': 'Total duration of the protocol in weeks',
             'contraindications': 'List any conditions where this protocol should not be used',
-            'safety_guidelines': 'Important safety information and guidelines for this protocol'
+            'safety_guidelines': 'Important safety information and guidelines for this protocol',
+            'is_active': 'Uncheck to disable this protocol'
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),

@@ -6,10 +6,9 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.generic import View
-
 
 # Local/application imports
 from error_handling.views import handler500
@@ -119,3 +118,64 @@ class AddProtocolView(LoginRequiredMixin, View):
             logger.error(f"Error in add protocol view POST: {str(e)}")
             messages.error(request, "An error occurred while creating the protocol")
             return self.get(request)
+        
+
+class EditProtocolView(LoginRequiredMixin, View):
+    def get(self, request, protocol_id):
+        try:
+            protocol = get_object_or_404(
+                PhototherapyProtocol.objects.select_related('phototherapy_type', 'created_by')
+                .annotate(active_plans=Count('phototherapyplan')),
+                id=protocol_id
+            )
+            
+            # Check if protocol is in use
+            is_in_use = protocol.active_plans > 0
+            
+            form = ProtocolForm(instance=protocol)
+            
+            context = {
+                'form': form,
+                'protocol': protocol,
+                'is_in_use': is_in_use
+            }
+            
+            template_path = get_template_path(
+                'edit_protocol.html',
+                request.user.role,
+                'phototherapy_management'
+            )
+            return render(request, template_path, context)
+            
+        except Exception as e:
+            logger.error(f"Error in edit protocol view GET: {str(e)}")
+            messages.error(request, "An error occurred while loading the protocol")
+            return redirect('protocol_management')
+
+    def post(self, request, protocol_id):
+        try:
+            protocol = get_object_or_404(PhototherapyProtocol, id=protocol_id)
+            form = ProtocolForm(request.POST, instance=protocol)
+            
+            if form.is_valid():
+                updated_protocol = form.save()
+                messages.success(request, f"Protocol '{updated_protocol.name}' updated successfully")
+                return redirect('protocol_management')
+            
+            context = {
+                'form': form,
+                'protocol': protocol,
+                'is_in_use': PhototherapyPlan.objects.filter(protocol=protocol, is_active=True).exists()
+            }
+            
+            template_path = get_template_path(
+                'edit_protocol.html',
+                request.user.role,
+                'phototherapy_management'
+            )
+            return render(request, template_path, context)
+            
+        except Exception as e:
+            logger.error(f"Error in edit protocol view POST: {str(e)}")
+            messages.error(request, "An error occurred while updating the protocol")
+            return redirect('protocol_management')
