@@ -4,6 +4,7 @@ from . import (
     device_views as dv,
     protocol_views as pv,
     schedule_views as sv,
+    report_views as rv
 )
 
 urlpatterns = [
@@ -14,4 +15,6 @@ urlpatterns = [
     path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
+
+    path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
 ]

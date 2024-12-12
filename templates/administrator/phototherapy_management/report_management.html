@@ -1,0 +1,325 @@
+{% extends '../base.html' %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'phototherapy_management' %}" class="hover:text-blue-600"><i class="fas fa-laptop-medical mr-2"></i>Phototherapy</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Report Management</li>
+        </ol>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Report Management</h1>
+            <p class="text-sm text-gray-600">Monitor and analyze phototherapy performance</p>
+        </div>
+        <div class="flex space-x-3">
+            <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
+                <i class="fas fa-download mr-2"></i>
+                Export Reports
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Compliance Rate -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Compliance Rate</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ compliance_stats.compliance_rate|floatformat:1 }}%</h3>
+                    <p class="text-sm text-gray-500">{{ compliance_stats.completed }} of {{ compliance_stats.total_sessions }} sessions</p>
+                </div>
+                <div class="rounded-full bg-green-100 p-3">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Problem Reports -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Unresolved Issues</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ problem_stats.unresolved }}</h3>
+                    <p class="text-sm text-gray-500">{{ problem_stats.critical }} critical</p>
+                </div>
+                <div class="rounded-full bg-red-100 p-3">
+                    <i class="fas fa-exclamation-circle text-red-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Improvement -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Avg Improvement</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ progress_stats.avg_improvement|floatformat:1 }}%</h3>
+                    <p class="text-sm text-gray-500">{{ progress_stats.excellent_response }} excellent results</p>
+                </div>
+                <div class="rounded-full bg-blue-100 p-3">
+                    <i class="fas fa-chart-line text-blue-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Maintenance -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Pending Maintenance</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ maintenance_stats.pending_maintenance }}</h3>
+                    <p class="text-sm text-gray-500">₹{{ maintenance_stats.total_cost|floatformat:0 }} last 30 days</p>
+                </div>
+                <div class="rounded-full bg-yellow-100 p-3">
+                    <i class="fas fa-tools text-yellow-500"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Problems Section -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-800">Recent Problems</h2>
+        </div>
+        <div class="p-4">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reported</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Problem</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for problem in recent_problems %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ problem.reported_at|date:"M d, Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ problem.session.plan.patient.get_full_name }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm text-gray-900">{{ problem.problem_description|truncatechars:100 }}</p>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if problem.severity == 'SEVERE' %}bg-red-100 text-red-800
+                                    {% elif problem.severity == 'MODERATE' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-green-100 text-green-800{% endif %}">
+                                    {{ problem.get_severity_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if problem.resolved %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ problem.resolved|yesno:"Resolved,Pending" }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Alerts -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-800">Pending Maintenance</h2>
+        </div>
+        <div class="p-4">
+            {% for maintenance in pending_maintenance %}
+            <div class="border-l-4 border-yellow-400 bg-yellow-50 p-4 mb-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-tools text-yellow-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-yellow-800">
+                            {{ maintenance.device.name }} - {{ maintenance.get_maintenance_type_display }}
+                        </h3>
+                        <div class="mt-2 text-sm text-yellow-700">
+                            Due: {{ maintenance.next_maintenance_due|date:"M d, Y" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Recent Progress Section -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-800">Treatment Progress</h2>
+        </div>
+        <div class="p-4">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Response</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Improvement</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Next Assessment</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for progress in recent_progress %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ progress.assessment_date|date:"M d, Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ progress.plan.patient.get_full_name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if progress.response_level == 'EXCELLENT' %}bg-green-100 text-green-800
+                                    {% elif progress.response_level == 'GOOD' %}bg-blue-100 text-blue-800
+                                    {% elif progress.response_level == 'MODERATE' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ progress.get_response_level_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ progress.improvement_percentage }}%"></div>
+                                    </div>
+                                    <span class="text-sm text-gray-900">{{ progress.improvement_percentage }}%</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ progress.next_assessment_date|date:"M d, Y"|default:"Not scheduled" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="fixed bottom-4 right-4">
+        <div class="bg-white rounded-lg shadow-lg p-4">
+            <div class="flex space-x-4">
+                <select id="dateRange" class="border rounded-lg px-4 py-2 text-sm">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="180">Last 180 days</option>
+                </select>
+                <select id="problemType" class="border rounded-lg px-4 py-2 text-sm">
+                    <option value="">All Problems</option>
+                    <option value="SEVERE">Severe Problems</option>
+                    <option value="MODERATE">Moderate Problems</option>
+                    <option value="MILD">Mild Problems</option>
+                </select>
+                <button id="applyFilters" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize filter controls
+        const dateRange = document.getElementById('dateRange');
+        const problemType = document.getElementById('problemType');
+        const applyFilters = document.getElementById('applyFilters');
+
+        // Function to update reports based on filters
+        function updateReports() {
+            const filters = {
+                days: dateRange.value,
+                problemType: problemType.value
+            };
+
+            // Show loading state
+            document.querySelectorAll('table tbody').forEach(tbody => {
+                tbody.style.opacity = '0.5';
+            });
+
+            // Make AJAX request to fetch filtered data
+            fetch(`{% url 'report_management' %}?${new URLSearchParams(filters)}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update statistics and tables with new data
+                    updateStatistics(data.stats);
+                    updateTables(data.problems, data.maintenance, data.progress);
+                })
+                .catch(error => {
+                    console.error('Error fetching report data:', error);
+                    showErrorMessage('Failed to update reports. Please try again.');
+                })
+                .finally(() => {
+                    // Remove loading state
+                    document.querySelectorAll('table tbody').forEach(tbody => {
+                        tbody.style.opacity = '1';
+                    });
+                });
+        }
+
+        // Function to update statistics cards
+        function updateStatistics(stats) {
+            // Update compliance stats
+            document.querySelector('[data-stat="compliance-rate"]').textContent = 
+                `${stats.compliance_stats.compliance_rate.toFixed(1)}%`;
+            
+            // Update problem stats
+            document.querySelector('[data-stat="unresolved-issues"]').textContent = 
+                stats.problem_stats.unresolved;
+            
+            // Update improvement stats
+            document.querySelector('[data-stat="avg-improvement"]').textContent = 
+                `${stats.progress_stats.avg_improvement.toFixed(1)}%`;
+            
+            // Update maintenance stats
+            document.querySelector('[data-stat="pending-maintenance"]').textContent = 
+                stats.maintenance_stats.pending_maintenance;
+        }
+
+        // Function to show error messages
+        function showErrorMessage(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded';
+            alertDiv.role = 'alert';
+            alertDiv.textContent = message;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        // Attach event listeners
+        applyFilters.addEventListener('click', updateReports);
+        
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Initialize any charts or visualizations
+        // Add any additional JavaScript functionality here
+    });
+</script>
+{% endblock %}
