@@ -8,12 +8,15 @@ from ._views import (
 urlpatterns = [
     # Existing authentication URLs
     path('register/', auth_views.UserRegistrationAPIView.as_view(), name='api_register'),
+    path('roles/', auth_views.RoleListView.as_view(), name='role-list'),
+    path('assign-role/', auth_views.UserRoleAssignmentView.as_view(), name='assign-role'),
+
     path('login/', auth_views.UserLoginAPIView.as_view(), name='api_login'),
     path('user-info/', auth_views.UserInfoView.as_view(), name='user_info'),
     path('basic-user-info/update/', auth_views.BasicUserInfoUpdateAPIView.as_view(), name='user-update'),
     path('password-reset/', auth_views.PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('reset-password/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    
+   
     # Patient related URLs
     path('patient-info/', views.PatientInfoView.as_view(), name='patient-info'),
     path('patient/<int:user_id>/profile/', views.PatientProfileAPIView.as_view(), name='patient-profile'),

@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -79,6 +79,74 @@ class UserRegistrationAPIView(APIView):
             return Response({
                 'error': 'Registration failed'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RoleListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            roles = Role.objects.all()
+            role_data = [{'id': role.id, 'name': role.name} for role in roles]
+            return Response({
+                'status': 'success',
+                'data': role_data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error fetching roles: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': 'Failed to fetch roles'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UserRoleAssignmentView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        user_id = request.data.get('user_id')
+        role_id = request.data.get('role_id')
+
+        if not user_id or not role_id:
+            return Response({
+                'status': 'error',
+                'message': 'Both user_id and role_id are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+            role = Role.objects.get(id=role_id)
+
+            user.role = role
+            user.save()
+
+            return Response({
+                'status': 'success',
+                'message': f'Role {role.name} assigned to user successfully',
+                'data': {
+                    'user_id': user.id,
+                    'role': role.name
+                }
+            }, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Role.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Role not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error assigning role: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': 'Failed to assign role'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
 
 
 class UserInfoView(APIView):
@@ -432,3 +500,30 @@ class PasswordResetConfirmView(APIView):
                 return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({"error": "Invalid reset link"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserLoginAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = UserLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({
+                'status': 'success',
+                'message': 'Login successful',
+                'data': {
+                    'token': token.key,
+                    'user_id': user.pk,
+                    'email': user.email,
+                    'role': user.role
+                }
+            }, status=status.HTTP_200_OK)
+        return Response({
+            'status': 'error',
+            'message': 'Login failed',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
