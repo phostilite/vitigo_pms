@@ -6,7 +6,9 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db import models  # Added
 from django.shortcuts import render
+from django.utils import timezone  # Added
 from django.views import View
 
 # Local application imports
@@ -19,7 +21,8 @@ from .models import (
     PhototherapyPlan, 
     PhototherapyProtocol,
     PhototherapySession,
-    PhototherapyType
+    PhototherapyType,
+    PhototherapyPayment
 )
 
 # Configure logging and user model
@@ -58,21 +61,35 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
         try:
             template_path = get_template_path('phototherapy_dashboard.html', request.user.role, 'phototherapy_management')
             
+            # Get base context
             context = self.get_context_data()
             
-            # Pagination for plans
-            try:
-                page = request.GET.get('page', 1)
-                paginator = Paginator(context['phototherapy_plans'], 10)
-                context['phototherapy_plans'] = paginator.page(page)
-                context['paginator'] = paginator
-            except PageNotAnInteger:
-                context['phototherapy_plans'] = paginator.page(1)
-            except EmptyPage:
-                context['phototherapy_plans'] = paginator.page(paginator.num_pages)
-            except Exception as e:
-                logger.error(f"Pagination error: {str(e)}")
-                messages.warning(request, "Error loading page data")
+            # Handle pagination only if we have plans
+            if 'phototherapy_plans' in context:
+                try:
+                    page = request.GET.get('page', 1)
+                    paginator = Paginator(context['phototherapy_plans'], 10)
+                    plans_page = paginator.page(page)
+                    
+                    # Update context with pagination data
+                    context.update({
+                        'phototherapy_plans': plans_page,
+                        'paginator': paginator,
+                        'page_obj': plans_page
+                    })
+                except (PageNotAnInteger, EmptyPage) as e:
+                    logger.warning(f"Pagination error: {str(e)}")
+                    # Default to first page on error
+                    context.update({
+                        'phototherapy_plans': paginator.page(1),
+                        'paginator': paginator,
+                        'page_obj': paginator.page(1)
+                    })
+            else:
+                # Handle case where no plans exist
+                context['phototherapy_plans'] = []
+                context['paginator'] = None
+                context['page_obj'] = None
 
             return render(request, template_path, context)
 
@@ -83,41 +100,76 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
 
     def get_context_data(self):
         try:
-            # Fix the select_related field names to match model relationships
+            # Get all plans with optimized queries
             plans = PhototherapyPlan.objects.select_related(
-                'patient',
-                'protocol',
-                'protocol__phototherapy_type',  
+                'patient',  # Changed: removed user reference
+                'protocol__phototherapy_type',
+                'rfid_card',
                 'created_by'
             ).prefetch_related(
-                'sessions'  # Removed device since it will be included in sessions
-            )
-
-            context = {
-                'phototherapy_types': PhototherapyType.objects.all(),
-                'protocols': PhototherapyProtocol.objects.select_related('phototherapy_type'),
-                'phototherapy_plans': plans,
-                'sessions': PhototherapySession.objects.select_related(
-                    'plan',
-                    'device',
-                    'administered_by'  # Changed: field name is administered_by not performed_by
-                ),
-                'devices': PhototherapyDevice.objects.filter(is_active=True),
-                'patients': Patient.objects.all(),
-            }
+                'sessions',
+                'payments',
+                'progress_records'
+            ).order_by('-created_at')
 
             # Calculate statistics
-            context.update({
-                'active_plans': plans.filter(is_active=True).count(),
-                'completed_sessions': PhototherapySession.objects.filter(compliance='COMPLETED').count(),
-                'missed_sessions': PhototherapySession.objects.filter(compliance='MISSED').count(),
-                'active_devices': PhototherapyDevice.objects.filter(is_active=True).count(),
-            })
+            active_plans = plans.filter(is_active=True)
+            completed_sessions = PhototherapySession.objects.filter(status='COMPLETED')
+            missed_sessions = PhototherapySession.objects.filter(status='MISSED')
+            devices = PhototherapyDevice.objects.filter(is_active=True)
+
+            # Get devices needing maintenance
+            devices_needing_maintenance = devices.filter(
+                next_maintenance_date__lte=timezone.now().date()
+            ).count()
+
+            # Update patients query to directly use User model
+            patients = User.objects.filter(
+                role__name='PATIENT'
+            ).select_related('role').all()
+
+            context = {
+                'phototherapy_types': PhototherapyType.objects.filter(is_active=True) or [],
+                'protocols': PhototherapyProtocol.objects.filter(is_active=True) or [],
+                'phototherapy_plans': plans or [],
+                'devices': devices or [],
+                'patients': patients,
+                
+                # Statistics with safe defaults
+                'active_plans': getattr(active_plans, 'count', lambda: 0)(),
+                'completed_sessions': getattr(completed_sessions, 'count', lambda: 0)(),
+                'missed_sessions': getattr(missed_sessions, 'count', lambda: 0)(),
+                'active_devices': getattr(devices, 'count', lambda: 0)(),
+                'maintenance_needed': devices_needing_maintenance or 0,
+                
+                # Additional statistics
+                'total_sessions_this_month': PhototherapySession.objects.filter(
+                    scheduled_date__month=timezone.now().month
+                ).count() or 0,
+                'revenue_this_month': PhototherapyPayment.objects.filter(
+                    payment_date__month=timezone.now().month,
+                    status='COMPLETED'
+                ).aggregate(total=models.Sum('amount'))['total'] or 0,
+            }
 
             return context
         except Exception as e:
             logger.error(f"Error getting context data: {str(e)}")
-            return {}
+            # Return minimal context to prevent template errors
+            return {
+                'phototherapy_plans': [],
+                'phototherapy_types': [],
+                'protocols': [],
+                'devices': [],
+                'patients': [],
+                'active_plans': 0,
+                'completed_sessions': 0,
+                'missed_sessions': 0,
+                'active_devices': 0,
+                'maintenance_needed': 0,
+                'total_sessions_this_month': 0,
+                'revenue_this_month': 0,
+            }
 
 class PhototherapyDetailView(LoginRequiredMixin, View):
     def dispatch(self, request, *args, **kwargs):
