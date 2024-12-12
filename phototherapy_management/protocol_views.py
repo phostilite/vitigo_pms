@@ -6,9 +6,10 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.generic import View
+
 
 # Local/application imports
 from error_handling.views import handler500
@@ -18,6 +19,7 @@ from phototherapy_management.models import (
     PhototherapyType,
 )
 from .utils import get_template_path
+from .forms import ProtocolForm
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -74,3 +76,46 @@ class ProtocolManagementView(LoginRequiredMixin, View):
             logger.error(f"Error in protocol management view: {str(e)}")
             messages.error(request, "An error occurred while loading protocol data")
             return handler500(request, exception=str(e))
+        
+
+class AddProtocolView(LoginRequiredMixin, View):
+    def get(self, request):
+        try:
+            form = ProtocolForm()
+            context = {
+                'form': form,
+            }
+            template_path = get_template_path(
+                'add_protocol.html',
+                request.user.role,
+                'phototherapy_management'
+            )
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in add protocol view GET: {str(e)}")
+            messages.error(request, "An error occurred while loading the form")
+            return redirect('protocol_management')
+
+    def post(self, request):
+        try:
+            form = ProtocolForm(request.POST)
+            if form.is_valid():
+                protocol = form.save(commit=False)
+                protocol.created_by = request.user
+                protocol.save()
+                
+                messages.success(request, f"Protocol '{protocol.name}' created successfully")
+                return redirect('protocol_management')
+            else:
+                context = {'form': form}
+                template_path = get_template_path(
+                    'add_protocol.html',
+                    request.user.role,
+                    'phototherapy_management'
+                )
+                return render(request, template_path, context)
+
+        except Exception as e:
+            logger.error(f"Error in add protocol view POST: {str(e)}")
+            messages.error(request, "An error occurred while creating the protocol")
+            return self.get(request)

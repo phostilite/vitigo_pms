@@ -13,6 +13,8 @@ urlpatterns = [
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
 
     path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
+    path('protocols/add/', pv.AddProtocolView.as_view(), name='add_protocol'),
+
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
 

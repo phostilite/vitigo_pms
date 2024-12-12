@@ -1,0 +1,152 @@
+{% extends '../base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'phototherapy_management' %}" class="hover:text-blue-600"><i class="fas fa-laptop-medical mr-2"></i>Phototherapy</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li><a href="{% url 'protocol_management' %}" class="hover:text-blue-600">Protocol Management</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Add Protocol</li>
+        </ol>
+    </nav>
+
+    <div class="w-full mx-auto bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-semibold text-gray-800">Add New Protocol</h1>
+            <a href="{% url 'protocol_management' %}" class="text-blue-500 hover:text-blue-600">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Protocols
+            </a>
+        </div>
+
+        {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if form.non_field_errors %}
+            <div class="mb-6 p-4 rounded-lg bg-red-100 text-red-700">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Basic Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        {{ form.name|as_crispy_field }}
+                        {% if form.name.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {{ form.phototherapy_type|as_crispy_field }}
+                        {% if form.phototherapy_type.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.phototherapy_type.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Dose Information -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        {{ form.initial_dose|as_crispy_field }}
+                        {% if form.initial_dose.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.initial_dose.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {{ form.max_dose|as_crispy_field }}
+                        {% if form.max_dose.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.max_dose.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {{ form.increment_percentage|as_crispy_field }}
+                        {% if form.increment_percentage.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.increment_percentage.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Schedule Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        {{ form.frequency_per_week|as_crispy_field }}
+                        {% if form.frequency_per_week.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.frequency_per_week.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {{ form.duration_weeks|as_crispy_field }}
+                        {% if form.duration_weeks.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.duration_weeks.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    {{ form.description|as_crispy_field }}
+                    {% if form.description.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Safety Information -->
+                <div>
+                    {{ form.contraindications|as_crispy_field }}
+                    {% if form.contraindications.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.contraindications.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    {{ form.safety_guidelines|as_crispy_field }}
+                    {% if form.safety_guidelines.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.safety_guidelines.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="window.location='{% url 'protocol_management' %}'" 
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        Create Protocol
+                    </button>
+                </div>
+            </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Client-side validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const initialDose = parseFloat(document.querySelector('[name="initial_dose"]').value);
+        const maxDose = parseFloat(document.querySelector('[name="max_dose"]').value);
+        
+        if (initialDose > maxDose) {
+            e.preventDefault();
+            alert('Initial dose cannot exceed maximum dose');
+        }
+    });
+</script>
+{% endblock %}
