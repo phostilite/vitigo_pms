@@ -25,4 +25,5 @@ urlpatterns = [
     path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
 
     path('rfid-dashboard/', rf.RFIDDashboardView.as_view(), name='rfid_dashboard'),
+    path('rfid/issue/', rf.RFIDCardIssueView.as_view(), name='rfid_card_issue'),
 ]

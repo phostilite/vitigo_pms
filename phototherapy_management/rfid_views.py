@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
 
@@ -16,6 +16,7 @@ from django.views import View
 from .models import PatientRFIDCard, PhototherapyPlan, PhototherapySession
 from .utils import get_template_path
 from error_handling.views import handler500
+from access_control.permissions import PermissionManager
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -55,10 +56,18 @@ class RFIDDashboardView(LoginRequiredMixin, View):
                 rfid_entry_time__isnull=False
             ).order_by('-rfid_entry_time')[:10]
 
+            # Get all patients with PATIENT role
+            patients = User.objects.filter(
+                role__name='PATIENT',
+                is_active=True
+            ).order_by('first_name', 'last_name')
+
             context = {
                 'rfid_cards': rfid_cards,
                 'stats': card_stats,
                 'recent_sessions': recent_sessions,
+                'patients': patients,  # Add patients to context
+                'now': now,  # Add current datetime for template comparisons
             }
 
             template_path = get_template_path(
@@ -72,3 +81,51 @@ class RFIDDashboardView(LoginRequiredMixin, View):
             logger.error(f"Error in RFID dashboard view: {str(e)}")
             messages.error(request, "An error occurred while loading RFID card data")
             return handler500(request, exception=str(e))
+
+class RFIDCardIssueView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            # Get form data
+            patient_id = request.POST.get('patient')
+            card_number = request.POST.get('card_number')
+            expiry_date = request.POST.get('expiry_date')
+            notes = request.POST.get('notes', '')
+
+            # Basic validation
+            if not all([patient_id, card_number, expiry_date]):
+                messages.error(request, "Please provide all required fields")
+                return redirect('rfid_dashboard')
+
+            # Convert expiry date to datetime
+            expiry_datetime = timezone.datetime.strptime(expiry_date, '%Y-%m-%d')
+            expiry_datetime = timezone.make_aware(expiry_datetime)
+
+            # Get patient
+            try:
+                patient = User.objects.get(id=patient_id, role__name='PATIENT')
+            except User.DoesNotExist:
+                messages.error(request, "Selected patient not found")
+                return redirect('rfid_dashboard')
+
+            # Check if card number already exists
+            if PatientRFIDCard.objects.filter(card_number=card_number).exists():
+                messages.error(request, "This card number is already in use")
+                return redirect('rfid_dashboard')
+
+            # Create new RFID card
+            PatientRFIDCard.objects.create(
+                patient=patient,
+                card_number=card_number,
+                expires_at=expiry_datetime,
+                notes=notes,
+                is_active=True
+            )
+
+            messages.success(request, f"RFID card successfully issued to {patient.get_full_name()}")
+            logger.info(f"RFID card {card_number} issued to patient {patient_id} by user {request.user.id}")
+
+        except Exception as e:
+            logger.error(f"Error issuing RFID card: {str(e)}")
+            messages.error(request, "An error occurred while issuing the RFID card")
+
+        return redirect('rfid_dashboard')

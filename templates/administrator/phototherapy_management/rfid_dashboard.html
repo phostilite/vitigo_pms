@@ -32,6 +32,8 @@
         </div>
     </div>
 
+    {% include './issue_rfid_card_modal.html' %}
+
     <!-- Main Content -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- RFID Cards List -->
@@ -56,7 +58,7 @@
                                     <i class="fas fa-file-pdf mr-2"></i>PDF
                                 </a>
                             </div>
-                            <a href="#" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                            <a href="#" data-modal-target="issueCardModal" data-modal-toggle="issueCardModal" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
                                 Issue New Card
                             </a>
                         </div>
