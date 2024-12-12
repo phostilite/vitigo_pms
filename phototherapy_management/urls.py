@@ -4,7 +4,8 @@ from . import (
     device_views as dv,
     protocol_views as pv,
     schedule_views as sv,
-    report_views as rv
+    report_views as rv,
+    rfid_views as rf
 )
 
 urlpatterns = [
@@ -22,4 +23,6 @@ urlpatterns = [
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
 
     path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
+
+    path('rfid-dashboard/', rf.RFIDDashboardView.as_view(), name='rfid_dashboard'),
 ]
