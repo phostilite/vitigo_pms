@@ -33,34 +33,48 @@ class UserLoginView(View):
         try:
             form = UserLoginForm(request.POST)
             if not form.is_valid():
-                for field, errors in form.errors.items():
-                    for error in errors:
-                        messages.error(request, f"{field}: {error}")
-                return handler400(request, exception="Please correct the errors in the form")
+                messages.error(request, 'Please correct the errors in the form')
+                return render(request, 'user_management/login.html', {'form': form})
 
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            user = authenticate(request, email=email, password=password)
+            email = form.cleaned_data.get('email')
+            country_code = form.cleaned_data.get('country_code')
+            phone = form.cleaned_data.get('phone')
+            password = form.cleaned_data.get('password')
+
+            user = None
+            if email:
+                # Try email authentication
+                user = authenticate(request, username=email, password=password)
+            elif country_code and phone:
+                # Try phone authentication
+                user = authenticate(
+                    request,
+                    username=phone,  # This can be anything as we're using kwargs
+                    password=password,
+                    country_code=country_code,
+                    phone_number=phone
+                )
 
             if not user:
-                messages.warning(request, 'Invalid email or password. Please try again.')
-                return handler401(request, exception="Authentication failed")
+                messages.error(request, 'Invalid credentials. Please try again.')
+                return render(request, 'user_management/login.html', {'form': form})
 
             if not user.is_active:
                 messages.warning(request, 'Your account is inactive. Please contact support.')
-                return handler403(request, exception="Account inactive")
+                return render(request, 'user_management/login.html', {'form': form})
 
             login(request, user)
-            logger.info(f"User logged in successfully: {email}")
-            messages.success(request, f'Welcome back, {user.get_full_name() or user.email}!')
+            identifier = user.get_full_name() or (email if email else f"{country_code}{phone}")
+            messages.success(
+                request,
+                f'Welcome back, {identifier}! You have successfully logged in.'
+            )
             return redirect('dashboard')
 
-        except ValueError as e:
-            messages.error(request, f'Invalid input: {str(e)}')
-            return handler400(request, exception=e)
         except Exception as e:
+            logger.error(f"Login error: {str(e)}")
             messages.error(request, 'An unexpected error occurred. Please try again.')
-            return handler500(request, exception=e)
+            return render(request, 'user_management/login.html', {'form': form})
 
 class UserLogoutView(LoginRequiredMixin, View):
     """Handle user logout with proper error handling and logging"""

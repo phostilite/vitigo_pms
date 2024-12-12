@@ -28,23 +28,48 @@ class UserRegistrationForm(UserCreationForm):
 
 class UserLoginForm(forms.Form):
     email = forms.EmailField(
+        required=False,
         widget=forms.EmailInput(attrs={
-            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
-            'placeholder': 'you@example.com'
+            'class': 'pl-10 w-full py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:border-[#1a365d]',
+            'placeholder': 'Enter your email'
+        })
+    )
+    country_code = forms.CharField(
+        required=False,
+        max_length=5,
+        widget=forms.TextInput(attrs={
+            'class': 'pl-3 w-20 py-2 border border-[#cbd5e0] rounded-l-md focus:outline-none focus:border-[#1a365d]',
+            'placeholder': '+91'
+        })
+    )
+    phone = forms.CharField(
+        required=False,
+        max_length=15,
+        widget=forms.TextInput(attrs={
+            'class': 'pl-3 w-full py-2 border border-[#cbd5e0] rounded-r-md focus:outline-none focus:border-[#1a365d]',
+            'placeholder': 'Enter your phone number'
         })
     )
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full pl-10 pr-3 py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:ring-2 focus:ring-[#1a365d]',
-            'placeholder': '••••••••'
+            'class': 'pl-10 w-full py-2 border border-[#cbd5e0] rounded-md focus:outline-none focus:border-[#1a365d]',
+            'placeholder': 'Enter your password'
         })
     )
 
-    def clean_email(self):
-        email = self.cleaned_data['email']
-        if not User.objects.filter(email=email).exists():
-            raise ValidationError("No account found with this email address.")
-        return email
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('email')
+        country_code = cleaned_data.get('country_code')
+        phone = cleaned_data.get('phone')
+
+        if not email and not phone:
+            raise forms.ValidationError("Please provide either email or phone number")
+        
+        if phone and not country_code:
+            raise forms.ValidationError("Country code is required with phone number")
+
+        return cleaned_data
 
 
 class UserCreationForm(forms.ModelForm):

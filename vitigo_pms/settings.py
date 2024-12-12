@@ -294,3 +294,8 @@ INSTAGRAM_VERIFY_TOKEN = os.getenv('INSTAGRAM_VERIFY_TOKEN')
 
 # Default encryption key for encrypted fields
 FIELD_ENCRYPTION_KEY = os.getenv('FIELD_ENCRYPTION_KEY', Fernet.generate_key().decode())
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'user_management.auth.EmailOrPhoneAuthBackend',
+]
