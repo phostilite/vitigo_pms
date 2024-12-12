@@ -1,15 +1,18 @@
 # urls.py
 from django.urls import path
 from . import views
+from ._views import (
+    authentication as auth_views,
+)
 
 urlpatterns = [
     # Existing authentication URLs
-    path('register/', views.UserRegistrationAPIView.as_view(), name='api_register'),
-    path('login/', views.UserLoginAPIView.as_view(), name='api_login'),
-    path('user-info/', views.UserInfoView.as_view(), name='user_info'),
-    path('basic-user-info/update/', views.BasicUserInfoUpdateAPIView.as_view(), name='user-update'),
-    path('password-reset/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
-    path('reset-password/<uidb64>/<token>/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('register/', auth_views.UserRegistrationAPIView.as_view(), name='api_register'),
+    path('login/', auth_views.UserLoginAPIView.as_view(), name='api_login'),
+    path('user-info/', auth_views.UserInfoView.as_view(), name='user_info'),
+    path('basic-user-info/update/', auth_views.BasicUserInfoUpdateAPIView.as_view(), name='user-update'),
+    path('password-reset/', auth_views.PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('reset-password/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     
     # Patient related URLs
     path('patient-info/', views.PatientInfoView.as_view(), name='patient-info'),

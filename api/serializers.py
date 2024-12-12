@@ -14,27 +14,6 @@ class RoleSerializer(serializers.ModelSerializer):
         model = Role
         fields = ('id', 'name', 'display_name')
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    role = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(),
-        default=lambda: Role.objects.get(name='PATIENT')
-    )
-    password = serializers.CharField(write_only=True)
-
-    class Meta:
-        model = CustomUser
-        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'role')
-        extra_kwargs = {
-            'password': {'write_only': True}
-        }
-
-    def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = CustomUser(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
-
 class UserSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
     
@@ -57,11 +36,8 @@ class UserLoginSerializer(serializers.Serializer):
                 if not user.is_active:
                     raise serializers.ValidationError("User account is disabled.")
                 return user
-            else:
-                raise serializers.ValidationError("Unable to log in with provided credentials.")
-        else:
-            raise serializers.ValidationError("Must include 'email' and 'password'.")
-
+            raise serializers.ValidationError("Unable to log in with provided credentials.")
+        raise serializers.ValidationError("Must include 'email' and 'password'.")
 
 
 class PatientSerializer(serializers.ModelSerializer):

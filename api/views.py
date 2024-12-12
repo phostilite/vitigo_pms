@@ -29,9 +29,7 @@ from .custom_auth import CustomTokenAuthentication
 
 # Serializers
 from .serializers import (
-    UserRegistrationSerializer, UserLoginSerializer, PatientSerializer,
-    SubscriptionSerializer, BasicUserInfoUpdateSerializer, PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PatientSerializer
 )
 from patient_management.serializers import (
     MedicalHistorySerializer, MedicationSerializer, VitiligoAssessmentSerializer, TreatmentPlanSerializer, PatientCreateSerializer, MedicalHistoryCreateSerializer, MedicalHistoryUpdateSerializer, PatientUpdateSerializer
@@ -39,7 +37,6 @@ from patient_management.serializers import (
 from appointment_management.serializers import (
     AppointmentSerializer, AppointmentCreateSerializer, DoctorTimeSlotSerializer, DoctorTimeSlotDetailSerializer
 )
-from user_management.serializers import CustomUserSerializer
 from query_management.serializers import QuerySerializer
 from doctor_management.serializers import (
     DoctorListSerializer, DoctorDetailSerializer, SpecializationSerializer, TreatmentMethodSerializer,
@@ -48,7 +45,6 @@ from doctor_management.serializers import (
 from query_management.serializers import QuerySerializer, QueryTagSerializer, ChoiceSerializer
 
 # Models
-from subscription_management.models import Subscription, SubscriptionTier
 from patient_management.models import (
     Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
 )
@@ -70,241 +66,7 @@ logger = logging.getLogger(__name__)
 """
 
 
-class UserRegistrationAPIView(APIView):
-    permission_classes = [AllowAny]
 
-    def post(self, request):
-        logger.info("Received user registration request")
-        serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            token, _ = Token.objects.get_or_create(user=user)
-
-            if user.role == 'PATIENT':
-                logger.info(f"Creating free subscription for patient: {user.email}")
-                try:
-                    free_tier = SubscriptionTier.objects.get(name='Free')
-                    subscription = Subscription.objects.create(
-                        user=user,
-                        tier=free_tier,
-                        start_date=timezone.now(),
-                        end_date=timezone.now() + timezone.timedelta(days=free_tier.duration_days),
-                        is_trial=True,
-                        trial_end_date=timezone.now() + timezone.timedelta(days=free_tier.duration_days)
-                    )
-                    logger.info(f"Free subscription created for patient: {user.email}")
-                except SubscriptionTier.DoesNotExist:
-                    logger.error("Free subscription tier not found")
-                except Exception as e:
-                    logger.error(f"Error creating free subscription for patient: {user.email}. Error: {str(e)}")
-
-            logger.info(f"User registered successfully: {user.email}")
-            return Response({
-                'status': 'success',
-                'message': 'User registered successfully',
-                'data': {
-                    'token': token.key,
-                    'user_id': user.pk,
-                    'email': user.email,
-                    'role': user.role
-                }
-            }, status=status.HTTP_201_CREATED)
-
-        logger.warning(f"User registration failed. Errors: {serializer.errors}")
-        return Response({
-            'status': 'error',
-            'message': 'Registration failed',
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-
-class UserLoginAPIView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data
-            token, _ = Token.objects.get_or_create(user=user)
-            return Response({
-                'status': 'success',
-                'message': 'Login successful',
-                'data': {
-                    'token': token.key,
-                    'user_id': user.pk,
-                    'email': user.email,
-                    'role': user.role
-                }
-            }, status=status.HTTP_200_OK)
-        return Response({
-            'status': 'error',
-            'message': 'Login failed',
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-
-class UserInfoView(APIView):
-    authentication_classes = [CustomTokenAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        user_data = CustomUserSerializer(user).data
-        response_data = {'user': user_data}
-
-        # Attempt to get patient data
-        try:
-            patient = Patient.objects.get(user=user)
-            response_data['patient'] = PatientSerializer(patient).data
-        except Patient.DoesNotExist:
-            response_data['patient'] = None
-
-        # Attempt to get subscription data
-        try:
-            subscription = Subscription.objects.get(user=user)
-            response_data['subscription'] = SubscriptionSerializer(subscription).data
-        except Subscription.DoesNotExist:
-            response_data['subscription'] = None
-
-        # Add role-specific message
-        if user.role == 'PATIENT':
-            if response_data['patient'] is None:
-                response_data['message'] = "Patient profile not found. Please complete your profile."
-            elif response_data['subscription'] is None:
-                response_data['message'] = "No active subscription found. Please subscribe to access full features."
-        else:
-            response_data['message'] = f"User role is {user.role}. Additional role-specific data will be implemented in the future."
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
-
-class BasicUserInfoUpdateAPIView(APIView):
-    authentication_classes = [CustomTokenAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def put(self, request):
-        user = request.user
-        serializer = BasicUserInfoUpdateSerializer(user, data=request.data, partial=True, context={'request': request})
-        try:
-            if serializer.is_valid():
-                if 'password' in serializer.validated_data:
-                    user.set_password(serializer.validated_data['password'])
-                    serializer.validated_data.pop('password')
-
-                serializer.save()
-                logger.info(f"User {user.id} information updated successfully")
-                return Response({
-                    'status': 'success',
-                    'message': 'User information updated successfully',
-                    'data': serializer.data
-                }, status=status.HTTP_200_OK)
-            else:
-                logger.warning(f"User {user.id} update failed: {serializer.errors}")
-                return Response({
-                    'status': 'error',
-                    'message': 'Update failed',
-                    'errors': serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Error updating user {user.id} information: {str(e)}", exc_info=True)
-            return Response({
-                'status': 'error',
-                'message': 'An unexpected error occurred'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class PasswordResetRequestView(APIView):
-    permission_classes = [AllowAny]
-    serializer_class = PasswordResetRequestSerializer
-
-    def post(self, request):
-        logger.info("Password reset request received")
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            logger.info(f"Processing password reset request for email: {email}")
-            try:
-                user = User.objects.filter(email=email).first()
-                if user:
-                    logger.info(f"User found for email: {email}")
-                    token = default_token_generator.make_token(user)
-                    uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-                    # Check if FRONTEND_URL is set
-                    if not hasattr(settings, 'FRONTEND_URL') or not settings.FRONTEND_URL:
-                        logger.error("FRONTEND_URL is not set in settings")
-                        return Response({
-                            "error": "Server configuration error. Please contact the administrator."
-                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-                    reset_link = f"{settings.FRONTEND_URL}/api/reset-password/{uid}/{token}/"
-                    logger.info(f"Reset link generated: {reset_link}")
-
-                    # Send email
-                    subject = "Password Reset Request"
-                    message = f"Please use this link to reset your password: {reset_link}"
-                    try:
-                        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
-                        logger.info(f"Password reset email sent to: {email}")
-                    except Exception as e:
-                        logger.error(f"Failed to send password reset email: {str(e)}", exc_info=True)
-                        return Response({
-                            "error": "Failed to send password reset email. Please try again later."
-                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                else:
-                    logger.info(f"No user found for email: {email}")
-
-                return Response({
-                    "message": "If an account exists with this email, a password reset link has been sent."
-                }, status=status.HTTP_200_OK)
-            except Exception as e:
-                logger.error(f"Error processing password reset request: {str(e)}", exc_info=True)
-                return Response({
-                    "error": "An unexpected error occurred. Please try again later."
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            logger.warning(f"Invalid password reset request data: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class PasswordResetConfirmView(APIView):
-    template_name = 'password_reset/password_reset_confirm.html'
-
-    def get(self, request, uidb64, token, *args, **kwargs):
-        try:
-            uid = urlsafe_base64_decode(uidb64).decode()
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
-
-        if user is not None and default_token_generator.check_token(user, token):
-            context = {
-                'valid': True,
-                'uidb64': uidb64,
-                'token': token,
-            }
-        else:
-            context = {'valid': False}
-
-        return render(request, self.template_name, context)
-
-    def post(self, request, uidb64, token, *args, **kwargs):
-        try:
-            uid = urlsafe_base64_decode(uidb64).decode()
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
-
-        if user is not None and default_token_generator.check_token(user, token):
-            new_password = request.data.get('new_password')
-            if new_password:
-                user.set_password(new_password)
-                user.save()
-                return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
-            else:
-                return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({"error": "Invalid reset link"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 """
