@@ -1,89 +1,59 @@
-import random
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from appointment_management.models import Appointment
-from patient_management.models import Patient, MedicalHistory, Medication, VitiligoAssessment, TreatmentPlan
-from django.conf import settings
+from access_control.models import Role
+import random
 
 User = get_user_model()
 
 class Command(BaseCommand):
-    help = 'Fill sample data for a patient and doctors'
+    help = 'Create sample appointments for random patients with doctors'
 
     def add_arguments(self, parser):
-        parser.add_argument('patient_email', type=str, help='Email of the patient to fill sample data')
+        parser.add_argument(
+            '--count',
+            type=int,
+            default=10,
+            help='Number of appointments to create'
+        )
 
     def handle(self, *args, **kwargs):
-        patient_email = kwargs['patient_email']
+        count = kwargs['count']
 
-        # Create or get the patient user
-        patient_user, created = User.objects.get_or_create(
-            email=patient_email,
-            defaults={
-                'first_name': 'John',
-                'last_name': 'Doe',
-                'role': 'PATIENT',
-                'password': 'password123'  # Change this to a secure password
-            }
-        )
+        # Get patient and doctor roles
+        try:
+            patient_role = Role.objects.get(name='PATIENT')
+            doctor_role = Role.objects.get(name='DOCTOR')
+        except Role.DoesNotExist:
+            self.stdout.write(self.style.ERROR('Required roles not found'))
+            return
 
-        if created:
-            self.stdout.write(self.style.SUCCESS(f'Created patient user: {patient_email}'))
-        else:
-            self.stdout.write(self.style.WARNING(f'Patient user already exists: {patient_email}'))
+        # Get all active patients and doctors
+        patients = User.objects.filter(role=patient_role, is_active=True)
+        doctors = User.objects.filter(role=doctor_role, is_active=True)
 
-        # Create patient profile
-        patient, created = Patient.objects.get_or_create(
-            user=patient_user,
-            defaults={
-                'date_of_birth': '1990-01-01',
-                'gender': 'M',
-                'address': '123 Main St',
-                'phone_number': '1234567890',
-                'emergency_contact_name': 'John Doe',
-                'emergency_contact_number': '0987654321'
-            }
-        )
+        if not patients.exists() or not doctors.exists():
+            self.stdout.write(self.style.ERROR('No patients or doctors found'))
+            return
 
-        if created:
-            self.stdout.write(self.style.SUCCESS(f'Created patient profile for: {patient_email}'))
-        else:
-            self.stdout.write(self.style.WARNING(f'Patient profile already exists for: {patient_email}'))
+        appointment_types = ['CONSULTATION', 'FOLLOW_UP', 'PROCEDURE']
+        priorities = ['A', 'B', 'C']
 
-        # Create doctors
-        doctor_emails = ['doctor1@example.com', 'doctor2@example.com', 'doctor3@example.com']
-        doctors = []
+        appointments_created = 0
+        for _ in range(count):
+            try:
+                Appointment.objects.create(
+                    patient=random.choice(patients),
+                    doctor=random.choice(doctors),
+                    appointment_type=random.choice(appointment_types),
+                    date=timezone.now().date() + timezone.timedelta(days=random.randint(1, 30)),
+                    status='SCHEDULED',
+                    priority=random.choice(priorities),
+                    notes='Sample appointment'
+                )
+                appointments_created += 1
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'Failed to create appointment: {str(e)}'))
 
-        for email in doctor_emails:
-            doctor_user, created = User.objects.get_or_create(
-                email=email,
-                defaults={
-                    'first_name': 'Doctor',
-                    'last_name': email.split('@')[0],
-                    'role': 'DOCTOR',
-                    'password': 'password123'  # Change this to a secure password
-                }
-            )
-
-            if created:
-                self.stdout.write(self.style.SUCCESS(f'Created doctor user: {email}'))
-            else:
-                self.stdout.write(self.style.WARNING(f'Doctor user already exists: {email}'))
-
-            doctors.append(doctor_user)
-
-
-        # Create sample appointments
-        for i in range(5):
-            Appointment.objects.create(
-                patient=patient_user,
-                doctor=random.choice(doctors),
-                appointment_type='CONSULTATION',
-                date=timezone.now().date() + timezone.timedelta(days=i),
-                status='SCHEDULED',
-                priority='B',
-                notes='Sample appointment'
-            )
-
-        self.stdout.write(self.style.SUCCESS('Sample data created successfully'))
+        self.stdout.write(self.style.SUCCESS(f'Created {appointments_created} sample appointments'))

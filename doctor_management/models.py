@@ -89,34 +89,25 @@ class DoctorProfile(models.Model):
         ordering = ['-rating', '-experience']
 
 class DoctorAvailability(models.Model):
-    DAYS_OF_WEEK = (
-        (0, 'Monday'),
-        (1, 'Tuesday'),
-        (2, 'Wednesday'),
-        (3, 'Thursday'),
-        (4, 'Friday'),
-        (5, 'Saturday'),
-        (6, 'Sunday'),
-    )
-    
-    SHIFT_CHOICES = (
+    SHIFT_CHOICES = [
         ('MORNING', 'Morning'),
         ('EVENING', 'Evening'),
+    ]
+    
+    doctor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='availability',
+        limit_choices_to={'role__name': 'DOCTOR'}
     )
-
-    doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='availability')
-    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
-    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES)  # Added shift field
+    day_of_week = models.IntegerField(choices=[(i, i) for i in range(7)])
+    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES)
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_available = models.BooleanField(default=True)
-    
-    class Meta:
-        unique_together = ('doctor', 'day_of_week', 'shift')  # Updated unique constraint
-        ordering = ['day_of_week', 'shift', 'start_time']
 
-    def __str__(self):
-        return f"{self.doctor} - {self.get_day_of_week_display()} ({self.shift})"
+    class Meta:
+        unique_together = ('doctor', 'day_of_week', 'shift')
 
 class DoctorReview(models.Model):
     """Patient reviews and ratings for doctors"""
