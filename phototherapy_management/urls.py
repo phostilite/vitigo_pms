@@ -10,6 +10,8 @@ from . import (
 
 urlpatterns = [
     path('', v.PhototherapyManagementView.as_view(), name='phototherapy_management'),
+    path('new-treatment-plan/', v.NewTreatmentPlanView.as_view(), name='new_treatment_plan'),
+    path('treatment-plans/', v.TreatmentPlanListView.as_view(), name='treatment_plan_list'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),

@@ -1,6 +1,12 @@
 # phototherapy_management/forms.py
 from django import forms
-from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance
+from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard
+from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+import logging
+
+User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class ProtocolForm(forms.ModelForm):
     class Meta:
@@ -130,3 +136,115 @@ class ScheduleMaintenanceForm(forms.ModelForm):
             field.widget.attrs['class'] = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
             if field_name in ['device', 'maintenance_type', 'maintenance_date', 'performed_by']:
                 field.widget.attrs['required'] = 'required'
+
+
+class TreatmentPlanForm(forms.ModelForm):
+    patient = forms.ModelChoiceField(
+        queryset=User.objects.filter(role__name='PATIENT', is_active=True),
+        empty_label="Select Patient",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Select the patient who will receive the phototherapy treatment"
+    )
+    
+    protocol = forms.ModelChoiceField(
+        queryset=PhototherapyProtocol.objects.filter(is_active=True),
+        empty_label="Select Protocol",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Choose the treatment protocol to follow. This determines the treatment parameters"
+    )
+    
+    rfid_card = forms.ModelChoiceField(
+        queryset=PatientRFIDCard.objects.filter(is_active=True),
+        required=False,
+        empty_label="Select RFID Card (Optional)",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Assign an RFID card for access control (required for Wholebody NB and Excimer treatments)"
+    )
+
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        help_text="When should the treatment plan begin? Select today or a future date"
+    )
+
+    total_sessions_planned = forms.IntegerField(
+        min_value=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text="Total number of sessions planned for this treatment course"
+    )
+
+    current_dose = forms.FloatField(
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1'}),
+        help_text="Initial dose in mJ/cm². Must not exceed protocol maximum dose"
+    )
+
+    total_cost = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        help_text="Total cost of the treatment plan in INR"
+    )
+
+    special_instructions = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+        help_text="Any special instructions or precautions for this patient's treatment"
+    )
+
+    reminder_frequency = forms.IntegerField(
+        min_value=1,
+        max_value=30,
+        initial=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text="How often to send reminders (in days). Recommended: 1-3 days"
+    )
+
+    class Meta:
+        model = PhototherapyPlan
+        fields = [
+            'patient', 'protocol', 'rfid_card', 'start_date', 
+            'total_sessions_planned', 'current_dose', 'total_cost',
+            'special_instructions', 'reminder_frequency'
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add placeholder text for text fields
+        self.fields['special_instructions'].widget.attrs['placeholder'] = (
+            "Enter any special instructions, precautions, or notes for this treatment plan"
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        protocol = cleaned_data.get('protocol')
+        current_dose = cleaned_data.get('current_dose')
+        start_date = cleaned_data.get('start_date')
+
+        try:
+            # Validate dose against protocol limits
+            if protocol and current_dose:
+                if current_dose > protocol.max_dose:
+                    self.add_error('current_dose', 
+                        f'Current dose ({current_dose}) cannot exceed protocol maximum dose ({protocol.max_dose})'
+                    )
+                if current_dose < protocol.initial_dose:
+                    self.add_error('current_dose', 
+                        f'Current dose ({current_dose}) cannot be less than protocol initial dose ({protocol.initial_dose})'
+                    )
+
+            # Validate RFID requirement for specific protocols
+            if protocol and protocol.phototherapy_type.requires_rfid:
+                rfid_card = cleaned_data.get('rfid_card')
+                if not rfid_card:
+                    self.add_error('rfid_card', 'RFID card is required for this type of phototherapy')
+
+            # Validate start date
+            if start_date:
+                from django.utils import timezone
+                if start_date < timezone.now().date():
+                    self.add_error('start_date', 'Start date cannot be in the past')
+
+        except Exception as e:
+            logger.error(f"Error in form validation: {str(e)}")
+            self.add_error(None, str(e))
+        
+        return cleaned_data

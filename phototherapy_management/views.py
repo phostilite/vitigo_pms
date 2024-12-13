@@ -6,10 +6,13 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db import models  # Added
-from django.shortcuts import render
-from django.utils import timezone  # Added
+from django.db import models
+from django.shortcuts import render, redirect
+from django.utils import timezone
 from django.views import View
+from django.views.generic import CreateView, ListView
+from django.urls import reverse_lazy
+from django.db.models import Q
 
 # Local application imports
 from access_control.models import Role
@@ -24,6 +27,7 @@ from .models import (
     PhototherapyType,
     PhototherapyPayment
 )
+from .forms import TreatmentPlanForm
 from .utils import get_template_path
 
 # Configure logging and user model
@@ -156,3 +160,124 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'total_sessions_this_month': 0,
                 'revenue_this_month': 0,
             }
+        
+
+class NewTreatmentPlanView(LoginRequiredMixin, CreateView):
+    model = PhototherapyPlan
+    form_class = TreatmentPlanForm
+    success_url = reverse_lazy('phototherapy_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                logger.warning(
+                    f"Access denied to new treatment plan creation for user {request.user.id}"
+                )
+                messages.error(request, "You don't have permission to access Phototherapy")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in phototherapy dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('dashboard')
+
+    def form_valid(self, form):
+        try:
+            form.instance.created_by = self.request.user
+            form.instance.is_active = True
+            messages.success(self.request, "Treatment plan created successfully")
+            return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Error creating treatment plan: {str(e)}")
+            messages.error(self.request, "Error creating treatment plan")
+            return self.form_invalid(form)
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'new_treatment_plan_create.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_new_treatment_plan_create.html']
+        
+
+class TreatmentPlanListView(LoginRequiredMixin, ListView):
+    model = PhototherapyPlan
+    context_object_name = 'treatment_plans'
+    paginate_by = 10
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'phototherapy_management'):
+                logger.warning(
+                    f"Access denied to treatment plans list for user {request.user.id}"
+                )
+                messages.error(request, "You don't have permission to access Phototherapy")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in treatment plans list dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('dashboard')
+
+    def get_queryset(self):
+        try:
+            queryset = super().get_queryset()
+            
+            # Search functionality
+            search_query = self.request.GET.get('search', '')
+            if search_query:
+                queryset = queryset.filter(
+                    Q(patient__first_name__icontains=search_query) |
+                    Q(patient__last_name__icontains=search_query) |
+                    Q(patient__email__icontains=search_query) |
+                    Q(special_instructions__icontains=search_query)
+                )
+
+            # Filter by status
+            status = self.request.GET.get('status', '')
+            if status:
+                queryset = queryset.filter(is_active=status == 'active')
+
+            # Sort functionality
+            sort_by = self.request.GET.get('sort', '-created_at')
+            if sort_by and sort_by in ['created_at', '-created_at', 'total_cost', '-total_cost']:
+                queryset = queryset.order_by(sort_by)
+
+            return queryset
+        except Exception as e:
+            logger.error(f"Error in treatment plans queryset: {str(e)}")
+            messages.error(self.request, "Error retrieving treatment plans")
+            return PhototherapyPlan.objects.none()
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'treatment_plan_list.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_treatment_plan_list.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context['search_query'] = self.request.GET.get('search', '')
+            context['current_status'] = self.request.GET.get('status', '')
+            context['current_sort'] = self.request.GET.get('sort', '-created_at')
+            
+            # Add summary statistics
+            context['total_plans'] = self.model.objects.count()
+            context['active_plans'] = self.model.objects.filter(is_active=True).count()
+            context['completed_plans'] = self.model.objects.filter(
+                sessions_completed__gte=models.F('total_sessions_planned')
+            ).count()
+        except Exception as e:
+            logger.error(f"Error getting context data: {str(e)}")
+            messages.error(self.request, "Error loading page data")
+        return context
