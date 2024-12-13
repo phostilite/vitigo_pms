@@ -1,0 +1,96 @@
+{% extends '../base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'phototherapy_management' %}" class="hover:text-blue-600"><i class="fas fa-laptop-medical mr-2"></i>Phototherapy</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li><a href="{% url 'schedule_management' %}" class="hover:text-blue-600">Schedule Management</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Schedule Phototherapy Session</li>
+        </ol>
+    </nav>
+
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Schedule Phototherapy Session</h2>
+        <a href="{% url 'phototherapy_management' %}" 
+           class="text-blue-500 hover:text-blue-600 flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Back to Dashboard
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Treatment Plan -->
+            <div>
+                {{ form.plan|as_crispy_field }}
+                {% if form.plan.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.plan.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Device -->
+            <div>
+                {{ form.device|as_crispy_field }}
+                {% if form.device.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.device.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Date -->
+            <div>
+                {{ form.scheduled_date|as_crispy_field }}
+                {% if form.scheduled_date.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.scheduled_date.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Time -->
+            <div>
+                {{ form.scheduled_time|as_crispy_field }}
+                {% if form.scheduled_time.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.scheduled_time.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Planned Dose -->
+            <div>
+                {{ form.planned_dose|as_crispy_field }}
+                {% if form.planned_dose.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.planned_dose.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex justify-end space-x-4">
+            <button type="button" 
+                    onclick="window.location.href='{% url 'phototherapy_management' %}'"
+                    class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                Schedule Session
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

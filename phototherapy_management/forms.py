@@ -1,6 +1,6 @@
 # phototherapy_management/forms.py
 from django import forms
-from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard
+from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 import logging
@@ -247,4 +247,109 @@ class TreatmentPlanForm(forms.ModelForm):
             logger.error(f"Error in form validation: {str(e)}")
             self.add_error(None, str(e))
         
+        return cleaned_data
+    
+
+class ScheduleSessionForm(forms.ModelForm):
+    class Meta:
+        model = PhototherapySession
+        fields = [
+            'plan', 
+            'scheduled_date', 
+            'scheduled_time', 
+            'device',
+            'planned_dose'
+        ]
+        widgets = {
+            'scheduled_date': forms.DateInput(
+                attrs={
+                    'type': 'date',
+                    'placeholder': 'Select session date'
+                }
+            ),
+            'scheduled_time': forms.TimeInput(
+                attrs={
+                    'type': 'time',
+                    'placeholder': 'Select session time'
+                }
+            ),
+        }
+        help_texts = {
+            'plan': 'Select an active treatment plan. Only active plans are shown.',
+            'scheduled_date': 'Choose a date within the treatment plan period. Cannot schedule beyond plan end date.',
+            'scheduled_time': 'Select a time slot. Check device and staff availability.',
+            'device': 'Select the phototherapy device to be used. Only active devices are shown.',
+            'planned_dose': 'Enter the planned dose in mJ/cm². Must be within protocol limits.'
+        }
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            # Filter active plans only
+            self.fields['plan'].queryset = PhototherapyPlan.objects.filter(is_active=True)
+            
+            # Add Bootstrap classes and enhance help texts
+            for field in self.fields:
+                self.fields[field].widget.attrs.update({
+                    'class': 'form-control rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200'
+                })
+            
+            # Add detailed help text for each field
+            self.fields['plan'].help_text += ' The selected plan determines available devices and dose ranges.'
+            self.fields['scheduled_date'].help_text += ' Sessions must be scheduled at least 24 hours in advance.'
+            self.fields['scheduled_time'].help_text += ' Consider patient preference and clinic hours.'
+            self.fields['device'].help_text += ' Ensure device maintenance status and availability.'
+            self.fields['planned_dose'].help_text += f' Recommended range: {self.get_dose_range()}'
+            
+        except Exception as e:
+            logger.error(f"Error initializing ScheduleSessionForm: {str(e)}")
+
+    def get_dose_range(self):
+        """Get recommended dose range based on protocol defaults"""
+        try:
+            return "100-2000 mJ/cm² (varies by protocol)"
+        except Exception as e:
+            logger.error(f"Error getting dose range: {str(e)}")
+            return "Contact administrator for recommended range"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        try:
+            plan = cleaned_data.get('plan')
+            scheduled_date = cleaned_data.get('scheduled_date')
+            planned_dose = cleaned_data.get('planned_dose')
+
+            if plan and scheduled_date:
+                # Check if the plan is still active on the scheduled date
+                if plan.end_date and scheduled_date > plan.end_date:
+                    raise forms.ValidationError({
+                        'scheduled_date': "Cannot schedule session after plan end date"
+                    })
+
+                # Check if there's already a session scheduled for this time
+                if PhototherapySession.objects.filter(
+                    plan=plan,
+                    scheduled_date=scheduled_date,
+                    scheduled_time=cleaned_data.get('scheduled_time')
+                ).exists():
+                    raise forms.ValidationError({
+                        'scheduled_time': "A session is already scheduled for this time"
+                    })
+
+                # Validate dose against plan protocol
+                if planned_dose:
+                    protocol = plan.protocol
+                    if planned_dose > protocol.max_dose:
+                        raise forms.ValidationError({
+                            'planned_dose': f"Dose exceeds maximum allowed ({protocol.max_dose} mJ/cm²)"
+                        })
+                    if planned_dose < protocol.initial_dose:
+                        raise forms.ValidationError({
+                            'planned_dose': f"Dose below minimum recommended ({protocol.initial_dose} mJ/cm²)"
+                        })
+
+        except Exception as e:
+            logger.error(f"Error in form validation: {str(e)}")
+            raise forms.ValidationError("An error occurred during validation")
+
         return cleaned_data

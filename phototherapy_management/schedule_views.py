@@ -7,16 +7,19 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
-from django.views.generic import View
+from django.views.generic import View, CreateView
+from django.urls import reverse_lazy
 
 # Local/application imports
-from error_handling.views import handler500
+from access_control.permissions import PermissionManager
+from error_handling.views import handler500, handler403
 from phototherapy_management.models import (
     PhototherapyPlan,
     PhototherapySession,
 )
+from .forms import ScheduleSessionForm
 from .utils import get_template_path
 
 # Configure logging
@@ -192,3 +195,51 @@ class ScheduleManagementView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error handling session action: {str(e)}")
             return False, "Error updating session"
+        
+
+class ScheduleSessionView(LoginRequiredMixin, CreateView):
+    model = PhototherapySession
+    form_class = ScheduleSessionForm
+    success_url = reverse_lazy('schedule_management')
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                logger.warning(
+                    f"Access denied to session scheduling for user {request.user.id}"
+                )
+                messages.error(request, "You don't have permission to schedule sessions")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in schedule session dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('dashboard')
+
+    def form_valid(self, form):
+        try:
+            # Set session number based on existing sessions
+            plan = form.cleaned_data['plan']
+            session_number = plan.sessions.count() + 1
+            form.instance.session_number = session_number
+            
+            # Set default status
+            form.instance.status = 'SCHEDULED'
+            
+            messages.success(self.request, "Session scheduled successfully")
+            return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Error saving session: {str(e)}")
+            messages.error(self.request, "Failed to schedule session")
+            return super().form_invalid(form)
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'schedule_session.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_schedule_session.html']

@@ -23,6 +23,8 @@ urlpatterns = [
     path('protocols/<int:protocol_id>/edit/', pv.EditProtocolView.as_view(), name='edit_protocol'),
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
+    path('schedule-session/', sv.ScheduleSessionView.as_view(), name='schedule_session'),
+
 
     path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
 
