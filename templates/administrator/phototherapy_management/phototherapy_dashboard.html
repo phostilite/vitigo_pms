@@ -74,728 +74,84 @@
     </div>
 
     <!-- Management Quick Links -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <!-- Protocols Link -->
-        <a href="{% url 'protocol_management' %}" class="block bg-purple-100 p-4 rounded-xl hover:bg-purple-200 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg shadow-md cursor-pointer border-2 border-transparent hover:border-purple-300 group">
-            <div class="flex items-center">
-                <div class="rounded-full bg-purple-200 p-3 group-hover:bg-purple-300 transition-colors duration-300 shadow-inner">
-                    <i class="fas fa-clipboard-list text-purple-600 text-xl group-hover:scale-110 transform transition-transform duration-300"></i>
-                </div>
-                <div class="ml-4">
-                    <h3 class="font-semibold text-purple-700 text-lg group-hover:text-purple-800">Protocols</h3>
-                    <p class="text-sm text-purple-600">Manage treatment protocols</p>
-                </div>
-                <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <i class="fas fa-chevron-right text-purple-500"></i>
-                </div>
-            </div>
-        </a>
-    
-        <!-- Devices Link -->
-        <a href="{% url 'device_management' %}" class="block bg-blue-100 p-4 rounded-xl hover:bg-blue-200 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg shadow-md cursor-pointer border-2 border-transparent hover:border-blue-300 group">
-            <div class="flex items-center">
-                <div class="rounded-full bg-blue-200 p-3 group-hover:bg-blue-300 transition-colors duration-300 shadow-inner">
-                    <i class="fas fa-laptop-medical text-blue-600 text-xl group-hover:scale-110 transform transition-transform duration-300"></i>
-                </div>
-                <div class="ml-4">
-                    <h3 class="font-semibold text-blue-700 text-lg group-hover:text-blue-800">Devices</h3>
-                    <p class="text-sm text-blue-600">Manage equipment & maintenance</p>
-                </div>
-                <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <i class="fas fa-chevron-right text-blue-500"></i>
-                </div>
-            </div>
-        </a>
-    
-        <!-- Schedules Link -->
-        <a href="{% url 'schedule_management' %}" class="block bg-green-100 p-4 rounded-xl hover:bg-green-200 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg shadow-md cursor-pointer border-2 border-transparent hover:border-green-300 group">
-            <div class="flex items-center">
-                <div class="rounded-full bg-green-200 p-3 group-hover:bg-green-300 transition-colors duration-300 shadow-inner">
-                    <i class="fas fa-clock text-green-600 text-xl group-hover:scale-110 transform transition-transform duration-300"></i>
-                </div>
-                <div class="ml-4">
-                    <h3 class="font-semibold text-green-700 text-lg group-hover:text-green-800">Schedules</h3>
-                    <p class="text-sm text-green-600">View & manage sessions</p>
-                </div>
-                <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <i class="fas fa-chevron-right text-green-500"></i>
-                </div>
-            </div>
-        </a>
-    
-        <!-- Reports Link -->
-        <a href="{% url 'report_management' %}" class="block bg-red-100 p-4 rounded-xl hover:bg-red-200 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg shadow-md cursor-pointer border-2 border-transparent hover:border-red-300 group">
-            <div class="flex items-center">
-                <div class="rounded-full bg-red-200 p-3 group-hover:bg-red-300 transition-colors duration-300 shadow-inner">
-                    <i class="fas fa-exclamation-circle text-red-600 text-xl group-hover:scale-110 transform transition-transform duration-300"></i>
-                </div>
-                <div class="ml-4">
-                    <h3 class="font-semibold text-red-700 text-lg group-hover:text-red-800">Reports</h3>
-                    <p class="text-sm text-red-600">View incidents & reports</p>
-                </div>
-                <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <i class="fas fa-chevron-right text-red-500"></i>
-                </div>
-            </div>
-        </a>
-    </div>
+    {% include './phototherapy_dashboard/management_quick_links.html' %}
 
-    <!-- Statistics Cards Row 1 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Active Plans Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="flex items-center justify-between mb-4">
-                <div class="rounded-full bg-blue-100 p-3 group-hover:bg-blue-200 transition-colors">
-                    <i class="fas fa-file-medical text-blue-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-                <div class="dropdown relative">
-                    <button id="activePlansDropdown" data-dropdown-toggle="activePlansDropdownItems" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div id="activePlansDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-eye mr-2 text-blue-500"></i>
-                            <span class="text-sm text-gray-700">View All Plans</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-download mr-2 text-blue-500"></i>
-                            <span class="text-sm text-gray-700">Export Plans Data</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="flex flex-col">
-                <h3 class="text-3xl font-bold text-gray-700">{{ active_plans }}</h3>
-                <span class="text-base font-medium text-gray-500 mt-1">Active Plans</span>
-                <div class="mt-4 flex items-center text-sm">
-                    <span class="text-green-500 flex items-center bg-green-50 px-2 py-1 rounded-full">
-                        <i class="fas fa-arrow-up mr-1"></i>3%
-                    </span>
-                    <span class="text-gray-400 ml-2">vs last month</span>
-                </div>
-            </div>
-        </div>
+    <!-- Dashboard Statistics -->
+    {% include './phototherapy_dashboard/statistics.html' %}
 
-        <!-- Sessions Today Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="flex items-center justify-between mb-4">
-                <div class="rounded-full bg-green-100 p-3 group-hover:bg-green-200 transition-colors">
-                    <i class="fas fa-calendar-check text-green-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-                <div class="dropdown relative">
-                    <button id="sessionsTodayDropdown" data-dropdown-toggle="sessionsTodayDropdownItems" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div id="sessionsTodayDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-calendar mr-2 text-green-500"></i>
-                            <span class="text-sm text-gray-700">View Today's Schedule</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-cog mr-2 text-green-500"></i>
-                            <span class="text-sm text-gray-700">Manage Sessions</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="flex flex-col">
-                <h3 class="text-3xl font-bold text-gray-700">{{ sessions_today|default:0 }}</h3>
-                <span class="text-base font-medium text-gray-500 mt-1">Sessions Today</span>
-                <div class="mt-4 flex flex-col space-y-2">
-                    <span class="flex items-center bg-green-50 px-2 py-1 rounded-lg text-sm w-fit">
-                        <i class="fas fa-check-circle mr-1 text-green-500"></i>
-                        <span class="text-gray-600">{{ completed_today|default:0 }} completed</span>
-                    </span>
-                    <span class="flex items-center bg-blue-50 px-2 py-1 rounded-lg text-sm w-fit">
-                        <i class="fas fa-clock mr-1 text-blue-500"></i>
-                        <span class="text-gray-600">{{ pending_today|default:0 }} pending</span>
-                    </span>
-                </div>
-            </div>
-        </div>
+    <!-- Action Cards -->
+    {% include './phototherapy_dashboard/action_cards.html' %}
 
-        <!-- Device Status Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="flex items-center justify-between mb-4">
-                <div class="rounded-full bg-yellow-100 p-3 group-hover:bg-yellow-200 transition-colors">
-                    <i class="fas fa-laptop-medical text-yellow-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-                <div class="dropdown relative">
-                    <button id="deviceStatusDropdown" data-dropdown-toggle="deviceStatusDropdownItems"  class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div id="deviceStatusDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-desktop mr-2 text-yellow-500"></i>
-                            <span class="text-sm text-gray-700">View All Devices</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-wrench mr-2 text-yellow-500"></i>
-                            <span class="text-sm text-gray-700">Maintenance Schedule</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="flex flex-col">
-                <h3 class="text-3xl font-bold text-gray-700">{{ active_devices }}</h3>
-                <span class="text-base font-medium text-gray-500 mt-1">Active Devices</span>
-                {% if maintenance_needed > 0 %}
-                <div class="mt-4 flex items-center text-sm">
-                    <span class="text-red-500 flex items-center bg-red-50 px-2 py-1 rounded-full">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        {{ maintenance_needed }} need maintenance
-                    </span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Revenue Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="flex items-center justify-between mb-4">
-                <div class="rounded-full bg-indigo-100 p-3 group-hover:bg-indigo-200 transition-colors">
-                    <i class="fas fa-dollar-sign text-indigo-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-                <div class="dropdown relative">
-                    <button id="revenueCardDropdown" data-dropdown-toggle="revenueCardDropdownItems" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div id="revenueCardDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-chart-line mr-2 text-indigo-500"></i>
-                            <span class="text-sm text-gray-700">View Financial Report</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-history mr-2 text-indigo-500"></i>
-                            <span class="text-sm text-gray-700">Payment History</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="flex flex-col">
-                <h3 class="text-3xl font-bold text-gray-700">${{ revenue_this_month|floatformat:2 }}</h3>
-                <span class="text-base font-medium text-gray-500 mt-1">Monthly Revenue</span>
-                <div class="mt-4 flex items-center text-sm">
-                    <span class="text-green-500 flex items-center bg-green-50 px-2 py-1 rounded-full">
-                        <i class="fas fa-arrow-up mr-1"></i>5%
-                    </span>
-                    <span class="text-gray-400 ml-2">vs last month</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Phototherapy Types Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="flex items-center justify-between mb-4">
-                <div class="rounded-full bg-pink-100 p-3 group-hover:bg-pink-200 transition-colors">
-                    <i class="fas fa-list-alt text-pink-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-                <div class="dropdown relative">
-                    <button id="therapyTypesDropdown" data-dropdown-toggle="therapyTypesDropdownItems" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div id="therapyTypesDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-plus mr-2 text-pink-500"></i>
-                            <span class="text-sm text-gray-700">Add New Type</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-edit mr-2 text-pink-500"></i>
-                            <span class="text-sm text-gray-700">Manage Types</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="flex flex-col">
-                <h3 class="text-3xl font-bold text-gray-700">{{ therapy_types_count|default:4 }}</h3>
-                <span class="text-base font-medium text-gray-500 mt-1">Therapy Types</span>
-                <div class="mt-4 flex flex-col space-y-2">
-                    {% for type in therapy_types %}
-                    <span class="flex items-center bg-pink-50 px-2 py-1 rounded-lg text-sm w-fit">
-                        <i class="fas fa-circle text-xs mr-1 text-pink-500"></i>
-                        <span class="text-gray-600">{{ type.name }}</span>
-                    </span>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Home Therapy Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="flex items-center justify-between mb-4">
-                <div class="rounded-full bg-orange-100 p-3 group-hover:bg-orange-200 transition-colors">
-                    <i class="fas fa-home text-orange-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-                <div class="dropdown relative">
-                    <button id="homeTherapyDropdown" data-dropdown-toggle="homeTherapyDropdownItems" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div id="homeTherapyDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-chart-line mr-2 text-orange-500"></i>
-                            <span class="text-sm text-gray-700">View All Logs</span>
-                        </a>
-                        <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-download mr-2 text-orange-500"></i>
-                            <span class="text-sm text-gray-700">Export Logs</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="flex flex-col">
-                <h3 class="text-3xl font-bold text-gray-700">{{ home_therapy_count|default:25 }}</h3>
-                <span class="text-base font-medium text-gray-500 mt-1">Home Therapy Patients</span>
-                <div class="mt-4 flex items-center text-sm">
-                    <span class="text-orange-500 flex items-center bg-orange-50 px-2 py-1 rounded-full">
-                        <i class="fas fa-chart-line mr-1"></i>
-                        {{ compliance_rate|default:"85" }}% compliance
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistics Cards Row 2 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Compliance Rate Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300 group">
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-700 flex items-center">
-                        <i class="fas fa-chart-pie mr-2 text-green-500"></i>
-                        Compliance Rate
-                    </h3>
-                    <p class="text-sm text-gray-500 mt-1">Overall patient compliance</p>
-                </div>
-                <span class="text-2xl font-bold text-green-500 bg-green-50 px-3 py-1 rounded-full group-hover:bg-green-100 transition-colors">
-                    87%
-                </span>
-            </div>
-            <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                <div class="bg-green-500 h-3 rounded-full transition-all duration-500 relative" style="width: 87%">
-                    <div class="absolute inset-0 bg-white/20 group-hover:bg-white/30 transition-colors"></div>
-                </div>
-            </div>
-            <div class="mt-4 flex justify-between text-sm">
-                <span class="text-gray-500 flex items-center">
-                    <i class="fas fa-flag-checkered mr-2 text-gray-400"></i>
-                    Target: 90%
-                </span>
-                <span class="text-gray-500 flex items-center">
-                    <i class="fas fa-chart-line mr-2 text-gray-400"></i>
-                    Current: 87%
-                </span>
-            </div>
-        </div>
-
-        <!-- Session Distribution Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300">
-            <h3 class="text-lg font-semibold text-gray-700 flex items-center mb-6">
-                <i class="fas fa-chart-bar mr-2 text-blue-500"></i>
-                Session Distribution
-            </h3>
-            <div class="space-y-4">
-                <div class="group">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-600">Whole Body NB</span>
-                        <span class="text-sm font-semibold text-blue-600">45%</span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                        <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-blue-600" style="width: 45%"></div>
-                    </div>
-                </div>
-                <div class="group">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-600">Excimer</span>
-                        <span class="text-sm font-semibold text-purple-600">30%</span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                        <div class="bg-purple-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-purple-600" style="width: 30%"></div>
-                    </div>
-                </div>
-                <div class="group">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-600">Home Based NB</span>
-                        <span class="text-sm font-semibold text-green-600">15%</span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                        <div class="bg-green-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-green-600" style="width: 15%"></div>
-                    </div>
-                </div>
-                <div class="group">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-600">Sun Exposure</span>
-                        <span class="text-sm font-semibold text-yellow-600">10%</span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                        <div class="bg-yellow-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-yellow-600" style="width: 10%"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Activities Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300">
+    <!-- Payment and Progress Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Payment Status -->
+        <div class="bg-white rounded-xl shadow-md p-6">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-lg font-semibold text-gray-700 flex items-center">
-                    <i class="fas fa-history mr-2 text-indigo-500"></i>
-                    Recent Activities
+                    <i class="fas fa-dollar-sign mr-2 text-green-500"></i>
+                    Payment Status
                 </h3>
-                <a href="#" class="text-sm text-indigo-500 hover:text-indigo-600 font-medium">View All</a>
+                <a href="#" class="text-sm text-green-500 hover:text-green-600 font-medium">View All</a>
             </div>
             <div class="space-y-4">
-                <div class="flex items-center group p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="rounded-full bg-blue-100 p-2 group-hover:bg-blue-200 transition-colors">
-                        <i class="fas fa-user-plus text-blue-500 group-hover:scale-110 transition-transform"></i>
-                    </div>
-                    <div class="ml-3 flex-grow">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-900">New patient enrolled</p>
-                            <span class="text-xs text-gray-400">5m ago</span>
+                {% for payment in recent_payments|slice:":4" %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center space-x-3">
+                        <div class="rounded-full bg-green-100 p-2">
+                            <i class="fas fa-receipt text-green-500"></i>
                         </div>
-                        <p class="text-xs text-gray-500 mt-0.5">Patient ID: #12345</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center group p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="rounded-full bg-green-100 p-2 group-hover:bg-green-200 transition-colors">
-                        <i class="fas fa-check-circle text-green-500 group-hover:scale-110 transition-transform"></i>
-                    </div>
-                    <div class="ml-3 flex-grow">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-900">Session completed</p>
-                            <span class="text-xs text-gray-400">20m ago</span>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">Receipt #{{ payment.receipt_number }}</p>
+                            <p class="text-xs text-gray-500">{{ payment.payment_date|date:"M d, Y" }}</p>
                         </div>
-                        <p class="text-xs text-gray-500 mt-0.5">Device: NB-UVB #02</p>
                     </div>
-                </div>
-
-                <div class="flex items-center group p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="rounded-full bg-yellow-100 p-2 group-hover:bg-yellow-200 transition-colors">
-                        <i class="fas fa-wrench text-yellow-500 group-hover:scale-110 transition-transform"></i>
-                    </div>
-                    <div class="ml-3 flex-grow">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-900">Device maintenance</p>
-                            <span class="text-xs text-gray-400">1h ago</span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-0.5">Routine check completed</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center group p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="rounded-full bg-red-100 p-2 group-hover:bg-red-200 transition-colors">
-                        <i class="fas fa-bell text-red-500 group-hover:scale-110 transition-transform"></i>
-                    </div>
-                    <div class="ml-3 flex-grow">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-900">Appointment reminder</p>
-                            <span class="text-xs text-gray-400">2h ago</span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-0.5">Sent to 5 patients</p>
-                    </div>
-                </div>
-            </div>
-            <a href="#" class="mt-4 block text-sm text-indigo-500 hover:text-indigo-600 text-center py-2 border-t border-gray-100">
-                View all activities
-                <i class="fas fa-arrow-right ml-1"></i>
-            </a>
-        </div>
-
-        <!-- Problem Reports Card -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-all duration-300">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-semibold text-gray-700 flex items-center">
-                    <i class="fas fa-exclamation-circle mr-2 text-red-500"></i>
-                    Problem Reports
-                </h3>
-                <a href="#" class="text-sm text-red-500 hover:text-red-600 font-medium">View All</a>
-            </div>
-            <div class="space-y-4">
-                {% for report in problem_reports|slice:":4" %}
-                <div class="flex items-center group p-2 rounded-lg hover:bg-red-50 transition-colors">
-                    <div class="rounded-full bg-red-100 p-2 group-hover:bg-red-200 transition-colors">
-                        <i class="fas fa-exclamation-triangle text-red-500 group-hover:scale-110 transition-transform"></i>
-                    </div>
-                    <div class="ml-3 flex-grow">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-900">{{ report.severity }}</p>
-                            <span class="text-xs text-gray-400">{{ report.reported_at|timesince }} ago</span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ report.problem_description|truncatechars:50 }}</p>
+                    <div class="text-right">
+                        <p class="text-sm font-bold text-gray-800">${{ payment.amount }}</p>
+                        <p class="text-xs text-gray-500">{{ payment.payment_method }}</p>
                     </div>
                 </div>
                 {% empty %}
-                <div class="text-center text-gray-500 text-sm">No problem reports</div>
+                <div class="text-center text-gray-500 text-sm">No recent payments</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Treatment Progress -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 flex items-center">
+                    <i class="fas fa-chart-line mr-2 text-blue-500"></i>
+                    Treatment Progress
+                </h3>
+                <a href="#" class="text-sm text-blue-500 hover:text-blue-600 font-medium">View All</a>
+            </div>
+            <div class="space-y-4">
+                {% for progress in treatment_progress|slice:":4" %}
+                <div class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">Patient #{{ progress.plan.patient.id }}</p>
+                            <p class="text-xs text-gray-500">{{ progress.assessment_date|date:"M d, Y" }}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                            {% if progress.response_level == 'EXCELLENT' %}bg-green-100 text-green-700
+                            {% elif progress.response_level == 'GOOD' %}bg-blue-100 text-blue-700
+                            {% elif progress.response_level == 'MODERATE' %}bg-yellow-100 text-yellow-700
+                            {% else %}bg-red-100 text-red-700{% endif %}">
+                            {{ progress.response_level }}
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                        <div class="bg-blue-500 h-2.5 rounded-full" style="width: {{ progress.improvement_percentage }}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">{{ progress.improvement_percentage }}% improvement</p>
+                </div>
+                {% empty %}
+                <div class="text-center text-gray-500 text-sm">No progress records</div>
                 {% endfor %}
             </div>
         </div>
     </div>
-
-    <!-- Action Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Manage Protocols Card -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="rounded-full bg-purple-100 p-3 group-hover:bg-purple-200 transition-colors">
-                            <i class="fas fa-clipboard-list text-purple-600 text-xl group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-700 group-hover:text-purple-700 transition-colors">Treatment Protocols</h3>
-                            <p class="text-sm text-gray-500">{{ protocols|length }} Active Protocols</p>
-                        </div>
-                    </div>
-                    <a href="{% url 'add_protocol' %}" class="bg-purple-100 text-purple-600 p-2 rounded-lg hover:bg-purple-200 transition-colors group-hover:rotate-12 transform">
-                        <i class="fas fa-plus"></i>
-                    </a>
-                </div>
-                <div class="space-y-3">
-                    <a href="{% url 'add_protocol' %}" class="flex items-center p-3 rounded-lg hover:bg-purple-50 transition-colors group/item">
-                        <i class="fas fa-plus-circle text-purple-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Add New Protocol</p>
-                            <p class="text-xs text-gray-500">Create treatment protocol</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-purple-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-                    
-                    <a href="{% url 'protocol_management' %}" class="flex items-center p-3 rounded-lg hover:bg-purple-50 transition-colors group/item">
-                        <i class="fas fa-edit text-purple-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Edit Protocols</p>
-                            <p class="text-xs text-gray-500">Modify existing protocols</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-purple-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-
-                    <a href="{% url 'protocol_management' %}" class="flex items-center p-3 rounded-lg hover:bg-purple-50 transition-colors group/item">
-                        <i class="fas fa-list text-purple-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">View All Protocols</p>
-                            <p class="text-xs text-gray-500">Browse protocol library</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-purple-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Device Management Card -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="rounded-full bg-blue-100 p-3 group-hover:bg-blue-200 transition-colors">
-                            <i class="fas fa-laptop-medical text-blue-600 text-xl group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-700 group-hover:text-blue-700 transition-colors">Device Management</h3>
-                            <p class="text-sm text-gray-500">{{ active_devices }} Active Devices</p>
-                        </div>
-                    </div>
-                    <button onclick="window.location='{% url 'device_management' %}'" class="bg-blue-100 text-blue-600 p-2 rounded-lg hover:bg-blue-200 transition-colors group-hover:rotate-12 transform">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                </div>
-                <div class="space-y-3">
-                    <a href="{% url 'register_device' %}" class="flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors group/item">
-                        <i class="fas fa-plus-circle text-blue-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Register New Device</p>
-                            <p class="text-xs text-gray-500">Add equipment to system</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-blue-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-
-                    <a href="{% url 'schedule_maintenance' %}" class="flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors group/item">
-                        <i class="fas fa-tools text-blue-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Schedule Maintenance</p>
-                            <p class="text-xs text-gray-500">Plan device upkeep</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-blue-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-
-                    <a href="{% url 'device_management' %}" class="flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors group/item">
-                        <i class="fas fa-history text-blue-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">View Device History</p>
-                            <p class="text-xs text-gray-500">Check maintenance records</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-blue-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- RFID Management Card -->
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="rounded-full bg-indigo-100 p-3 group-hover:bg-indigo-200 transition-colors">
-                            <i class="fas fa-id-card text-indigo-600 text-xl group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-700 group-hover:text-indigo-700 transition-colors">RFID Cards</h3>
-                            <p class="text-sm text-gray-500">{{ active_rfid_cards|default:0 }} Active Cards</p>
-                        </div>
-                    </div>
-                    <button onclick="window.location='{% url 'rfid_dashboard' %}'" class="bg-indigo-100 text-indigo-600 p-2 rounded-lg hover:bg-indigo-200 transition-colors group-hover:rotate-12 transform">
-                        <i class="fas fa-id-card"></i>
-                    </button>
-                </div>
-                <div class="space-y-3">
-                    <a href="#" data-modal-target="issueCardModal" data-modal-toggle="issueCardModal" class="flex items-center p-3 rounded-lg hover:bg-indigo-50 transition-colors group/item">
-                        <i class="fas fa-plus-circle text-indigo-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Issue New Card</p>
-                            <p class="text-xs text-gray-500">Assign RFID to patient</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-indigo-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-        
-                    <a href="#" class="flex items-center p-3 rounded-lg hover:bg-indigo-50 transition-colors group/item">
-                        <i class="fas fa-key text-indigo-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Manage Access</p>
-                            <p class="text-xs text-gray-500">Control card permissions</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-indigo-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-        
-                    <a href="#" class="flex items-center p-3 rounded-lg hover:bg-indigo-50 transition-colors group/item">
-                        <i class="fas fa-history text-indigo-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">View Access Logs</p>
-                            <p class="text-xs text-gray-500">Check usage history</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-indigo-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
-            <div class="p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="rounded-full bg-amber-100 p-3 group-hover:bg-amber-200 transition-colors">
-                            <i class="fas fa-bell text-amber-600 text-xl group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-700 group-hover:text-amber-700 transition-colors">Reminders</h3>
-                            <p class="text-sm text-gray-500">{{ pending_reminders|default:0 }} Pending</p>
-                        </div>
-                    </div>
-                    <button class="bg-amber-100 text-amber-600 p-2 rounded-lg hover:bg-amber-200 transition-colors group-hover:rotate-12 transform">
-                        <i class="fas fa-bell"></i>
-                    </button>
-                </div>
-                <div class="space-y-3">
-                    <a href="#" class="flex items-center p-3 rounded-lg hover:bg-amber-50 transition-colors group/item">
-                        <i class="fas fa-clock text-amber-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Schedule Reminders</p>
-                            <p class="text-xs text-gray-500">Set up notifications</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-amber-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-        
-                    <a href="#" class="flex items-center p-3 rounded-lg hover:bg-amber-50 transition-colors group/item">
-                        <i class="fas fa-envelope text-amber-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Send Notifications</p>
-                            <p class="text-xs text-gray-500">Manage patient alerts</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-amber-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-        
-                    <a href="#" class="flex items-center p-3 rounded-lg hover:bg-amber-50 transition-colors group/item">
-                        <i class="fas fa-history text-amber-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">View Reminder History</p>
-                            <p class="text-xs text-gray-500">Check past notifications</p>
-                        </div>
-                        <i class="fas fa-chevron-right ml-auto text-amber-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Payment and Progress Section -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <!-- Payment Status -->
-    <div class="bg-white rounded-xl shadow-md p-6">
-        <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-semibold text-gray-700 flex items-center">
-                <i class="fas fa-dollar-sign mr-2 text-green-500"></i>
-                Payment Status
-            </h3>
-            <a href="#" class="text-sm text-green-500 hover:text-green-600 font-medium">View All</a>
-        </div>
-        <div class="space-y-4">
-            {% for payment in recent_payments|slice:":4" %}
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div class="flex items-center space-x-3">
-                    <div class="rounded-full bg-green-100 p-2">
-                        <i class="fas fa-receipt text-green-500"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-800">Receipt #{{ payment.receipt_number }}</p>
-                        <p class="text-xs text-gray-500">{{ payment.payment_date|date:"M d, Y" }}</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-sm font-bold text-gray-800">${{ payment.amount }}</p>
-                    <p class="text-xs text-gray-500">{{ payment.payment_method }}</p>
-                </div>
-            </div>
-            {% empty %}
-            <div class="text-center text-gray-500 text-sm">No recent payments</div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Treatment Progress -->
-    <div class="bg-white rounded-xl shadow-md p-6">
-        <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-semibold text-gray-700 flex items-center">
-                <i class="fas fa-chart-line mr-2 text-blue-500"></i>
-                Treatment Progress
-            </h3>
-            <a href="#" class="text-sm text-blue-500 hover:text-blue-600 font-medium">View All</a>
-        </div>
-        <div class="space-y-4">
-            {% for progress in treatment_progress|slice:":4" %}
-            <div class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <p class="text-sm font-medium text-gray-800">Patient #{{ progress.plan.patient.id }}</p>
-                        <p class="text-xs text-gray-500">{{ progress.assessment_date|date:"M d, Y" }}</p>
-                    </div>
-                    <span class="px-2 py-1 rounded-full text-xs font-medium 
-                        {% if progress.response_level == 'EXCELLENT' %}bg-green-100 text-green-700
-                        {% elif progress.response_level == 'GOOD' %}bg-blue-100 text-blue-700
-                        {% elif progress.response_level == 'MODERATE' %}bg-yellow-100 text-yellow-700
-                        {% else %}bg-red-100 text-red-700{% endif %}">
-                        {{ progress.response_level }}
-                    </span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                    <div class="bg-blue-500 h-2.5 rounded-full" style="width: {{ progress.improvement_percentage }}%"></div>
-                </div>
-                <p class="text-xs text-gray-500 mt-2">{{ progress.improvement_percentage }}% improvement</p>
-            </div>
-            {% empty %}
-            <div class="text-center text-gray-500 text-sm">No progress records</div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
 
     <!-- Alerts Section -->
     <div class="mb-6">
