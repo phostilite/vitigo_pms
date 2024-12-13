@@ -12,7 +12,9 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, ListView
 from django.urls import reverse_lazy
-from django.db.models import Q
+from django.db.models import Q, Count
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
 
 # Local application imports
 from access_control.models import Role
@@ -27,7 +29,7 @@ from .models import (
     PhototherapyType,
     PhototherapyPayment
 )
-from .forms import TreatmentPlanForm
+from .forms import TreatmentPlanForm, PhototherapyTypeForm
 from .utils import get_template_path
 
 # Configure logging and user model
@@ -280,4 +282,136 @@ class TreatmentPlanListView(LoginRequiredMixin, ListView):
         except Exception as e:
             logger.error(f"Error getting context data: {str(e)}")
             messages.error(self.request, "Error loading page data")
+        return context
+    
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class AddPhototherapyTypeView(LoginRequiredMixin, CreateView):
+    model = PhototherapyType
+    form_class = PhototherapyTypeForm
+    success_url = reverse_lazy('phototherapy_management')
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                logger.warning(f"Access denied to phototherapy type creation for user {request.user.id}")
+                messages.error(request, "You don't have permission to add phototherapy types")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in phototherapy type dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('dashboard')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'add_phototherapy_type.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_add_phototherapy_type.html']
+            
+    def form_valid(self, form):
+        try:
+            form.instance.created_by = self.request.user
+            response = super().form_valid(form)
+            messages.success(self.request, "Phototherapy type created successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error saving phototherapy type: {str(e)}")
+            messages.error(self.request, "Error creating phototherapy type")
+            return super().form_invalid(form)
+        
+
+
+class PhototherapyTypeListView(LoginRequiredMixin, ListView):
+    model = PhototherapyType
+    context_object_name = 'therapy_types'
+    paginate_by = 10
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'phototherapy_management'):
+                logger.warning(f"Access denied to phototherapy types list for user {request.user.id}")
+                messages.error(request, "You don't have permission to access Phototherapy Types")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in phototherapy types list dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('dashboard')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'phototherapy_types_dashboard.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_phototherapy_types_dashboard.html']
+
+    def get_queryset(self):
+        try:
+            queryset = PhototherapyType.objects.all().annotate(
+                active_protocols_count=Count('phototherapyprotocol', distinct=True),
+                active_plans_count=Count('phototherapyprotocol__phototherapyplan', distinct=True)
+            )
+            
+            # Filter by search query if provided
+            search_query = self.request.GET.get('search')
+            if search_query:
+                queryset = queryset.filter(name__icontains=search_query)
+            
+            # Filter by therapy type if provided
+            therapy_type = self.request.GET.get('therapy_type')
+            if therapy_type:
+                queryset = queryset.filter(therapy_type=therapy_type)
+            
+            # Filter by priority if provided
+            priority = self.request.GET.get('priority')
+            if priority:
+                queryset = queryset.filter(priority=priority)
+            
+            # Sort by specified field
+            sort_by = self.request.GET.get('sort', '-created_at')
+            queryset = queryset.order_by(sort_by)
+            
+            return queryset
+        except Exception as e:
+            logger.error(f"Error in get_queryset: {str(e)}")
+            return PhototherapyType.objects.none()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            # Add filter options
+            context['therapy_type_choices'] = PhototherapyType.THERAPY_CHOICES
+            context['priority_choices'] = PhototherapyType.PRIORITY_CHOICES
+            
+            # Add current filter values
+            context['current_search'] = self.request.GET.get('search', '')
+            context['current_therapy_type'] = self.request.GET.get('therapy_type', '')
+            context['current_priority'] = self.request.GET.get('priority', '')
+            context['current_sort'] = self.request.GET.get('sort', '-created_at')
+            
+            # Add summary statistics
+            context['total_types'] = PhototherapyType.objects.count()
+            context['active_types'] = PhototherapyType.objects.filter(is_active=True).count()
+            context['rfid_required_types'] = PhototherapyType.objects.filter(requires_rfid=True).count()
+            
+            # Add user permissions
+            context['can_add'] = PermissionManager.check_module_modify(self.request.user, 'phototherapy_management')
+            context['can_edit'] = context['can_add']
+            context['can_delete'] = PermissionManager.check_module_delete(self.request.user, 'phototherapy_management')
+            
+        except Exception as e:
+            logger.error(f"Error in get_context_data: {str(e)}")
+            messages.error(self.request, "Error loading some dashboard data")
+        
         return context

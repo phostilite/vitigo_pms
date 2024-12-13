@@ -353,3 +353,78 @@ class ScheduleSessionForm(forms.ModelForm):
             raise forms.ValidationError("An error occurred during validation")
 
         return cleaned_data
+    
+
+class PhototherapyTypeForm(forms.ModelForm):
+    class Meta:
+        model = PhototherapyType
+        fields = ['name', 'therapy_type', 'description', 'priority', 'requires_rfid']
+        
+        help_texts = {
+            'name': 'Enter a unique and descriptive name for the therapy type (e.g., "Narrow Band UVB - Full Body")',
+            'therapy_type': 'Select the primary category of phototherapy treatment',
+            'description': 'Provide detailed information about the therapy type, including its purpose, typical usage, and any special considerations',
+            'priority': (
+                'Set the priority level for this therapy type: '
+                'Blue A (High) for critical/urgent treatments, '
+                'Green B (Medium) for standard treatments, '
+                'Red C (Low) for optional/supplementary treatments'
+            ),
+            'requires_rfid': 'Check this if patients need RFID cards to access this therapy type (typically required for self-service equipment)'
+        }
+
+        labels = {
+            'name': 'Therapy Name',
+            'therapy_type': 'Treatment Category',
+            'description': 'Detailed Description',
+            'priority': 'Priority Level',
+            'requires_rfid': 'RFID Access Required'
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Add Bootstrap classes and customize widgets for better UX
+        for field_name, field in self.fields.items():
+            # Common classes for all fields
+            css_classes = 'block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            
+            # Customize specific fields
+            if field_name == 'description':
+                field.widget = forms.Textarea(attrs={
+                    'class': css_classes,
+                    'rows': 4,
+                    'placeholder': 'Enter detailed description of the therapy type...'
+                })
+            elif field_name == 'name':
+                field.widget = forms.TextInput(attrs={
+                    'class': css_classes,
+                    'placeholder': 'Enter therapy type name'
+                })
+            elif field_name == 'requires_rfid':
+                field.widget = forms.CheckboxInput(attrs={
+                    'class': 'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
+                })
+            else:
+                field.widget.attrs.update({'class': css_classes})
+
+        # Add placeholder text for therapy type dropdown
+        self.fields['therapy_type'].widget.attrs['placeholder'] = 'Select treatment category'
+
+        # Customize error messages
+        self.fields['name'].error_messages = {
+            'required': 'Please enter a name for the therapy type',
+            'unique': 'This therapy type name already exists'
+        }
+        
+        self.fields['therapy_type'].error_messages = {
+            'required': 'Please select a treatment category'
+        }
+        
+        self.fields['description'].error_messages = {
+            'required': 'Please provide a description of the therapy type'
+        }
+        
+        self.fields['priority'].error_messages = {
+            'required': 'Please select a priority level'
+        }
