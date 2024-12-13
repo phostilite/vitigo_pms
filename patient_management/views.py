@@ -144,7 +144,7 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
             patient_role = Role.objects.get(name='PATIENT')
             
             # Check using the foreign key relationship
-            if user.role != patient_role:
+            if user.role.name != patient_role:
                 messages.error(self.request, "Selected user is not a patient")
                 raise PermissionDenied("This user is not a patient")
 

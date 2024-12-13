@@ -58,18 +58,6 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 """
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║                           AUTHENTICATION VIEWS                                ║
-║ Contains all authentication related functionality including user registration,║
-║ login, password management, and basic user operations.                        ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-"""
-
-
-
-
-
-"""
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                             PATIENT VIEWS                                    ║
 ║ Handles all patient-specific operations including profile management,        ║
@@ -84,7 +72,7 @@ class PatientInfoView(APIView):
 
     def get(self, request):
         user = request.user
-        if user.role != 'PATIENT':
+        if user.role.name != 'PATIENT':
             return Response({"error": "Only patients can access this information"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -390,7 +378,7 @@ class UserAppointmentsView(APIView):
 
     def get(self, request):
         user = request.user
-        if user.role != 'PATIENT':
+        if user.role.name != 'PATIENT':
             return Response({"error": "Only patients can access this information"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -411,7 +399,7 @@ class UserAppointmentDetailView(APIView):
 
     def get(self, request, appointment_id):
         user = request.user
-        if user.role != 'PATIENT':
+        if user.role.name != 'PATIENT':
             return Response({"error": "Only patients can access this information"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
