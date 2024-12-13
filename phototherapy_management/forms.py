@@ -1,9 +1,10 @@
 # phototherapy_management/forms.py
 from django import forms
-from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession
+from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession, ProblemReport
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 import logging
+from django.utils.safestring import mark_safe
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -428,3 +429,110 @@ class PhototherapyTypeForm(forms.ModelForm):
         self.fields['priority'].error_messages = {
             'required': 'Please select a priority level'
         }
+
+
+class ProblemReportForm(forms.ModelForm):
+    session = forms.ModelChoiceField(
+        queryset=PhototherapySession.objects.all(),
+        widget=forms.Select(attrs={
+            'class': 'form-select rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200'
+        }),
+        help_text=(
+            "Select the phototherapy session for which you want to report a problem. "
+            "Shows recent sessions first."
+        )
+    )
+    
+    reported_by = forms.ModelChoiceField(
+        queryset=User.objects.all(),
+        widget=forms.Select(attrs={
+            'class': 'form-select rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200'
+        }),
+        help_text=(
+            "Select who is reporting this problem. As an administrator, "
+            "you can report problems on behalf of others."
+        )
+    )
+
+    class Meta:
+        model = ProblemReport
+        fields = ['session', 'reported_by', 'problem_description', 'severity']
+        widgets = {
+            'problem_description': forms.Textarea(attrs={
+                'class': 'form-textarea mt-1 block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200',
+                'rows': 4,
+                'placeholder': 'Describe the problem in detail...'
+            }),
+            'severity': forms.Select(attrs={
+                'class': 'form-select rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200'
+            })
+        }
+        help_texts = {
+            'problem_description': (
+                "Provide a detailed description of the problem you encountered. Include:\n\n"
+                "• What happened?\n"
+                "• When did it occur?\n"
+                "• Any symptoms or side effects?\n"
+                "• Any relevant circumstances?\n\n"
+                "This helps us address the issue more effectively."
+            ),
+            'severity': (
+                "Select the severity level of the problem:\n\n"
+                "• NONE: No immediate concerns\n"
+                "• MILD: Minor discomfort or issues\n"
+                "• MODERATE: Noticeable problems requiring attention\n"
+                "• SEVERE: Serious issues requiring immediate action"
+            )
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        if user:
+            # Handle session queryset based on user role
+            if user.role.name == 'PATIENT':
+                self.fields['session'].queryset = PhototherapySession.objects.filter(
+                    plan__patient=user
+                )
+                # Hide reported_by field for patients and set it to themselves
+                self.fields['reported_by'].widget = forms.HiddenInput()
+                self.fields['reported_by'].initial = user
+                self.fields['reported_by'].queryset = User.objects.filter(id=user.id)
+            elif user.role.name in ['ADMIN', 'DOCTOR', 'STAFF']:
+                # For admin/staff, show all sessions and all active users
+                self.fields['session'].queryset = PhototherapySession.objects.all()
+                self.fields['reported_by'].queryset = User.objects.filter(is_active=True)
+                self.fields['reported_by'].initial = user
+            
+            # Add field labels for clarity
+            self.fields['session'].label = "Phototherapy Session"
+            self.fields['reported_by'].label = "Reported By"
+            self.fields['problem_description'].label = "Problem Description"
+            self.fields['severity'].label = "Problem Severity"
+            
+            # Make all fields required
+            for field in self.fields:
+                self.fields[field].required = True
+
+            # Format the help text with proper line breaks for display
+            for field in self.fields:
+                if self.fields[field].help_text:
+                    self.fields[field].help_text = mark_safe(
+                        self.fields[field].help_text.replace('\n', '<br>')
+                    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        session = cleaned_data.get('session')
+        reported_by = cleaned_data.get('reported_by')
+
+        # Additional validation for reported_by field
+        if session and reported_by:
+            # For patients, ensure they can only report their own sessions
+            if reported_by.role.name == 'PATIENT' and session.plan.patient != reported_by:
+                raise ValidationError({
+                    'session': 'You can only report problems for your own sessions.'
+                })
+
+        return cleaned_data
