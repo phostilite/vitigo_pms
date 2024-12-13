@@ -1,0 +1,270 @@
+{% extends "../base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'phototherapy_management' %}" class="hover:text-blue-600"><i class="fas fa-laptop-medical mr-2"></i>Phototherapy</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Reminder Management</li>
+        </ol>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Reminder Management</h1>
+            <p class="text-sm text-gray-600">Monitor and manage phototherapy reminders</p>
+        </div>
+        <div class="flex space-x-3">
+            <button class="bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 flex items-center">
+                <i class="fas fa-bell mr-2"></i>
+                Send All Reminders
+            </button>
+            <button onclick="window.location='{% url 'create_reminder' %}'" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center">
+                <i class="fas fa-plus mr-2"></i>
+                New Reminder
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Today's Reminders -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Today's Reminders</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ today_reminders|default:"0" }}</h3>
+                    <p class="text-sm text-gray-500">Pending for today</p>
+                </div>
+                <div class="rounded-full bg-amber-100 p-3">
+                    <i class="fas fa-calendar-day text-amber-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Reminders -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Total Pending</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ pending_reminders|default:"0" }}</h3>
+                    <p class="text-sm text-gray-500">All scheduled reminders</p>
+                </div>
+                <div class="rounded-full bg-blue-100 p-3">
+                    <i class="fas fa-clock text-blue-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Failed Reminders -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Failed Reminders</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ failed_reminders|default:"0" }}</h3>
+                    <p class="text-sm text-gray-500">Need attention</p>
+                </div>
+                <div class="rounded-full bg-red-100 p-3">
+                    <i class="fas fa-exclamation-circle text-red-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Rate -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Success Rate</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ success_rate|default:"0" }}%</h3>
+                    <p class="text-sm text-gray-500">Last 30 days</p>
+                </div>
+                <div class="rounded-full bg-green-100 p-3">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if reminders %}
+    <!-- Reminders List -->
+    <div class="mt-8">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Patient
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Scheduled For
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for reminder in reminders %}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    {% if reminder.plan.patient.profile_picture %}
+                                    <img class="h-8 w-8 rounded-full" src="{{ reminder.plan.patient.profile_picture.url }}" alt="">
+                                    {% else %}
+                                    <div class="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                        <span class="text-amber-600 text-sm">{{ reminder.plan.patient.get_full_name|slice:":1" }}</span>
+                                    </div>
+                                    {% endif %}
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ reminder.plan.patient.get_full_name }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            ID: {{ reminder.plan.patient.id }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if reminder.reminder_type == 'SESSION' %}
+                                        bg-green-100 text-green-800
+                                    {% elif reminder.reminder_type == 'PAYMENT' %}
+                                        bg-blue-100 text-blue-800
+                                    {% elif reminder.reminder_type == 'FOLLOWUP' %}
+                                        bg-purple-100 text-purple-800
+                                    {% else %}
+                                        bg-gray-100 text-gray-800
+                                    {% endif %}">
+                                    {{ reminder.get_reminder_type_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ reminder.scheduled_datetime|date:"M d, Y" }}</div>
+                                <div class="text-sm text-gray-500">{{ reminder.scheduled_datetime|time:"g:i A" }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if reminder.status == 'PENDING' %}
+                                        bg-yellow-100 text-yellow-800
+                                    {% elif reminder.status == 'SENT' %}
+                                        bg-green-100 text-green-800
+                                    {% elif reminder.status == 'FAILED' %}
+                                        bg-red-100 text-red-800
+                                    {% else %}
+                                        bg-gray-100 text-gray-800
+                                    {% endif %}">
+                                    {{ reminder.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                <button onclick="sendReminder('{{ reminder.id }}')" 
+                                        class="text-amber-600 hover:text-amber-900 transition-colors"
+                                        {% if reminder.status != 'PENDING' %}disabled{% endif %}>
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                                <button onclick="editReminder('{{ reminder.id }}')" 
+                                        class="text-blue-600 hover:text-blue-900 transition-colors">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteReminder('{{ reminder.id }}')" 
+                                        class="text-red-600 hover:text-red-900 transition-colors">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No reminders found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4 rounded-lg">
+        <div class="flex-1 flex justify-between sm:hidden">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" 
+            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Previous
+            </a>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" 
+            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Next
+            </a>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Showing
+                    <span class="font-medium">{{ page_obj.start_index }}</span>
+                    to
+                    <span class="font-medium">{{ page_obj.end_index }}</span>
+                    of
+                    <span class="font-medium">{{ page_obj.paginator.count }}</span>
+                    results
+                </p>
+            </div>
+            <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}" 
+                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Previous</span>
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    {% endif %}
+                    
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-amber-500 bg-amber-50 text-sm font-medium text-amber-600">
+                            {{ i }}
+                        </span>
+                        {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                        <a href="?page={{ i }}" 
+                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            {{ i }}
+                        </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" 
+                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Next</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-center mt-8 text-gray-500">
+        No pending reminders found
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

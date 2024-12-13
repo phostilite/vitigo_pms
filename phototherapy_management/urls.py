@@ -6,7 +6,8 @@ from . import (
     schedule_views as sv,
     report_views as rv,
     rfid_views as rf,
-    problem_report_views as pr
+    problem_report_views as pr,
+    reminder_views as rm
 )
 
 urlpatterns = [
@@ -33,4 +34,7 @@ urlpatterns = [
     path('rfid/issue/', rf.RFIDCardIssueView.as_view(), name='rfid_card_issue'),
 
     path('report-problem/', pr.ReportProblemView.as_view(), name='report_problem'),
+
+    path('reminders/', rm.PhototherapyRemindersDashboardView.as_view(), name='reminders_dashboard'),
+    path('reminders/create/', rm.CreatePhototherapyReminderView.as_view(), name='create_reminder'),
 ]

@@ -156,12 +156,12 @@
                         <p class="text-sm text-gray-500">{{ pending_reminders|default:0 }} Pending</p>
                     </div>
                 </div>
-                <button class="bg-amber-100 text-amber-600 p-2 rounded-lg hover:bg-amber-200 transition-colors group-hover:rotate-12 transform">
+                <button onclick="window.location='{% url 'reminders_dashboard' %}'"  class="bg-amber-100 text-amber-600 p-2 rounded-lg hover:bg-amber-200 transition-colors group-hover:rotate-12 transform">
                     <i class="fas fa-bell"></i>
                 </button>
             </div>
             <div class="space-y-3">
-                <a href="#" class="flex items-center p-3 rounded-lg hover:bg-amber-50 transition-colors group/item">
+                <a href="{% url 'create_reminder' %}" class="flex items-center p-3 rounded-lg hover:bg-amber-50 transition-colors group/item">
                     <i class="fas fa-clock text-amber-500 mr-3 group-hover/item:scale-110 transition-transform"></i>
                     <div>
                         <p class="text-sm font-medium text-gray-700">Schedule Reminders</p>

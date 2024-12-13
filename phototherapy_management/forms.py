@@ -1,10 +1,11 @@
 # phototherapy_management/forms.py
 from django import forms
-from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession, ProblemReport
+from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession, ProblemReport, PhototherapyReminder
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 import logging
 from django.utils.safestring import mark_safe
+from django.utils import timezone
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -536,3 +537,90 @@ class ProblemReportForm(forms.ModelForm):
                 })
 
         return cleaned_data
+    
+
+class PhototherapyReminderForm(forms.ModelForm):
+    scheduled_datetime = forms.DateTimeField(
+        widget=forms.DateTimeInput(
+            attrs={
+                'type': 'datetime-local',
+                'class': 'form-input rounded-lg w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500'
+            }
+        ),
+        help_text="Schedule a future date and time for the reminder. Must be at least 30 minutes from now."
+    )
+
+    class Meta:
+        model = PhototherapyReminder
+        fields = ['plan', 'reminder_type', 'scheduled_datetime', 'message']
+        widgets = {
+            'plan': forms.Select(attrs={
+                'class': 'form-select rounded-lg w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500'
+            }),
+            'reminder_type': forms.Select(attrs={
+                'class': 'form-select rounded-lg w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500'
+            }),
+            'message': forms.Textarea(attrs={
+                'class': 'form-textarea rounded-lg w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500',
+                'rows': 4,
+                'placeholder': (
+                    "Dear {patient_name}, your phototherapy session is scheduled for {appointment_time}. "
+                    "Please arrive 10 minutes before your appointment time.\n\n"
+                    "Message will be automatically formatted with the patient's details."
+                )
+            }),
+        }
+        help_texts = {
+            'plan': "Select an active treatment plan for the patient.",
+            'reminder_type': mark_safe(
+                "SESSION: For upcoming phototherapy sessions<br>"
+                "PAYMENT: For pending payments<br>"
+                "FOLLOWUP: For follow-up appointments<br>"
+                "MAINTENANCE: For equipment maintenance"
+            ),
+            'message': mark_safe(
+                "Available variables for message:<br>"
+                "{patient_name} - Patient's full name<br>"
+                "{appointment_time} - Scheduled time<br>"
+                "{treatment_type} - Type of treatment<br>"
+                "{clinic_name} - Name of the clinic<br><br>"
+                "Message will be sent in the patient's preferred language."
+            ),
+        }
+        labels = {
+            'plan': 'Treatment Plan',
+            'reminder_type': 'Type of Reminder',
+            'scheduled_datetime': 'Schedule For',
+            'message': 'Reminder Message'
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['plan'].queryset = self.fields['plan'].queryset.filter(
+            is_active=True
+        ).select_related('patient').order_by('patient__first_name')
+        
+        self.fields['plan'].label_from_instance = lambda obj: (
+            f"{obj.patient.get_full_name()} - {obj.protocol.name}"
+        )
+
+    def clean_scheduled_datetime(self):
+        scheduled_datetime = self.cleaned_data.get('scheduled_datetime')
+        if scheduled_datetime:
+            min_time = timezone.now() + timezone.timedelta(minutes=30)
+            if scheduled_datetime < min_time:
+                raise forms.ValidationError(
+                    "Scheduled time must be at least 30 minutes from now"
+                )
+        return scheduled_datetime
+
+    def clean_message(self):
+        message = self.cleaned_data.get('message')
+        reminder_type = self.cleaned_data.get('reminder_type')
+        
+        if reminder_type in ['SESSION', 'FOLLOWUP', 'PAYMENT'] and '{patient_name}' not in message:
+            raise forms.ValidationError("Message must include {patient_name} for patient reminders")
+        if reminder_type == 'SESSION' and '{appointment_time}' not in message:
+            raise forms.ValidationError("Session reminders must include {appointment_time}")
+            
+        return message
