@@ -95,9 +95,17 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
 
     def get_context_data(self):
         try:
+            # Initialize base context with revenue calculation first
+            initial_context = {
+                'revenue_this_month': PhototherapyPayment.objects.filter(
+                    payment_date__month=timezone.now().month,
+                    status='COMPLETED'
+                ).aggregate(total=models.Sum('amount'))['total'] or 0
+            }
+
             # Get all plans with optimized queries
             plans = PhototherapyPlan.objects.select_related(
-                'patient',  # Changed: removed user reference
+                'patient',
                 'protocol__phototherapy_type',
                 'rfid_card',
                 'created_by'
@@ -107,13 +115,51 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'progress_records'
             ).order_by('-created_at')
 
-            # Calculate statistics
+            # Basic statistics with safe defaults
             active_plans = plans.filter(is_active=True)
-            completed_sessions = PhototherapySession.objects.filter(status='COMPLETED')
-            missed_sessions = PhototherapySession.objects.filter(status='MISSED')
-            devices = PhototherapyDevice.objects.filter(is_active=True)
+            active_plans_count = active_plans.count()
+
+            # Calculate growth rates first
+            last_month_active_plans = PhototherapyPlan.objects.filter(
+                is_active=True,
+                created_at__lte=timezone.now() - timedelta(days=30)
+            ).count()
+
+            active_plans_growth = (
+                round(((active_plans_count - last_month_active_plans) / last_month_active_plans) * 100)
+                if last_month_active_plans > 0
+                else 0
+            )
+
+            last_month_revenue = PhototherapyPayment.objects.filter(
+                payment_date__month=(timezone.now() - timedelta(days=30)).month,
+                status='COMPLETED'
+            ).aggregate(total=models.Sum('amount'))['total'] or 0
+
+            revenue_growth = (
+                round(((initial_context['revenue_this_month'] - last_month_revenue) / last_month_revenue) * 100)
+                if last_month_revenue > 0
+                else 0
+            )
+
+            # Session distribution calculation
+            all_completed_sessions = PhototherapySession.objects.filter(
+                scheduled_date__month=timezone.now().month,
+                status='COMPLETED'
+            ).select_related('plan__protocol__phototherapy_type')
+
+            total_sessions = all_completed_sessions.count()
+            
+            session_distribution = {}
+            for therapy_type in PhototherapyType.THERAPY_CHOICES:
+                type_key = therapy_type[0]
+                count = all_completed_sessions.filter(
+                    plan__protocol__phototherapy_type__therapy_type=type_key
+                ).count()
+                session_distribution[type_key] = round((count / total_sessions) * 100) if total_sessions > 0 else 0
 
             # Get devices needing maintenance
+            devices = PhototherapyDevice.objects.filter(is_active=True)
             devices_needing_maintenance = devices.filter(
                 next_maintenance_date__lte=timezone.now().date()
             ).count()
@@ -208,16 +254,24 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
             compliance_change = overall_compliance - last_month_compliance
 
             context = {
-                'phototherapy_types': PhototherapyType.objects.filter(is_active=True) or [],
-                'protocols': PhototherapyProtocol.objects.filter(is_active=True) or [],
-                'phototherapy_plans': plans or [],
-                'devices': devices or [],
+                # Basic data
+                'phototherapy_types': PhototherapyType.objects.filter(is_active=True),
+                'protocols': PhototherapyProtocol.objects.filter(is_active=True),
+                'phototherapy_plans': plans,
+                'devices': PhototherapyDevice.objects.filter(is_active=True),
                 'patients': patients,
                 
-                # Statistics with safe defaults
+                # Growth statistics
+                'active_plans_growth': active_plans_growth,
+                'revenue_growth': revenue_growth,
+                
+                # Distribution statistics
+                'session_distribution': session_distribution,
+                
+                # Add other existing context items...
                 'active_plans': getattr(active_plans, 'count', lambda: 0)(),
-                'completed_sessions': getattr(completed_sessions, 'count', lambda: 0)(),
-                'missed_sessions': getattr(missed_sessions, 'count', lambda: 0)(),
+                'completed_sessions': getattr(PhototherapySession.objects.filter(status='COMPLETED'), 'count', lambda: 0)(),
+                'missed_sessions': getattr(PhototherapySession.objects.filter(status='MISSED'), 'count', lambda: 0)(),
                 'active_devices': getattr(devices, 'count', lambda: 0)(),
                 'maintenance_needed': devices_needing_maintenance or 0,
                 
@@ -225,10 +279,7 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'total_sessions_this_month': PhototherapySession.objects.filter(
                     scheduled_date__month=timezone.now().month
                 ).count() or 0,
-                'revenue_this_month': PhototherapyPayment.objects.filter(
-                    payment_date__month=timezone.now().month,
-                    status='COMPLETED'
-                ).aggregate(total=models.Sum('amount'))['total'] or 0,
+                'revenue_this_month': initial_context['revenue_this_month'],
                 'therapy_types_count': therapy_types_count,
                 'home_therapy_count': home_therapy_count,
                 'compliance_rate': compliance_rate,
@@ -287,6 +338,14 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                     'completion_rate': 0,
                     'target_rate': 90,
                     'last_month_rate': 0
+                },
+                'active_plans_growth': 0,
+                'revenue_growth': 0,
+                'session_distribution': {
+                    'WB_NB': 0,
+                    'EXCIMER': 0,
+                    'HOME_NB': 0,
+                    'SUN_EXP': 0
                 },
             }
         

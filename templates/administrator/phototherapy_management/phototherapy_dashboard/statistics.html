@@ -29,8 +29,9 @@
             <h3 class="text-3xl font-bold text-gray-700">{{ active_plans }}</h3>
             <span class="text-base font-medium text-gray-500 mt-1">Active Plans</span>
             <div class="mt-4 flex items-center text-sm">
-                <span class="text-green-500 flex items-center bg-green-50 px-2 py-1 rounded-full">
-                    <i class="fas fa-arrow-up mr-1"></i>3%
+                <span class="{% if active_plans_growth > 0 %}text-green-500{% else %}text-red-500{% endif %} flex items-center bg-gray-50 px-2 py-1 rounded-full">
+                    <i class="fas fa-{% if active_plans_growth > 0 %}arrow-up{% else %}arrow-down{% endif %} mr-1"></i>
+                    {{ active_plans_growth|abs_value }}%
                 </span>
                 <span class="text-gray-400 ml-2">vs last month</span>
             </div>
@@ -137,8 +138,9 @@
             <h3 class="text-3xl font-bold text-gray-700">${{ revenue_this_month|floatformat:2 }}</h3>
             <span class="text-base font-medium text-gray-500 mt-1">Monthly Revenue</span>
             <div class="mt-4 flex items-center text-sm">
-                <span class="text-green-500 flex items-center bg-green-50 px-2 py-1 rounded-full">
-                    <i class="fas fa-arrow-up mr-1"></i>5%
+                <span class="{% if revenue_growth > 0 %}text-green-500{% else %}text-red-500{% endif %} flex items-center bg-gray-50 px-2 py-1 rounded-full">
+                    <i class="fas fa-{% if revenue_growth > 0 %}arrow-up{% else %}arrow-down{% endif %} mr-1"></i>
+                    {{ revenue_growth|abs_value }}%
                 </span>
                 <span class="text-gray-400 ml-2">vs last month</span>
             </div>
@@ -292,40 +294,51 @@
             Session Distribution
         </h3>
         <div class="space-y-4">
+            <!-- Whole Body NB -->
             <div class="group">
                 <div class="flex justify-between mb-2">
                     <span class="text-sm font-medium text-gray-600">Whole Body NB</span>
-                    <span class="text-sm font-semibold text-blue-600">45%</span>
+                    <span class="text-sm font-semibold text-blue-600">{{ session_distribution.WB_NB|default:0 }}%</span>
                 </div>
                 <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-blue-600" style="width: 45%"></div>
+                    <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-blue-600" 
+                         style="width: {{ session_distribution.WB_NB|default:0 }}%"></div>
                 </div>
             </div>
+
+            <!-- Excimer -->
             <div class="group">
                 <div class="flex justify-between mb-2">
                     <span class="text-sm font-medium text-gray-600">Excimer</span>
-                    <span class="text-sm font-semibold text-purple-600">30%</span>
+                    <span class="text-sm font-semibold text-purple-600">{{ session_distribution.EXCIMER }}%</span>
                 </div>
                 <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div class="bg-purple-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-purple-600" style="width: 30%"></div>
+                    <div class="bg-purple-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-purple-600" 
+                         style="width: {{ session_distribution.EXCIMER }}%"></div>
                 </div>
             </div>
+
+            <!-- Home Based NB -->
             <div class="group">
                 <div class="flex justify-between mb-2">
                     <span class="text-sm font-medium text-gray-600">Home Based NB</span>
-                    <span class="text-sm font-semibold text-green-600">15%</span>
+                    <span class="text-sm font-semibold text-green-600">{{ session_distribution.HOME_NB }}%</span>
                 </div>
                 <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div class="bg-green-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-green-600" style="width: 15%"></div>
+                    <div class="bg-green-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-green-600" 
+                         style="width: {{ session_distribution.HOME_NB }}%"></div>
                 </div>
             </div>
+
+            <!-- Sun Exposure -->
             <div class="group">
                 <div class="flex justify-between mb-2">
                     <span class="text-sm font-medium text-gray-600">Sun Exposure</span>
-                    <span class="text-sm font-semibold text-yellow-600">10%</span>
+                    <span class="text-sm font-semibold text-yellow-600">{{ session_distribution.SUN_EXP }}%</span>
                 </div>
                 <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div class="bg-yellow-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-yellow-600" style="width: 10%"></div>
+                    <div class="bg-yellow-500 h-2.5 rounded-full transition-all duration-300 group-hover:bg-yellow-600" 
+                         style="width: {{ session_distribution.SUN_EXP }}%"></div>
                 </div>
             </div>
         </div>
