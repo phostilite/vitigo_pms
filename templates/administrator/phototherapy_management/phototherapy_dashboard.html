@@ -56,17 +56,13 @@
                     <i class="fas fa-chevron-down ml-2 text-sm"></i>
                 </button>
                 <div id="exportDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
-                    <a href="#" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <a href="{% url 'phototherapy_export' %}?format=excel" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
                         <i class="fas fa-file-excel mr-3 text-green-600"></i>
                         <span class="text-sm text-gray-700">Export to Excel</span>
                     </a>
-                    <a href="#" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <a href="{% url 'phototherapy_export' %}?format=pdf" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
                         <i class="fas fa-file-pdf mr-3 text-red-600"></i>
                         <span class="text-sm text-gray-700">Export to PDF</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-print mr-3 text-blue-600"></i>
-                        <span class="text-sm text-gray-700">Print Report</span>
                     </a>
                 </div>
             </div>
