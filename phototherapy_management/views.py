@@ -162,6 +162,18 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 else 0
             )
 
+            # Calculate today's sessions
+            today = timezone.now().date()
+            today_sessions = PhototherapySession.objects.filter(
+                scheduled_date=today
+            )
+            
+            sessions_today = today_sessions.count()
+            completed_today = today_sessions.filter(status='COMPLETED').count()
+            pending_today = today_sessions.filter(
+                status__in=['SCHEDULED', 'RESCHEDULED']
+            ).count()
+
             context = {
                 'phototherapy_types': PhototherapyType.objects.filter(is_active=True) or [],
                 'protocols': PhototherapyProtocol.objects.filter(is_active=True) or [],
@@ -189,6 +201,11 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'compliance_rate': compliance_rate,
                 'active_home_patients': active_home_therapy_patients,
                 'total_home_logs_this_month': recent_home_logs.count(),
+
+                # Today's sessions statistics
+                'sessions_today': sessions_today,
+                'completed_today': completed_today,
+                'pending_today': pending_today,
             }
 
             return context
@@ -213,6 +230,9 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'compliance_rate': 0,
                 'active_home_patients': 0,
                 'total_home_logs_this_month': 0,
+                'sessions_today': 0,
+                'completed_today': 0,
+                'pending_today': 0,
             }
         
 
