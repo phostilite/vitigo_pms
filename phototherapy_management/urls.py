@@ -8,7 +8,8 @@ from . import (
     rfid_views as rf,
     problem_report_views as pr,
     reminder_views as rm,
-    export_views as ev
+    export_views as ev,
+    home_views as hv
 )
 
 urlpatterns = [
@@ -40,4 +41,6 @@ urlpatterns = [
     path('reminders/create/', rm.CreatePhototherapyReminderView.as_view(), name='create_reminder'),
 
     path('export/', ev.PhototherapyDashboardExportView.as_view(), name='phototherapy_export'),
+
+    path('home-therapy/logs/', hv.HomeTherapyLogsView.as_view(), name='home_therapy_logs'),
 ]

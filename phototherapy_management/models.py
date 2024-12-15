@@ -340,6 +340,12 @@ class PhototherapySession(models.Model):
 
 class HomePhototherapyLog(models.Model):
     """Tracking home-based phototherapy sessions"""
+    EXPOSURE_CHOICES = [
+        ('UVB_DEVICE', 'UVB Device'),
+        ('SUNLIGHT', 'Natural Sunlight'),
+        ('COMBINATION', 'Combined Treatment')
+    ]
+
     plan = models.ForeignKey(
         PhototherapyPlan,
         on_delete=models.CASCADE,
@@ -350,10 +356,8 @@ class HomePhototherapyLog(models.Model):
     duration_minutes = models.PositiveIntegerField()
     exposure_type = models.CharField(
         max_length=20,
-        choices=[
-            ('UVB_DEVICE', 'UVB Device'),
-            ('SUNLIGHT', 'Natural Sunlight')
-        ]
+        choices=EXPOSURE_CHOICES,
+        default='UVB_DEVICE'
     )
     body_areas_treated = models.TextField()
     notes = models.TextField(blank=True)

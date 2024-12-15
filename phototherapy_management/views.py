@@ -253,6 +253,19 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
 
             compliance_change = overall_compliance - last_month_compliance
 
+            # Calculate treatment distribution
+            active_treatments = PhototherapyPlan.objects.filter(is_active=True)
+            active_treatments_count = active_treatments.count()
+
+            # Get distribution by therapy type
+            treatment_distribution = {}
+            for therapy_type in PhototherapyType.THERAPY_CHOICES:
+                count = active_treatments.filter(
+                    protocol__phototherapy_type__therapy_type=therapy_type[0]
+                ).count()
+                if count > 0:  # Only include types that have active treatments
+                    treatment_distribution[therapy_type[1]] = count
+
             context = {
                 # Basic data
                 'phototherapy_types': PhototherapyType.objects.filter(is_active=True),
@@ -263,7 +276,6 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 
                 # Growth statistics
                 'active_plans_growth': active_plans_growth,
-                'revenue_growth': revenue_growth,
                 
                 # Distribution statistics
                 'session_distribution': session_distribution,
@@ -279,7 +291,6 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'total_sessions_this_month': PhototherapySession.objects.filter(
                     scheduled_date__month=timezone.now().month
                 ).count() or 0,
-                'revenue_this_month': initial_context['revenue_this_month'],
                 'therapy_types_count': therapy_types_count,
                 'home_therapy_count': home_therapy_count,
                 'compliance_rate': compliance_rate,
@@ -302,6 +313,10 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                     'target_rate': 90,  # You can make this configurable
                     'last_month_rate': last_month_compliance
                 },
+
+                # Treatment distribution
+                'active_treatments_count': active_treatments_count,
+                'treatment_distribution': treatment_distribution,
             }
 
             return context
@@ -320,7 +335,6 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'active_devices': 0,
                 'maintenance_needed': 0,
                 'total_sessions_this_month': 0,
-                'revenue_this_month': 0,
                 'therapy_types_count': 0,
                 'home_therapy_count': 0,
                 'compliance_rate': 0,
@@ -340,13 +354,14 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                     'last_month_rate': 0
                 },
                 'active_plans_growth': 0,
-                'revenue_growth': 0,
                 'session_distribution': {
                     'WB_NB': 0,
                     'EXCIMER': 0,
                     'HOME_NB': 0,
                     'SUN_EXP': 0
                 },
+                'active_treatments_count': 0,
+                'treatment_distribution': {},
             }
         
 
