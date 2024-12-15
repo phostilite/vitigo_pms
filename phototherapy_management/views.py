@@ -1,5 +1,6 @@
 # Standard library imports
 import logging
+from datetime import timedelta
 
 # Django core imports
 from django.contrib import messages
@@ -16,6 +17,7 @@ from django.db.models import Q, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 
+
 # Local application imports
 from access_control.models import Role
 from access_control.permissions import PermissionManager
@@ -27,7 +29,8 @@ from .models import (
     PhototherapyProtocol,
     PhototherapySession,
     PhototherapyType,
-    PhototherapyPayment
+    PhototherapyPayment,
+    HomePhototherapyLog
 )
 from .forms import TreatmentPlanForm, PhototherapyTypeForm
 from .utils import get_template_path
@@ -120,6 +123,45 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 role__name='PATIENT'
             ).select_related('role').all()
 
+            # Calculate therapy types count
+            therapy_types_count = PhototherapyType.objects.filter(is_active=True).count()
+
+            # Calculate home therapy statistics
+            home_therapy_plans = PhototherapyPlan.objects.filter(
+                is_active=True,
+                protocol__phototherapy_type__therapy_type='HOME_NB'  # Changed from 'HOME' to match model's THERAPY_CHOICES
+            )
+
+            # Get unique patients who have home therapy logs in the last 30 days
+            active_home_therapy_patients = HomePhototherapyLog.objects.filter(
+                date__gte=timezone.now().date() - timedelta(days=30)
+            ).values('plan__patient').distinct().count()
+
+            # Use the higher count between plans and active patients
+            home_therapy_count = max(
+                home_therapy_plans.count(),
+                active_home_therapy_patients
+            )
+
+            # Calculate compliance rate for home therapy
+            recent_home_logs = HomePhototherapyLog.objects.filter(
+                plan__in=home_therapy_plans,
+                date__gte=timezone.now().date() - timedelta(days=30)
+            ).values('plan', 'date').distinct()
+
+            total_expected_sessions = sum(
+                plan.protocol.frequency_per_week * 4  # Monthly expected sessions
+                for plan in home_therapy_plans
+            )
+
+            actual_sessions = recent_home_logs.count()
+
+            compliance_rate = (
+                round((actual_sessions / total_expected_sessions) * 100)
+                if total_expected_sessions > 0
+                else 0
+            )
+
             context = {
                 'phototherapy_types': PhototherapyType.objects.filter(is_active=True) or [],
                 'protocols': PhototherapyProtocol.objects.filter(is_active=True) or [],
@@ -142,6 +184,11 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                     payment_date__month=timezone.now().month,
                     status='COMPLETED'
                 ).aggregate(total=models.Sum('amount'))['total'] or 0,
+                'therapy_types_count': therapy_types_count,
+                'home_therapy_count': home_therapy_count,
+                'compliance_rate': compliance_rate,
+                'active_home_patients': active_home_therapy_patients,
+                'total_home_logs_this_month': recent_home_logs.count(),
             }
 
             return context
@@ -161,6 +208,11 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'maintenance_needed': 0,
                 'total_sessions_this_month': 0,
                 'revenue_this_month': 0,
+                'therapy_types_count': 0,
+                'home_therapy_count': 0,
+                'compliance_rate': 0,
+                'active_home_patients': 0,
+                'total_home_logs_this_month': 0,
             }
         
 
