@@ -30,3 +30,11 @@ def date_offset(value, days):
     """Add days to a date string"""
     date = parse_date(value) if isinstance(value, str) else value
     return (date + timedelta(days=int(days))).strftime('%Y-%m-%d')
+
+@register.filter
+def abs_value(value):
+    """Return absolute value"""
+    try:
+        return abs(int(value))
+    except (ValueError, TypeError):
+        return 0

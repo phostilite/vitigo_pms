@@ -174,6 +174,39 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 status__in=['SCHEDULED', 'RESCHEDULED']
             ).count()
 
+            # Calculate overall compliance statistics
+            all_sessions = PhototherapySession.objects.filter(
+                scheduled_date__lte=timezone.now().date()
+            )
+            total_scheduled = all_sessions.count()
+            total_completed = all_sessions.filter(status='COMPLETED').count()
+            total_missed = all_sessions.filter(status='MISSED').count()
+
+            # Calculate overall compliance rate
+            overall_compliance = (
+                round((total_completed / total_scheduled) * 100)
+                if total_scheduled > 0
+                else 0
+            )
+
+            # Calculate month-over-month change
+            last_month = timezone.now().date() - timedelta(days=30)
+            last_month_completed = PhototherapySession.objects.filter(
+                scheduled_date__lte=last_month,
+                status='COMPLETED'
+            ).count()
+            last_month_total = PhototherapySession.objects.filter(
+                scheduled_date__lte=last_month
+            ).count()
+
+            last_month_compliance = (
+                round((last_month_completed / last_month_total) * 100)
+                if last_month_total > 0
+                else 0
+            )
+
+            compliance_change = overall_compliance - last_month_compliance
+
             context = {
                 'phototherapy_types': PhototherapyType.objects.filter(is_active=True) or [],
                 'protocols': PhototherapyProtocol.objects.filter(is_active=True) or [],
@@ -206,6 +239,18 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'sessions_today': sessions_today,
                 'completed_today': completed_today,
                 'pending_today': pending_today,
+
+                # Compliance statistics
+                'compliance_stats': {
+                    'overall_rate': overall_compliance,
+                    'monthly_change': compliance_change,
+                    'total_scheduled': total_scheduled,
+                    'total_completed': total_completed,
+                    'total_missed': total_missed,
+                    'completion_rate': overall_compliance,
+                    'target_rate': 90,  # You can make this configurable
+                    'last_month_rate': last_month_compliance
+                },
             }
 
             return context
@@ -233,6 +278,16 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 'sessions_today': 0,
                 'completed_today': 0,
                 'pending_today': 0,
+                'compliance_stats': {
+                    'overall_rate': 0,
+                    'monthly_change': 0,
+                    'total_scheduled': 0,
+                    'total_completed': 0,
+                    'total_missed': 0,
+                    'completion_rate': 0,
+                    'target_rate': 90,
+                    'last_month_rate': 0
+                },
             }
         
 
