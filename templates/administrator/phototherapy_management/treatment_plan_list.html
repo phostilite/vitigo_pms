@@ -14,19 +14,96 @@
         </ol>
     </nav>
 
-    <!-- Page Header with Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="text-gray-500 text-sm">Total Plans</h3>
-            <p class="text-2xl font-bold">{{ total_plans }}</p>
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Treatment Plans</h1>
+            <p class="text-sm text-gray-600">Manage patient phototherapy treatment plans</p>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="text-gray-500 text-sm">Active Plans</h3>
-            <p class="text-2xl font-bold text-green-600">{{ active_plans }}</p>
+        <div class="flex space-x-3">
+            <a href="{% url 'new_treatment_plan' %}" 
+               class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center">
+                <i class="fas fa-plus-circle mr-2"></i>
+                New Treatment Plan
+            </a>
+            <div class="relative">
+                <button id="exportDropdownButton" data-dropdown-toggle="exportDropdown" 
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
+                    <i class="fas fa-download mr-2"></i>
+                    Export Plans
+                </button>
+                <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
+                    <ul class="py-2">
+                        <li>
+                            <a href="#" 
+                               class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-file-excel mr-2"></i> Excel Export
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" 
+                               class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-file-pdf mr-2"></i> PDF Export
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-            <h3 class="text-gray-500 text-sm">Completed Plans</h3>
-            <p class="text-2xl font-bold text-blue-600">{{ completed_plans }}</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Total Plans -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Total Plans</p>
+                    <h3 class="text-2xl font-bold text-gray-700">{{ total_plans }}</h3>
+                </div>
+                <div class="rounded-full bg-blue-100 p-3">
+                    <i class="fas fa-clipboard-list text-blue-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Plans -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Active Plans</p>
+                    <h3 class="text-2xl font-bold text-green-600">{{ active_plans }}</h3>
+                </div>
+                <div class="rounded-full bg-green-100 p-3">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Plans -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Completed Plans</p>
+                    <h3 class="text-2xl font-bold text-blue-600">{{ completed_plans }}</h3>
+                </div>
+                <div class="rounded-full bg-blue-100 p-3">
+                    <i class="fas fa-flag-checkered text-blue-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Rate -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-500">Success Rate</p>
+                    <h3 class="text-2xl font-bold text-purple-600">{{ success_rate|default:"85" }}%</h3>
+                </div>
+                <div class="rounded-full bg-purple-100 p-3">
+                    <i class="fas fa-chart-line text-purple-500"></i>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -185,4 +262,25 @@
         {% endif %}
     </div>
 </div>
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Dropdown functionality
+        const exportDropdownButton = document.getElementById('exportDropdownButton');
+        const exportDropdown = document.getElementById('exportDropdown');
+
+        exportDropdownButton.addEventListener('click', function() {
+            exportDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!exportDropdownButton.contains(event.target) && !exportDropdown.contains(event.target)) {
+                exportDropdown.classList.add('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}
+
 {% endblock %}
