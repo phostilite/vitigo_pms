@@ -793,3 +793,35 @@ class EditPhototherapyTypeView(LoginRequiredMixin, View):
         return redirect('therapy_types_dashboard')
 
 
+@method_decorator(csrf_protect, name='dispatch')
+class DeletePhototherapyTypeView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_delete(request.user, 'phototherapy_management'):
+                messages.error(request, "You don't have permission to delete phototherapy types")
+                return handler403(request)
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in delete phototherapy type dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('therapy_types_dashboard')
+
+    def post(self, request, pk):
+        try:
+            therapy_type = get_object_or_404(PhototherapyType, pk=pk)
+            
+            # Check if there are any active protocols using this type
+            if therapy_type.phototherapyprotocol_set.filter(is_active=True).exists():
+                messages.error(request, "Cannot delete phototherapy type that has active protocols")
+                return redirect('therapy_types_dashboard')
+            
+            therapy_type.delete()
+            messages.success(request, "Phototherapy type deleted successfully")
+            
+        except Exception as e:
+            logger.error(f"Error deleting phototherapy type: {str(e)}")
+            messages.error(request, "Error deleting phototherapy type")
+            
+        return redirect('therapy_types_dashboard')
+
+
