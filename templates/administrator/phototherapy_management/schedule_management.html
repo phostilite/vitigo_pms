@@ -142,6 +142,10 @@
                 <div class="mb-1 p-1.5 rounded text-xs {% if session.status == 'COMPLETED' %}bg-green-100 text-green-800{% elif session.status == 'CANCELLED' %}bg-red-100 text-red-800{% elif session.status == 'MISSED' %}bg-yellow-100 text-yellow-800{% else %}bg-blue-100 text-blue-800{% endif %}">
                     <div class="font-medium">{{ session.scheduled_time|time:"H:i" }}</div>
                     <div class="truncate">{{ session.plan.patient.get_full_name }}</div>
+                    <a href="{% url 'session_detail' session.id %}" 
+                       class="text-xs hover:underline mt-1 block">
+                        View Details
+                    </a>
                 </div>
                 {% endfor %}
                 {% endwith %}
@@ -206,7 +210,10 @@
                                 <button class="text-green-500 hover:text-green-700"><i class="fas fa-play"></i></button>
                                 <button class="text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button>
                                 {% endif %}
-                                <button class="text-blue-500 hover:text-blue-700"><i class="fas fa-eye"></i></button>
+                                <a href="{% url 'session_detail' session.id %}" 
+                                   class="text-blue-500 hover:text-blue-700">
+                                    <i class="fas fa-eye"></i>
+                                </a>
                                 <button class="text-purple-500 hover:text-purple-700"><i class="fas fa-edit"></i></button>
                             </div>
                         </td>

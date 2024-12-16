@@ -243,3 +243,36 @@ class ScheduleSessionView(LoginRequiredMixin, CreateView):
         except Exception as e:
             logger.error(f"Error getting template: {str(e)}")
             return ['phototherapy_management/default_schedule_session.html']
+
+
+class SessionDetailView(LoginRequiredMixin, View):
+    def get(self, request, session_id):
+        try:
+            # Get session with related data
+            session = PhototherapySession.objects.select_related(
+                'plan__patient__patient_profile__user',
+                'plan__protocol',
+                'device',
+                'administered_by'
+            ).get(id=session_id)
+
+            context = {
+                'session': session,
+                'problem_reports': session.problem_reports.all()
+            }
+
+            template_path = get_template_path(
+                'session_detail.html',
+                request.user.role,
+                'phototherapy_management'
+            )
+
+            return render(request, template_path, context)
+
+        except PhototherapySession.DoesNotExist:
+            messages.error(request, "Session not found")
+            return redirect('schedule_management')
+        except Exception as e:
+            logger.error(f"Error viewing session details: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while loading session details")
+            return redirect('schedule_management')

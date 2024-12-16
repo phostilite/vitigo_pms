@@ -30,6 +30,7 @@ urlpatterns = [
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
     path('schedule-session/', sv.ScheduleSessionView.as_view(), name='schedule_session'),
+    path('session/<int:session_id>/', sv.SessionDetailView.as_view(), name='session_detail'),
 
     path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
 
