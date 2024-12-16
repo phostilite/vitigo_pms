@@ -55,6 +55,7 @@ urlpatterns = [
     path('rfid-dashboard/', rf.RFIDDashboardView.as_view(), name='rfid_dashboard'),
     path('rfid/issue/', rf.RFIDCardIssueView.as_view(), name='rfid_card_issue'),
     path('rfid/<int:pk>/edit/', rf.RFIDCardEditView.as_view(), name='edit_rfid_card'),
+    path('rfid/export/', ev.RFIDCardExportView.as_view(), name='export_rfid_cards'),
 
     path('report-problem/', pr.ReportProblemView.as_view(), name='report_problem'),
 

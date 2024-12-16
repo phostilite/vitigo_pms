@@ -2,12 +2,13 @@ from datetime import datetime
 import logging
 from io import BytesIO
 import xlsxwriter
+import csv
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponse
 from django.utils import timezone
 from django.views import View
-from django.db.models import Count, Avg, Sum
+from django.db.models import Count, Avg, Sum, Q
 from django.db import models
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
@@ -20,7 +21,7 @@ from datetime import timedelta
 from access_control.permissions import PermissionManager
 from .models import (
     PhototherapyPlan, PhototherapySession, PhototherapyDevice,
-    PhototherapyType, PhototherapyPayment, PhototherapyProgress, PhototherapyProtocol, ProblemReport, DeviceMaintenance
+    PhototherapyType, PhototherapyPayment, PhototherapyProgress, PhototherapyProtocol, ProblemReport, DeviceMaintenance, PatientRFIDCard
 )
 
 logger = logging.getLogger(__name__)
@@ -1110,6 +1111,199 @@ class TreatmentPlanExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         return response
 
     def get_table_style(self):
+        return TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ])
+
+class RFIDCardExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'phototherapy_management')
+
+    def get(self, request):
+        try:
+            export_format = request.GET.get('format', 'excel')
+            data = self.gather_rfid_data()
+            
+            if export_format == 'excel':
+                return self.export_excel(data)
+            elif export_format == 'pdf':
+                return self.export_pdf(data)
+            elif export_format == 'csv':
+                return self.export_csv(data)
+            else:
+                return HttpResponse('Invalid format specified', status=400)
+        except Exception as e:
+            logger.error(f"RFID card export error: {str(e)}")
+            messages.error(request, "Failed to export RFID card data")
+            return redirect('rfid_dashboard')
+
+    def gather_rfid_data(self):
+        """Gather all RFID card related data"""
+        now = timezone.now()
+        cards = PatientRFIDCard.objects.select_related(
+            'patient'
+        ).annotate(
+            active_plans=Count('patient__phototherapy_plans',
+                filter=Q(patient__phototherapy_plans__is_active=True))
+        ).order_by('-assigned_date')
+
+        return {
+            'cards': cards,
+            'total_cards': cards.count(),
+            'active_cards': cards.filter(is_active=True, expires_at__gt=now).count(),
+            'expired_cards': cards.filter(expires_at__lte=now).count(),
+            'export_date': now
+        }
+
+    def export_excel(self, data):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'fg_color': '#4B5563',
+            'font_color': 'white',
+            'border': 1
+        })
+        cell_format = workbook.add_format({'border': 1})
+        date_format = workbook.add_format({'border': 1, 'num_format': 'yyyy-mm-dd'})
+
+        # Create sheet
+        sheet = workbook.add_worksheet('RFID Cards')
+        
+        headers = [
+            'Card Number',
+            'Patient Name',
+            'Patient Email',
+            'Status',
+            'Assigned Date',
+            'Expiry Date',
+            'Last Used',
+            'Active Plans',
+            'Notes'
+        ]
+
+        # Set column widths
+        widths = [20, 30, 35, 15, 15, 15, 15, 15, 40]
+        for i, width in enumerate(widths):
+            sheet.set_column(i, i, width)
+
+        # Write headers
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+
+        # Write data
+        for row, card in enumerate(data['cards'], start=1):
+            sheet.write(row, 0, card.card_number, cell_format)
+            sheet.write(row, 1, card.patient.get_full_name(), cell_format)
+            sheet.write(row, 2, card.patient.email, cell_format)
+            sheet.write(row, 3, 'Active' if card.is_active else 'Inactive', cell_format)
+            sheet.write(row, 4, card.assigned_date.strftime('%Y-%m-%d'), date_format)
+            sheet.write(row, 5, card.expires_at.strftime('%Y-%m-%d'), date_format)
+            sheet.write(row, 6, card.last_used.strftime('%Y-%m-%d') if card.last_used else 'Never', cell_format)
+            sheet.write(row, 7, card.active_plans, cell_format)
+            sheet.write(row, 8, card.notes or '', cell_format)
+
+        workbook.close()
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=rfid_cards_{timezone.now().strftime("%Y%m%d")}.xlsx'
+        return response
+
+    def export_pdf(self, data):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename=rfid_cards_{timezone.now().strftime("%Y%m%d")}.pdf'
+
+        doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title
+        elements.append(Paragraph('RFID Cards Report', styles['Heading1']))
+        elements.append(Paragraph(f'Generated on: {data["export_date"].strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Summary statistics
+        summary_data = [
+            ['Total Cards', str(data['total_cards'])],
+            ['Active Cards', str(data['active_cards'])],
+            ['Expired Cards', str(data['expired_cards'])]
+        ]
+        summary_table = Table(summary_data, colWidths=[200, 100])
+        summary_table.setStyle(self.get_table_style())
+        elements.append(summary_table)
+        elements.append(Spacer(1, 20))
+
+        # Cards table
+        cards_data = [['Card Number', 'Patient', 'Status', 'Expiry Date', 'Active Plans']]
+        for card in data['cards']:
+            cards_data.append([
+                card.card_number,
+                card.patient.get_full_name(),
+                'Active' if card.is_active else 'Inactive',
+                card.expires_at.strftime('%Y-%m-%d'),
+                str(card.active_plans)
+            ])
+
+        cards_table = Table(cards_data, colWidths=[100, 150, 80, 100, 80])
+        cards_table.setStyle(self.get_table_style())
+        elements.append(cards_table)
+
+        doc.build(elements)
+        return response
+
+    def export_csv(self, data):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename=rfid_cards_{timezone.now().strftime("%Y%m%d")}.csv'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'Card Number',
+            'Patient Name',
+            'Patient Email',
+            'Status',
+            'Assigned Date',
+            'Expiry Date',
+            'Last Used',
+            'Active Plans',
+            'Notes'
+        ])
+
+        for card in data['cards']:
+            writer.writerow([
+                card.card_number,
+                card.patient.get_full_name(),
+                card.patient.email,
+                'Active' if card.is_active else 'Inactive',
+                card.assigned_date.strftime('%Y-%m-%d'),
+                card.expires_at.strftime('%Y-%m-%d'),
+                card.last_used.strftime('%Y-%m-%d') if card.last_used else 'Never',
+                card.active_plans,
+                card.notes or ''
+            ])
+
+        return response
+
+    def get_table_style(self):
+        """Define common table style for PDF exports"""
         return TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),

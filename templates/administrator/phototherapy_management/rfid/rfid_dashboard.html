@@ -45,15 +45,15 @@
                         <div class="flex space-x-3">
                             <!-- Export Buttons -->
                             <div class="flex space-x-2">
-                                <a href="#" 
+                                <a href="{% url 'export_rfid_cards' %}?format=csv" 
                                    class="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 flex items-center">
                                     <i class="fas fa-file-csv mr-2"></i>CSV
                                 </a>
-                                <a href="#" 
+                                <a href="{% url 'export_rfid_cards' %}?format=excel" 
                                    class="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 flex items-center">
                                     <i class="fas fa-file-excel mr-2"></i>Excel
                                 </a>
-                                <a href="#" 
+                                <a href="{% url 'export_rfid_cards' %}?format=pdf" 
                                    class="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 flex items-center">
                                     <i class="fas fa-file-pdf mr-2"></i>PDF
                                 </a>
