@@ -192,7 +192,7 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex space-x-2">
-                                    <button class="text-blue-500 hover:text-blue-700">
+                                    <button data-modal-target="editDeviceModal{{ device.id }}" data-modal-toggle="editDeviceModal{{ device.id }}" class="text-blue-500 hover:text-blue-700">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <button class="text-green-500 hover:text-green-700">
@@ -204,6 +204,8 @@
                                 </div>
                             </td>
                         </tr>
+
+                        {% include './devices/edit_modal.html' %}
                         {% endfor %}
                     </tbody>
                 </table>

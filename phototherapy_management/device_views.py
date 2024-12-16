@@ -5,12 +5,13 @@ from datetime import timedelta
 # Django imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.generic import View
 from django.contrib.auth import get_user_model
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView
+from django.core.exceptions import ValidationError
 
 # Local/application imports
 from error_handling.views import handler500
@@ -122,3 +123,32 @@ class ScheduleMaintenanceView(LoginRequiredMixin, CreateView):
     def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below")
         return super().form_invalid(form)
+
+class EditDeviceView(LoginRequiredMixin, View):
+    def post(self, request, device_id):
+        try:
+            device = PhototherapyDevice.objects.get(id=device_id)
+            
+            # Update device fields
+            device.name = request.POST.get('name')
+            device.model_number = request.POST.get('model_number')
+            device.serial_number = request.POST.get('serial_number')
+            device.location = request.POST.get('location')
+            device.next_maintenance_date = request.POST.get('next_maintenance_date')
+            device.is_active = request.POST.get('is_active') == 'True'
+            device.maintenance_notes = request.POST.get('maintenance_notes')
+            
+            # Validate and save
+            device.full_clean()
+            device.save()
+            
+            messages.success(request, "Device updated successfully")
+        except PhototherapyDevice.DoesNotExist:
+            messages.error(request, "Device not found")
+        except ValidationError as e:
+            messages.error(request, f"Validation error: {e}")
+        except Exception as e:
+            logger.error(f"Error updating device: {str(e)}")
+            messages.error(request, "An error occurred while updating the device")
+            
+        return redirect('device_management')
