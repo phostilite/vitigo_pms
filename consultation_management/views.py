@@ -38,6 +38,7 @@ from access_control.permissions import PermissionManager
 from stock_management.models import StockItem
 from pharmacy_management.models import Medication
 from error_handling.views import handler403, handler404, handler500
+from phototherapy_management.models import PhototherapyPlan, PhototherapySession
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -446,6 +447,40 @@ class ConsultationDetailView(LoginRequiredMixin, DetailView):
 
             # Add all active medications for prescription creation
             context['medications'] = Medication.objects.filter(is_active=True).order_by('name')
+
+            # Add phototherapy related context
+            try:
+                # Get active phototherapy plan
+                active_phototherapy_plan = PhototherapyPlan.objects.filter(
+                    patient=consultation.patient,
+                    is_active=True,
+                    end_date__gte=timezone.now().date()
+                ).select_related('protocol').first()
+                
+                context['active_phototherapy_plan'] = active_phototherapy_plan
+                
+                # Get phototherapy sessions if there's an active plan
+                if active_phototherapy_plan:
+                    context['phototherapy_sessions'] = PhototherapySession.objects.filter(
+                        plan=active_phototherapy_plan
+                    ).order_by('scheduled_date', 'scheduled_time')
+                else:
+                    context['phototherapy_sessions'] = None
+                
+                # Check for previous plans
+                context['has_previous_plans'] = PhototherapyPlan.objects.filter(
+                    patient=consultation.patient
+                ).exclude(
+                    id=active_phototherapy_plan.id if active_phototherapy_plan else None
+                ).exists()
+                
+            except Exception as e:
+                logger.warning(f"Error fetching phototherapy data: {str(e)}")
+                context.update({
+                    'active_phototherapy_plan': None,
+                    'phototherapy_sessions': None,
+                    'has_previous_plans': False
+                })
             
             return context
             
