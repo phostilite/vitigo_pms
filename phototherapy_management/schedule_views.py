@@ -326,3 +326,38 @@ class UpdateSessionNotesView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while updating staff notes")
         
         return redirect('session_detail', session_id=session_id)
+
+
+class UpdateRFIDTrackingView(LoginRequiredMixin, View):
+    def post(self, request, session_id):
+        try:
+            session = PhototherapySession.objects.get(id=session_id)
+            
+            # Get entry and exit times from form
+            entry_date = request.POST.get('entry_date')
+            entry_time = request.POST.get('entry_time')
+            exit_date = request.POST.get('exit_date')
+            exit_time = request.POST.get('exit_time')
+            
+            # Combine date and time strings
+            if entry_date and entry_time:
+                entry_datetime = f"{entry_date} {entry_time}"
+                session.rfid_entry_time = timezone.datetime.strptime(entry_datetime, '%Y-%m-%d %H:%M')
+            
+            if exit_date and exit_time:
+                exit_datetime = f"{exit_date} {exit_time}"
+                session.rfid_exit_time = timezone.datetime.strptime(exit_datetime, '%Y-%m-%d %H:%M')
+            
+            session.save()
+            messages.success(request, "RFID tracking times updated successfully")
+            
+        except PhototherapySession.DoesNotExist:
+            messages.error(request, "Session not found")
+        except ValueError as e:
+            logger.error(f"Error parsing datetime: {str(e)}")
+            messages.error(request, "Invalid date/time format")
+        except Exception as e:
+            logger.error(f"Error updating RFID tracking: {str(e)}")
+            messages.error(request, "An error occurred while updating RFID tracking")
+        
+        return redirect('session_detail', session_id=session_id)

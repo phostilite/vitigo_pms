@@ -33,6 +33,7 @@ urlpatterns = [
     path('session/<int:session_id>/', sv.SessionDetailView.as_view(), name='session_detail'),
     path('session/<int:session_id>/add-report/', sv.AddSessionReportView.as_view(), name='add_session_report'),
     path('session/<int:session_id>/update-notes/', sv.UpdateSessionNotesView.as_view(), name='update_session_notes'),
+    path('session/<int:session_id>/update-rfid/', sv.UpdateRFIDTrackingView.as_view(), name='update_rfid_tracking'),
 
     path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
 
