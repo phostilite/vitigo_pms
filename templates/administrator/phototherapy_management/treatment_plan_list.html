@@ -35,13 +35,13 @@
                 <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
                     <ul class="py-2">
                         <li>
-                            <a href="#" 
+                            <a href="{% url 'export_treatment_plans' %}?format=excel" 
                                class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-file-excel mr-2"></i> Excel Export
                             </a>
                         </li>
                         <li>
-                            <a href="#" 
+                            <a href="{% url 'export_treatment_plans' %}?format=pdf" 
                                class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-file-pdf mr-2"></i> PDF Export
                             </a>

@@ -11,7 +11,6 @@ from . import (
     export_views as ev,
     home_views as hv
 )
-from .export_views import ProtocolExportView, ReportExportView  # Add ReportExportView import
 
 urlpatterns = [
     path('', v.PhototherapyManagementView.as_view(), name='phototherapy_management'),
@@ -19,10 +18,11 @@ urlpatterns = [
     path('treatment-plans/', v.TreatmentPlanListView.as_view(), name='treatment_plan_list'),
     path('therapy-types/', v.PhototherapyTypeListView.as_view(), name='therapy_types_dashboard'),
     path('add-therapy-type/', v.AddPhototherapyTypeView.as_view(), name='add_therapy_type'),
+    path('treatment-plans/export/', ev.TreatmentPlanExportView.as_view(), name='export_treatment_plans'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),
-    path('devices/export/', ev.DeviceDataExportView.as_view(), name='export_device_data'),  # Add this line
+    path('devices/export/', ev.DeviceDataExportView.as_view(), name='export_device_data'),  
     path('devices/maintenance/schedule/', dv.ScheduleMaintenanceView.as_view(), name='schedule_maintenance'),
     path('devices/edit/<int:device_id>/', dv.EditDeviceView.as_view(), name='edit_device'),
     path('devices/<int:pk>/delete/', dv.DeleteDeviceView.as_view(), name='delete_device'),
@@ -30,7 +30,7 @@ urlpatterns = [
     path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
     path('protocols/add/', pv.AddProtocolView.as_view(), name='add_protocol'),
     path('protocols/<int:protocol_id>/edit/', pv.EditProtocolView.as_view(), name='edit_protocol'),
-    path('protocols/export/', ProtocolExportView.as_view(), name='export_protocols'),
+    path('protocols/export/', ev.ProtocolExportView.as_view(), name='export_protocols'),
     path('protocols/<int:protocol_id>/', pv.ProtocolDetailView.as_view(), name='protocol_detail'),
     path('protocols/<int:protocol_id>/activate/', pv.ActivateProtocolView.as_view(), name='activate_protocol'),
     path('protocols/<int:protocol_id>/deactivate/', pv.DeactivateProtocolView.as_view(), name='deactivate_protocol'),
@@ -44,7 +44,7 @@ urlpatterns = [
     path('session/<int:session_id>/update-status/', sv.UpdateSessionStatusView.as_view(), name='update_session_status'),
 
     path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
-    path('reports/export/', ReportExportView.as_view(), name='export_reports'),  # Add this line
+    path('reports/export/', ev.ReportExportView.as_view(), name='export_reports'),  
 
     path('rfid-dashboard/', rf.RFIDDashboardView.as_view(), name='rfid_dashboard'),
     path('rfid/issue/', rf.RFIDCardIssueView.as_view(), name='rfid_card_issue'),

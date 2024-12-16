@@ -8,6 +8,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.views import View
 from django.db.models import Count, Avg, Sum
+from django.db import models
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -951,4 +952,177 @@ class ReportExportView(LoginRequiredMixin, UserPassesTestMixin, View):
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ])
+
+class TreatmentPlanExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'phototherapy_management')
+
+    def get(self, request):
+        try:
+            export_format = request.GET.get('format', 'excel')
+            data = self.gather_treatment_plan_data()
+            
+            if export_format == 'pdf':
+                return self.export_pdf(data)
+            else:
+                return self.export_excel(data)
+                
+        except Exception as e:
+            logger.error(f"Treatment plan export error: {str(e)}")
+            messages.error(request, "Failed to export treatment plans")
+            return redirect('treatment_plan_list')
+
+    def gather_treatment_plan_data(self):
+        """Gather all treatment plan related data"""
+        plans = PhototherapyPlan.objects.select_related(
+            'patient',
+            'protocol',
+            'protocol__phototherapy_type',
+            'created_by',
+            'rfid_card'
+        ).prefetch_related(
+            'sessions',
+            'progress_records',
+            'payments'
+        )
+
+        return {
+            'plans': plans,
+            'total_plans': plans.count(),
+            'active_plans': plans.filter(is_active=True).count(),
+            'completed_plans': plans.filter(
+                sessions_completed__gte=models.F('total_sessions_planned')
+            ).count(),
+            'export_date': timezone.now()
+        }
+
+    def export_excel(self, data):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'fg_color': '#4B5563',
+            'font_color': 'white',
+            'border': 1
+        })
+        cell_format = workbook.add_format({'border': 1})
+        date_format = workbook.add_format({'border': 1, 'num_format': 'yyyy-mm-dd'})
+        number_format = workbook.add_format({'border': 1, 'num_format': '#,##0.00'})
+        percent_format = workbook.add_format({'border': 1, 'num_format': '0.00%'})
+
+        # Create Plans sheet
+        sheet = workbook.add_worksheet('Treatment Plans')
+        
+        headers = [
+            'Patient Name',
+            'Patient Email',
+            'Protocol',
+            'Start Date',
+            'Sessions Completed',
+            'Total Sessions',
+            'Progress (%)',
+            'Total Cost',
+            'Amount Paid',
+            'Status',
+            'RFID Card',
+            'Created By',
+            'Created Date'
+        ]
+
+        # Set column widths
+        widths = [25, 30, 20, 15, 15, 15, 15, 15, 15, 10, 15, 25, 15]
+        for i, width in enumerate(widths):
+            sheet.set_column(i, i, width)
+
+        # Write headers
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+
+        # Write data
+        for row, plan in enumerate(data['plans'], start=1):
+            sheet.write(row, 0, plan.patient.get_full_name(), cell_format)
+            sheet.write(row, 1, plan.patient.email, cell_format)
+            sheet.write(row, 2, plan.protocol.name, cell_format)
+            sheet.write(row, 3, plan.start_date, date_format)
+            sheet.write(row, 4, plan.sessions_completed, cell_format)
+            sheet.write(row, 5, plan.total_sessions_planned, cell_format)
+            sheet.write(row, 6, plan.get_completion_percentage()/100, percent_format)
+            sheet.write(row, 7, float(plan.total_cost), number_format)
+            sheet.write(row, 8, float(plan.amount_paid), number_format)
+            sheet.write(row, 9, 'Active' if plan.is_active else 'Inactive', cell_format)
+            sheet.write(row, 10, plan.rfid_card.card_number if plan.rfid_card else 'N/A', cell_format)
+            sheet.write(row, 11, plan.created_by.get_full_name(), cell_format)
+            sheet.write(row, 12, plan.created_at.strftime('%Y-%m-%d'), cell_format)
+
+        workbook.close()
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=treatment_plans_{timezone.now().strftime("%Y%m%d_%H%M")}.xlsx'
+        return response
+
+    def export_pdf(self, data):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename=treatment_plans_{timezone.now().strftime("%Y%m%d_%H%M")}.pdf'
+
+        doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title
+        elements.append(Paragraph('Treatment Plans Report', styles['Heading1']))
+        elements.append(Paragraph(f'Generated on: {data["export_date"].strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Summary statistics
+        summary_data = [
+            ['Total Plans', str(data['total_plans'])],
+            ['Active Plans', str(data['active_plans'])],
+            ['Completed Plans', str(data['completed_plans'])]
+        ]
+        summary_table = Table(summary_data, colWidths=[200, 100])
+        summary_table.setStyle(self.get_table_style())
+        elements.append(summary_table)
+        elements.append(Spacer(1, 20))
+
+        # Plans table
+        plans_data = [['Patient', 'Protocol', 'Progress', 'Cost', 'Status']]
+        for plan in data['plans']:
+            plans_data.append([
+                plan.patient.get_full_name(),
+                plan.protocol.name,
+                f"{plan.get_completion_percentage()}%",
+                f"₹{plan.total_cost}",
+                'Active' if plan.is_active else 'Inactive'
+            ])
+
+        plans_table = Table(plans_data, colWidths=[150, 150, 100, 100, 100])
+        plans_table.setStyle(self.get_table_style())
+        elements.append(plans_table)
+
+        doc.build(elements)
+        return response
+
+    def get_table_style(self):
+        return TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ])
