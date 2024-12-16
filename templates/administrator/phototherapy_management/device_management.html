@@ -22,10 +22,26 @@
                 <i class="fas fa-plus-circle mr-2"></i>
                 Add New Device
             </button>
-            <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
-                <i class="fas fa-download mr-2"></i>
-                Export Device Data
-            </button>
+            <div class="relative">
+                <button id="exportDropdownButton" data-dropdown-toggle="exportDropdown" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
+                    <i class="fas fa-download mr-2"></i>
+                    Export Device Data
+                </button>
+                <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
+                    <ul class="py-2">
+                        <li>
+                            <a href="{% url 'export_device_data' %}?format=excel" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-file-excel mr-2"></i> Excel Export
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'export_device_data' %}?format=pdf" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-file-pdf mr-2"></i> PDF Export
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -262,6 +278,20 @@
             // Add your filter logic here
             console.log('Filtering devices...');
         }
+
+        // Dropdown functionality
+        const exportDropdownButton = document.getElementById('exportDropdownButton');
+        const exportDropdown = document.getElementById('exportDropdown');
+
+        exportDropdownButton.addEventListener('click', function() {
+            exportDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!exportDropdownButton.contains(event.target) && !exportDropdown.contains(event.target)) {
+                exportDropdown.classList.add('hidden');
+            }
+        });
     });
 </script>
 {% endblock %}

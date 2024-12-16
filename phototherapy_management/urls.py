@@ -22,6 +22,7 @@ urlpatterns = [
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),
+    path('devices/export/', ev.DeviceDataExportView.as_view(), name='export_device_data'),  # Add this line
     path('devices/maintenance/schedule/', dv.ScheduleMaintenanceView.as_view(), name='schedule_maintenance'),
     path('devices/edit/<int:device_id>/', dv.EditDeviceView.as_view(), name='edit_device'),
     path('devices/<int:pk>/delete/', dv.DeleteDeviceView.as_view(), name='delete_device'),

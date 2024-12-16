@@ -12,6 +12,8 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from django.contrib import messages
+from django.shortcuts import redirect
 
 from access_control.permissions import PermissionManager
 from .models import (
@@ -567,6 +569,165 @@ class HomeTherapyLogsExportView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def get_table_style(self):
         """Define common table style for PDF exports"""
+        return TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ])
+
+class DeviceDataExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'phototherapy_management')
+
+    def get(self, request):
+        try:
+            export_format = request.GET.get('format', 'excel')
+            data = self.gather_device_data()
+            
+            if export_format == 'pdf':
+                return self.export_pdf(data)
+            else:
+                return self.export_excel(data)  # Default to Excel
+                
+        except Exception as e:
+            logger.error(f"Device data export error: {str(e)}")
+            messages.error(request, "Failed to export device data")
+            return redirect('device_management')
+
+    def gather_device_data(self):
+        """Gather all device-related data for export"""
+        devices = PhototherapyDevice.objects.select_related(
+            'phototherapy_type'
+        ).prefetch_related(
+            'maintenance_records'
+        ).order_by('name')
+
+        return {
+            'devices': devices,
+            'total_devices': devices.count(),
+            'active_devices': devices.filter(is_active=True).count(),
+            'maintenance_needed': devices.filter(
+                next_maintenance_date__lte=timezone.now().date()
+            ).count(),
+            'export_date': timezone.now()
+        }
+
+    def export_excel(self, data):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'fg_color': '#4B5563',
+            'font_color': 'white',
+            'border': 1
+        })
+        cell_format = workbook.add_format({'border': 1})
+        date_format = workbook.add_format({'border': 1, 'num_format': 'yyyy-mm-dd'})
+
+        # Create Devices sheet
+        sheet = workbook.add_worksheet('Devices')
+        
+        headers = [
+            'Device Name',
+            'Model Number',
+            'Serial Number',
+            'Type',
+            'Location',
+            'Status',
+            'Installation Date',
+            'Last Maintenance',
+            'Next Maintenance',
+            'Maintenance Notes'
+        ]
+
+        # Set column widths
+        widths = [25, 20, 20, 15, 20, 10, 15, 15, 15, 40]
+        for i, width in enumerate(widths):
+            sheet.set_column(i, i, width)
+
+        # Write headers
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+
+        # Write data
+        for row, device in enumerate(data['devices'], start=1):
+            sheet.write(row, 0, device.name, cell_format)
+            sheet.write(row, 1, device.model_number, cell_format)
+            sheet.write(row, 2, device.serial_number, cell_format)
+            sheet.write(row, 3, device.phototherapy_type.name, cell_format)
+            sheet.write(row, 4, device.location, cell_format)
+            sheet.write(row, 5, 'Active' if device.is_active else 'Inactive', cell_format)
+            sheet.write(row, 6, device.installation_date, date_format)
+            sheet.write(row, 7, device.last_maintenance_date or 'N/A', date_format if device.last_maintenance_date else cell_format)
+            sheet.write(row, 8, device.next_maintenance_date or 'N/A', date_format if device.next_maintenance_date else cell_format)
+            sheet.write(row, 9, device.maintenance_notes or '', cell_format)
+
+        workbook.close()
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=devices_export_{timezone.now().strftime("%Y%m%d_%H%M")}.xlsx'
+        return response
+
+    def export_pdf(self, data):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename=devices_export_{timezone.now().strftime("%Y%m%d_%H%M")}.pdf'
+
+        doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title and summary
+        elements.append(Paragraph('Device Inventory Report', styles['Heading1']))
+        elements.append(Paragraph(f'Generated on: {data["export_date"].strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Summary statistics
+        summary_data = [
+            ['Total Devices', str(data['total_devices'])],
+            ['Active Devices', str(data['active_devices'])],
+            ['Maintenance Needed', str(data['maintenance_needed'])]
+        ]
+        summary_table = Table(summary_data, colWidths=[200, 100])
+        summary_table.setStyle(self.get_table_style())
+        elements.append(summary_table)
+        elements.append(Spacer(1, 20))
+
+        # Devices table
+        device_data = [['Device Name', 'Type', 'Location', 'Status', 'Next Maintenance']]
+        for device in data['devices']:
+            device_data.append([
+                device.name,
+                device.phototherapy_type.name,
+                device.location,
+                'Active' if device.is_active else 'Inactive',
+                device.next_maintenance_date.strftime('%Y-%m-%d') if device.next_maintenance_date else 'N/A'
+            ])
+
+        device_table = Table(device_data, colWidths=[150, 100, 100, 80, 100])
+        device_table.setStyle(self.get_table_style())
+        elements.append(device_table)
+
+        doc.build(elements)
+        return response
+
+    def get_table_style(self):
         return TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
