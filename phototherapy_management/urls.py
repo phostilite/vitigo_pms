@@ -20,6 +20,8 @@ urlpatterns = [
     path('add-therapy-type/', v.AddPhototherapyTypeView.as_view(), name='add_therapy_type'),
     path('treatment-plans/export/', ev.TreatmentPlanExportView.as_view(), name='export_treatment_plans'),
     path('treatment-plans/<int:pk>/', v.TreatmentPlanDetailView.as_view(), name='treatment_plan_detail'),
+    path('treatment-plans/<int:pk>/activate/', v.ActivateTreatmentPlanView.as_view(), name='activate_treatment_plan'),
+    path('treatment-plans/<int:pk>/deactivate/', v.DeactivateTreatmentPlanView.as_view(), name='deactivate_treatment_plan'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),

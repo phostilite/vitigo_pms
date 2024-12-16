@@ -22,6 +22,7 @@
             <h1 class="text-2xl font-semibold text-gray-800">Treatment Plan Details</h1>
             <p class="text-sm text-gray-600">Protocol: {{ plan.protocol.name }}</p>
         </div>
+        <!-- Update the action buttons section -->
         <div class="flex space-x-3">
             <a href="{% url 'schedule_session' %}?plan={{ plan.id }}" 
                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center">
@@ -29,10 +30,17 @@
                 Schedule Session
             </a>
             {% if plan.is_active %}
-            <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center">
-                <i class="fas fa-ban mr-2"></i>
-                Deactivate Plan
-            </button>
+                <button data-modal-target="deactivatePlanModal{{ plan.id }}" data-modal-toggle="deactivatePlanModal{{ plan.id }}"
+                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center">
+                    <i class="fas fa-ban mr-2"></i>
+                    Deactivate Plan
+                </button>
+            {% else %}
+                <button data-modal-target="activatePlanModal{{ plan.id }}" data-modal-toggle="activatePlanModal{{ plan.id }}"
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Activate Plan
+                </button>
             {% endif %}
         </div>
     </div>
@@ -277,6 +285,9 @@
         </div>
     </div>
 </div>
+
+{% include './treatment_plan/activate_plan.html' %}
+{% include './treatment_plan/deactivate_plan.html' %}
 
 {% block scripts %}
 <script>

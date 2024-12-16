@@ -16,6 +16,7 @@ from django.urls import reverse_lazy
 from django.db.models import Q, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
+from django.shortcuts import get_object_or_404
 
 
 # Local application imports
@@ -667,3 +668,40 @@ class TreatmentPlanDetailView(LoginRequiredMixin, DetailView):
             logger.error(f"Error getting context data: {str(e)}")
             messages.error(self.request, "Error loading treatment plan data")
         return context
+
+
+class ActivateTreatmentPlanView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                messages.error(request, "You don't have permission to modify treatment plans")
+                return handler403(request)
+
+            plan = get_object_or_404(PhototherapyPlan, pk=pk)
+            plan.is_active = True
+            plan.save()
+            
+            messages.success(request, "Treatment plan activated successfully")
+            return redirect('treatment_plan_detail', pk=pk)
+        except Exception as e:
+            logger.error(f"Error activating treatment plan: {str(e)}")
+            messages.error(request, "Error activating treatment plan")
+            return redirect('treatment_plan_detail', pk=pk)
+
+class DeactivateTreatmentPlanView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                messages.error(request, "You don't have permission to modify treatment plans")
+                return handler403(request)
+
+            plan = get_object_or_404(PhototherapyPlan, pk=pk)
+            plan.is_active = False
+            plan.save()
+            
+            messages.success(request, "Treatment plan deactivated successfully")
+            return redirect('treatment_plan_detail', pk=pk)
+        except Exception as e:
+            logger.error(f"Error deactivating treatment plan: {str(e)}")
+            messages.error(request, "Error deactivating treatment plan")
+            return redirect('treatment_plan_detail', pk=pk)

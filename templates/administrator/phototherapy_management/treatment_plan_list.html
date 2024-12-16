@@ -216,13 +216,20 @@
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 {% if plan.is_active %}
-                                <button class="text-red-600 hover:text-red-900">
+                                <button data-modal-target="deactivatePlanModal{{ plan.id }}" data-modal-toggle="deactivatePlanModal{{ plan.id }}" class="text-red-600 hover:text-red-900">
                                     <i class="fas fa-ban"></i>
+                                </button>
+                                {% else %}
+                                <button data-modal-target="activatePlanModal{{ plan.id }}" data-modal-toggle="activatePlanModal{{ plan.id }}" class="text-green-600 hover:text-green-900">
+                                    <i class="fas fa-check"></i>
                                 </button>
                                 {% endif %}
                             </div>
                         </td>
                     </tr>
+
+                    {% include './treatment_plan/activate_plan.html' %}
+                    {% include './treatment_plan/deactivate_plan.html' %}
                     {% endfor %}
                 </tbody>
             </table>
