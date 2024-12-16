@@ -11,7 +11,7 @@ from django.db import models
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
-from django.views.generic import CreateView, ListView
+from django.views.generic import CreateView, ListView, DetailView
 from django.urls import reverse_lazy
 from django.db.models import Q, Count
 from django.utils.decorators import method_decorator
@@ -566,7 +566,7 @@ class PhototherapyTypeListView(LoginRequiredMixin, ListView):
             
             # Filter by search query if provided
             search_query = self.request.GET.get('search')
-            if search_query:
+            if (search_query):
                 queryset = queryset.filter(name__icontains=search_query)
             
             # Filter by therapy type if provided
@@ -615,4 +615,55 @@ class PhototherapyTypeListView(LoginRequiredMixin, ListView):
             logger.error(f"Error in get_context_data: {str(e)}")
             messages.error(self.request, "Error loading some dashboard data")
         
+        return context
+
+
+class TreatmentPlanDetailView(LoginRequiredMixin, DetailView):
+    model = PhototherapyPlan
+    context_object_name = 'plan'
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'phototherapy_management'):
+                messages.error(request, "You don't have permission to view treatment plans")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in treatment plan detail dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the treatment plan")
+            return redirect('treatment_plan_list')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'treatment_plan_detail.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_treatment_plan_detail.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            plan = self.get_object()
+            context.update({
+                'sessions': plan.sessions.all().order_by('-scheduled_date'),
+                'progress_records': plan.progress_records.all().order_by('-assessment_date'),
+                'payments': plan.payments.all().order_by('-payment_date'),
+                'completion_percentage': plan.get_completion_percentage(),
+                'total_paid': plan.amount_paid,
+                'remaining_balance': plan.total_cost - plan.amount_paid,
+                'next_session': plan.sessions.filter(
+                    scheduled_date__gte=timezone.now().date(),
+                    status='SCHEDULED'
+                ).first(),
+                'recent_progress': plan.progress_records.order_by('-assessment_date').first(),
+                'missed_sessions_count': plan.sessions.filter(status='MISSED').count(),
+                'completed_sessions_count': plan.sessions.filter(status='COMPLETED').count(),
+            })
+        except Exception as e:
+            logger.error(f"Error getting context data: {str(e)}")
+            messages.error(self.request, "Error loading treatment plan data")
         return context
