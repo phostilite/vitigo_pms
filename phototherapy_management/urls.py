@@ -11,6 +11,7 @@ from . import (
     export_views as ev,
     home_views as hv
 )
+from .export_views import ProtocolExportView
 
 urlpatterns = [
     path('', v.PhototherapyManagementView.as_view(), name='phototherapy_management'),
@@ -27,6 +28,7 @@ urlpatterns = [
     path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
     path('protocols/add/', pv.AddProtocolView.as_view(), name='add_protocol'),
     path('protocols/<int:protocol_id>/edit/', pv.EditProtocolView.as_view(), name='edit_protocol'),
+    path('protocols/export/', ProtocolExportView.as_view(), name='export_protocols'),
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
     path('schedule-session/', sv.ScheduleSessionView.as_view(), name='schedule_session'),
