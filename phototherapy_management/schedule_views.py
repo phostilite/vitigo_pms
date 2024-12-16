@@ -10,7 +10,8 @@ from django.db.models import Count, Q
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.generic import View, CreateView
-from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView
+from django.urls import reverse_lazy, reverse
 
 # Local/application imports
 from access_control.permissions import PermissionManager
@@ -21,6 +22,7 @@ from phototherapy_management.models import (
 )
 from .forms import ScheduleSessionForm
 from .utils import get_template_path
+from .models import ProblemReport
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -276,3 +278,33 @@ class SessionDetailView(LoginRequiredMixin, View):
             logger.error(f"Error viewing session details: {str(e)}", exc_info=True)
             messages.error(request, "An error occurred while loading session details")
             return redirect('schedule_management')
+
+
+class AddSessionReportView(LoginRequiredMixin, View):
+    def post(self, request, session_id):
+        try:
+            session = PhototherapySession.objects.get(id=session_id)
+            
+            # Create the problem report
+            problem_report = ProblemReport.objects.create(
+                session=session,
+                reported_by=request.user,
+                problem_description=request.POST.get('problem_description'),
+                severity=request.POST.get('severity'),
+                action_taken=request.POST.get('action_taken')
+            )
+            
+            # Update session's problem severity and side effects
+            session.problem_severity = request.POST.get('severity')
+            session.side_effects = request.POST.get('side_effects', '')
+            session.save()
+            
+            messages.success(request, "Problem report added successfully")
+            
+        except PhototherapySession.DoesNotExist:
+            messages.error(request, "Session not found")
+        except Exception as e:
+            logger.error(f"Error adding problem report: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while adding the problem report")
+        
+        return redirect('session_detail', session_id=session_id)

@@ -101,7 +101,9 @@
             <div class="bg-white rounded-lg shadow-md p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Problem Reports</h3>
-                    <button class="text-blue-600 hover:text-blue-800">
+                    <!-- Modal toggle -->
+                    <button data-modal-target="addReportModal" data-modal-toggle="addReportModal" 
+                            class="text-blue-600 hover:text-blue-800">
                         <i class="fas fa-plus-circle mr-1"></i>Add Report
                     </button>
                 </div>
@@ -133,6 +135,80 @@
                 {% else %}
                 <p class="text-gray-600 text-sm">No problems reported for this session.</p>
                 {% endif %}
+            </div>
+
+            <!-- Add Report Modal -->
+            <div id="addReportModal" tabindex="-1" aria-hidden="true" 
+                 class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative w-full max-w-md max-h-full">
+                    <!-- Modal content -->
+                    <div class="relative bg-white rounded-lg shadow">
+                        <!-- Modal header -->
+                        <div class="flex items-center justify-between p-4 border-b rounded-t">
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                Add Problem Report
+                            </h3>
+                            <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="addReportModal">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <!-- Modal body -->
+                        <form action="{% url 'add_session_report' session.id %}" method="post" class="p-6">
+                            {% csrf_token %}
+                            <!-- Severity Selection -->
+                            <div class="mb-4">
+                                <label for="severity" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Problem Severity
+                                </label>
+                                <select name="severity" id="severity" required
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    <option value="">Select severity</option>
+                                    <option value="NONE">No Problems</option>
+                                    <option value="MILD">Mild Issues</option>
+                                    <option value="MODERATE">Moderate Issues</option>
+                                    <option value="SEVERE">Severe Issues</option>
+                                </select>
+                            </div>
+
+                            <!-- Problem Description -->
+                            <div class="mb-4">
+                                <label for="problem_description" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Problem Description
+                                </label>
+                                <textarea id="problem_description" name="problem_description" rows="3" required
+                                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></textarea>
+                            </div>
+
+                            <!-- Side Effects -->
+                            <div class="mb-4">
+                                <label for="side_effects" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Side Effects (if any)
+                                </label>
+                                <textarea id="side_effects" name="side_effects" rows="2"
+                                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></textarea>
+                            </div>
+
+                            <!-- Action Taken -->
+                            <div class="mb-4">
+                                <label for="action_taken" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Action Taken
+                                </label>
+                                <textarea id="action_taken" name="action_taken" rows="2"
+                                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></textarea>
+                            </div>
+
+                            <!-- Modal footer -->
+                            <div class="flex items-center justify-end space-x-2">
+                                <button type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10" data-modal-hide="addReportModal">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                                    Submit Report
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             <!-- Staff Notes -->
