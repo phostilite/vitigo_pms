@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.views.generic import View
 from django.contrib.auth import get_user_model
 from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView
+from django.views.generic.edit import CreateView, DeleteView
 from django.core.exceptions import ValidationError
 
 # Local/application imports
@@ -152,3 +152,32 @@ class EditDeviceView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while updating the device")
             
         return redirect('device_management')
+
+class DeleteDeviceView(LoginRequiredMixin, DeleteView):
+    model = PhototherapyDevice
+    success_url = reverse_lazy('device_management')
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            device = self.get_object()
+            # Check if device has associated sessions before deletion
+            if device.phototherapysession_set.exists():
+                messages.error(request, 'Cannot delete device with associated sessions')
+                return redirect('device_management')
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in delete device dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('device_management')
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            device = self.get_object()
+            device_name = device.name
+            response = super().post(request, *args, **kwargs)
+            messages.success(request, f'Successfully deleted device: {device_name}')
+            return response
+        except Exception as e:
+            logger.error(f"Error deleting device: {str(e)}")
+            messages.error(request, 'Failed to delete device')
+            return redirect('device_management')
