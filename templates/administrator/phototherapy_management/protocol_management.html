@@ -200,32 +200,32 @@
                                        title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="#"
+                                    <a href="{% url 'protocol_detail' protocol.id %}"
                                        class="text-green-500 hover:text-green-700" 
                                        title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="#"
-                                       class="text-purple-500 hover:text-purple-700" 
-                                       title="Clone">
-                                        <i class="fas fa-copy"></i>
-                                    </a>
                                     {% if protocol.is_active %}
                                     <a href="#"
-                                       class="text-red-500 hover:text-red-700" 
-                                       title="Deactivate">
+                                        data-modal-target="deactivateModal{{ protocol.id }}" data-modal-toggle="deactivateModal{{ protocol.id }}"
+                                        class="text-red-500 hover:text-red-700" 
+                                        title="Deactivate">
                                         <i class="fas fa-ban"></i>
                                     </a>
                                     {% else %}
                                     <a href="#"
-                                       class="text-green-500 hover:text-green-700" 
-                                       title="Activate">
+                                        data-modal-target="activateModal{{ protocol.id }}" data-modal-toggle="activateModal{{ protocol.id }}"
+                                        class="text-green-500 hover:text-green-700" 
+                                        title="Activate">
                                         <i class="fas fa-check-circle"></i>
                                     </a>
                                     {% endif %}
                                 </div>
                             </td>
                         </tr>
+
+                        {% include './protocol/activate_modal.html' %}
+                        {% include './protocol/deactivate_modal.html' %}
                         {% endfor %}
                     </tbody>
                 </table>

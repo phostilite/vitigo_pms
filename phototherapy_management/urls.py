@@ -31,6 +31,9 @@ urlpatterns = [
     path('protocols/add/', pv.AddProtocolView.as_view(), name='add_protocol'),
     path('protocols/<int:protocol_id>/edit/', pv.EditProtocolView.as_view(), name='edit_protocol'),
     path('protocols/export/', ProtocolExportView.as_view(), name='export_protocols'),
+    path('protocols/<int:protocol_id>/', pv.ProtocolDetailView.as_view(), name='protocol_detail'),
+    path('protocols/<int:protocol_id>/activate/', pv.ActivateProtocolView.as_view(), name='activate_protocol'),
+    path('protocols/<int:protocol_id>/deactivate/', pv.DeactivateProtocolView.as_view(), name='deactivate_protocol'),
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
     path('schedule-session/', sv.ScheduleSessionView.as_view(), name='schedule_session'),

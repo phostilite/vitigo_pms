@@ -6,9 +6,11 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count
+from django.db import models
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.generic import View
+from django.urls import reverse
 
 # Local/application imports
 from error_handling.views import handler500
@@ -178,4 +180,102 @@ class EditProtocolView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error in edit protocol view POST: {str(e)}")
             messages.error(request, "An error occurred while updating the protocol")
+            return redirect('protocol_management')
+
+
+class ProtocolDetailView(LoginRequiredMixin, View):
+    def get(self, request, protocol_id):
+        try:
+            # Get protocol with related data and statistics
+            protocol = get_object_or_404(
+                PhototherapyProtocol.objects.select_related(
+                    'phototherapy_type',
+                    'created_by'
+                ).annotate(
+                    active_plans=Count('phototherapyplan', filter=models.Q(phototherapyplan__is_active=True)),
+                    total_plans=Count('phototherapyplan'),
+                    avg_improvement=Avg('phototherapyplan__progress_records__improvement_percentage'),
+                    total_sessions=Count('phototherapyplan__sessions'),
+                    completed_sessions=Count(
+                        'phototherapyplan__sessions',
+                        filter=models.Q(phototherapyplan__sessions__status='COMPLETED')
+                    )
+                ),
+                id=protocol_id
+            )
+
+            # Get recent plans using this protocol
+            recent_plans = PhototherapyPlan.objects.filter(
+                protocol=protocol
+            ).select_related('patient').order_by('-created_at')[:5]
+
+            # Calculate success metrics
+            success_metrics = {
+                'completion_rate': (protocol.completed_sessions / protocol.total_sessions * 100) if protocol.total_sessions else 0,
+                'active_plans': protocol.active_plans,
+                'total_plans': protocol.total_plans,
+                'avg_improvement': protocol.avg_improvement or 0
+            }
+
+            context = {
+                'protocol': protocol,
+                'recent_plans': recent_plans,
+                'success_metrics': success_metrics,
+            }
+
+            template_path = get_template_path(
+                'protocol_detail.html',
+                request.user.role,
+                'phototherapy_management'
+            )
+            return render(request, template_path, context)
+
+        except Exception as e:
+            logger.error(f"Error in protocol detail view: {str(e)}")
+            messages.error(request, "An error occurred while loading protocol details")
+            return redirect('protocol_management')
+
+
+class ActivateProtocolView(LoginRequiredMixin, View):
+    def post(self, request, protocol_id):
+        try:
+            protocol = get_object_or_404(PhototherapyProtocol, id=protocol_id)
+            protocol.is_active = True
+            protocol.save()
+            
+            messages.success(request, f"Protocol '{protocol.name}' has been activated successfully")
+            return redirect(reverse('protocol_detail', kwargs={'protocol_id': protocol_id}))
+            
+        except Exception as e:
+            logger.error(f"Error activating protocol: {str(e)}")
+            messages.error(request, "An error occurred while activating the protocol")
+            return redirect('protocol_management')
+
+class DeactivateProtocolView(LoginRequiredMixin, View):
+    def post(self, request, protocol_id):
+        try:
+            protocol = get_object_or_404(PhototherapyProtocol, id=protocol_id)
+            
+            # Check if protocol is in use
+            active_plans = PhototherapyPlan.objects.filter(
+                protocol=protocol,
+                is_active=True
+            ).count()
+            
+            if active_plans > 0:
+                messages.error(
+                    request,
+                    f"Cannot deactivate protocol - it is currently being used in {active_plans} active treatment plans"
+                )
+                return redirect(reverse('protocol_detail', kwargs={'protocol_id': protocol_id}))
+            
+            protocol.is_active = False
+            protocol.save()
+            
+            messages.success(request, f"Protocol '{protocol.name}' has been deactivated successfully")
+            return redirect(reverse('protocol_detail', kwargs={'protocol_id': protocol_id}))
+            
+        except Exception as e:
+            logger.error(f"Error deactivating protocol: {str(e)}")
+            messages.error(request, "An error occurred while deactivating the protocol")
             return redirect('protocol_management')
