@@ -82,8 +82,10 @@
                                     <div class="text-sm font-medium text-gray-900">{{ card.card_number }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ card.patient.get_full_name }}</div>
-                                    <div class="text-sm text-gray-500">{{ card.active_plans }} active plans</div>
+                                    <a href="{% url 'user_detail' card.patient.id %}">
+                                        <div class="text-sm text-gray-900">{{ card.patient.get_full_name }}</div>
+                                        <div class="text-sm text-gray-500">{{ card.active_plans }} active plans</div>
+                                    </a>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     {% if card.is_active and card.expires_at > now %}
@@ -141,7 +143,7 @@
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <div class="text-sm text-gray-500">
-                                            <a href="{% url 'view_patient' session.plan.patient.id %}" class="font-medium text-gray-900">
+                                            <a href="{% url 'user_detail' session.plan.patient.id %}" class="font-medium text-gray-900">
                                                 {{ session.plan.patient.get_full_name }}
                                             </a>
                                             accessed phototherapy
