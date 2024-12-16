@@ -127,12 +127,14 @@
                                     </div>
                                     {% endif %}
                                     <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            {{ reminder.plan.patient.get_full_name }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            ID: {{ reminder.plan.patient.id }}
-                                        </div>
+                                        <a href="{% url 'user_detail' reminder.plan.patient.id %}">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                {{ reminder.plan.patient.get_full_name }}
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                ID: {{ reminder.plan.patient.id }}
+                                            </div>
+                                        </a>
                                     </div>
                                 </div>
                             </td>
@@ -267,4 +269,52 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Send Reminder Modal -->
+<div id="sendReminderModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative w-full max-w-md max-h-full">
+        <div class="relative bg-white rounded-lg shadow">
+            <button type="button" class="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="sendReminderModal">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="px-6 py-6 lg:px-8">
+                <h3 class="mb-4 text-xl font-medium text-gray-900">Send Reminder</h3>
+                <form class="space-y-6" action="{% url 'send_reminder' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="reminder_id" id="reminderIdInput">
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-900">Notification Method</label>
+                        <div class="flex items-center mb-4">
+                            <input id="email" type="checkbox" name="send_email" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" checked>
+                            <label for="email" class="ml-2 text-sm font-medium text-gray-900">Send Email</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input id="sms" type="checkbox" name="send_sms" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="sms" class="ml-2 text-sm font-medium text-gray-900">Send SMS</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full text-white bg-amber-500 hover:bg-amber-600 focus:ring-4 focus:outline-none focus:ring-amber-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                        Send Reminder
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function sendReminder(reminderId) {
+        document.getElementById('reminderIdInput').value = reminderId;
+        const modal = document.getElementById('sendReminderModal');
+        if (modal) {
+            const options = {
+                placement: 'center',
+                backdrop: 'dynamic',
+                closable: true,
+            };
+            const instance = new Modal(modal, options);
+            instance.show();
+        }
+    }
+</script>
 {% endblock %}

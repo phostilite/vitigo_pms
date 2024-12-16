@@ -10,6 +10,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.generic import View, ListView, CreateView
 from django.urls import reverse_lazy
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
 
 # Local/application imports
 from error_handling.views import handler500, handler403
@@ -132,3 +137,46 @@ class CreatePhototherapyReminderView(LoginRequiredMixin, CreateView):
             logger.error(f"Error saving reminder: {str(e)}")
             messages.error(self.request, "Failed to create reminder")
             return self.form_invalid(form)
+
+@login_required
+@require_POST
+def send_reminder(request):
+    reminder_id = request.POST.get('reminder_id')
+    send_email = request.POST.get('send_email') == 'on'
+    send_sms = request.POST.get('send_sms') == 'on'
+
+    try:
+        reminder = PhototherapyReminder.objects.get(id=reminder_id, status='PENDING')
+        
+        if send_email:
+            # Prepare email content
+            html_message = render_to_string('emails/phototherapy/reminder.html', {
+                'reminder': reminder
+            })
+            
+            # Send email
+            send_mail(
+                subject='Phototherapy Reminder',
+                message=reminder.message,
+                html_message=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[reminder.plan.patient.email],
+                fail_silently=False,
+            )
+
+        if send_sms:
+            # Implement SMS sending logic here
+            pass
+
+        # Update reminder status
+        reminder.status = 'SENT'
+        reminder.sent_at = timezone.now()
+        reminder.save()
+
+        messages.success(request, 'Reminder sent successfully!')
+    except PhototherapyReminder.DoesNotExist:
+        messages.error(request, 'Reminder not found or already sent.')
+    except Exception as e:
+        messages.error(request, f'Failed to send reminder: {str(e)}')
+
+    return redirect('reminders_dashboard')
