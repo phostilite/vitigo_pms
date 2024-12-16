@@ -34,6 +34,16 @@
     </div>
     {% endif %}
 
+    {% if form.non_field_errors %}
+    <div class="mb-4">
+        {% for error in form.non_field_errors %}
+        <div class="p-4 rounded-lg bg-red-100 text-red-700">
+            {{ error }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <form method="post" class="space-y-6">
         {% csrf_token %}
         
@@ -41,40 +51,75 @@
             <!-- Treatment Plan -->
             <div>
                 {{ form.plan|as_crispy_field }}
-                {% if form.plan.errors %}
-                <p class="text-red-500 text-xs mt-1">{{ form.plan.errors.0 }}</p>
+                {% if form.plan.errors or form.errors.plan %}
+                <div class="mt-1 text-red-600 text-sm">
+                    {% for error in form.plan.errors %}
+                        {{ error }}
+                    {% endfor %}
+                    {% for error in form.errors.plan %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
                 {% endif %}
             </div>
 
             <!-- Device -->
             <div>
                 {{ form.device|as_crispy_field }}
-                {% if form.device.errors %}
-                <p class="text-red-500 text-xs mt-1">{{ form.device.errors.0 }}</p>
+                {% if form.device.errors or form.errors.device %}
+                <div class="mt-1 text-red-600 text-sm">
+                    {% for error in form.device.errors %}
+                        {{ error }}
+                    {% endfor %}
+                    {% for error in form.errors.device %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
                 {% endif %}
             </div>
 
             <!-- Date -->
             <div>
                 {{ form.scheduled_date|as_crispy_field }}
-                {% if form.scheduled_date.errors %}
-                <p class="text-red-500 text-xs mt-1">{{ form.scheduled_date.errors.0 }}</p>
+                {% if form.scheduled_date.errors or form.errors.scheduled_date %}
+                <div class="mt-1 text-red-600 text-sm">
+                    {% for error in form.scheduled_date.errors %}
+                        {{ error }}
+                    {% endfor %}
+                    {% for error in form.errors.scheduled_date %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
                 {% endif %}
             </div>
 
             <!-- Time -->
             <div>
                 {{ form.scheduled_time|as_crispy_field }}
-                {% if form.scheduled_time.errors %}
-                <p class="text-red-500 text-xs mt-1">{{ form.scheduled_time.errors.0 }}</p>
+                {% if form.scheduled_time.errors or form.errors.scheduled_time %}
+                <div class="mt-1 text-red-600 text-sm">
+                    {% for error in form.scheduled_time.errors %}
+                        {{ error }}
+                    {% endfor %}
+                    {% for error in form.errors.scheduled_time %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
                 {% endif %}
             </div>
 
             <!-- Planned Dose -->
             <div>
                 {{ form.planned_dose|as_crispy_field }}
-                {% if form.planned_dose.errors %}
-                <p class="text-red-500 text-xs mt-1">{{ form.planned_dose.errors.0 }}</p>
+                {% if form.planned_dose.errors or form.errors.planned_dose %}
+                <div class="mt-1 text-red-600 text-sm">
+                    {% for error in form.planned_dose.errors %}
+                        {{ error }}
+                    {% endfor %}
+                    {% for error in form.errors.planned_dose %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
                 {% endif %}
             </div>
         </div>

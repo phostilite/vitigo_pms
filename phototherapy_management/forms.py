@@ -319,40 +319,51 @@ class ScheduleSessionForm(forms.ModelForm):
         try:
             plan = cleaned_data.get('plan')
             scheduled_date = cleaned_data.get('scheduled_date')
+            scheduled_time = cleaned_data.get('scheduled_time')
             planned_dose = cleaned_data.get('planned_dose')
 
-            if plan and scheduled_date:
-                # Check if the plan is still active on the scheduled date
-                if plan.end_date and scheduled_date > plan.end_date:
-                    raise forms.ValidationError({
-                        'scheduled_date': "Cannot schedule session after plan end date"
-                    })
+            if not all([plan, scheduled_date, scheduled_time, planned_dose]):
+                # Skip validation if required fields are missing
+                return cleaned_data
 
-                # Check if there's already a session scheduled for this time
-                if PhototherapySession.objects.filter(
-                    plan=plan,
-                    scheduled_date=scheduled_date,
-                    scheduled_time=cleaned_data.get('scheduled_time')
-                ).exists():
-                    raise forms.ValidationError({
-                        'scheduled_time': "A session is already scheduled for this time"
-                    })
+            # Check if the plan is still active on the scheduled date
+            if plan.end_date and scheduled_date > plan.end_date:
+                self.add_error('scheduled_date', 
+                    f"Cannot schedule session after plan end date ({plan.end_date})")
 
-                # Validate dose against plan protocol
-                if planned_dose:
-                    protocol = plan.protocol
-                    if planned_dose > protocol.max_dose:
-                        raise forms.ValidationError({
-                            'planned_dose': f"Dose exceeds maximum allowed ({protocol.max_dose} mJ/cm²)"
-                        })
-                    if planned_dose < protocol.initial_dose:
-                        raise forms.ValidationError({
-                            'planned_dose': f"Dose below minimum recommended ({protocol.initial_dose} mJ/cm²)"
-                        })
+            # Check if there's already a session scheduled for this time
+            if PhototherapySession.objects.filter(
+                plan=plan,
+                scheduled_date=scheduled_date,
+                scheduled_time=scheduled_time
+            ).exists():
+                self.add_error('scheduled_time', 
+                    "A session is already scheduled for this time slot")
+
+            # Validate dose against plan protocol
+            protocol = plan.protocol
+            if planned_dose > protocol.max_dose:
+                self.add_error('planned_dose', 
+                    f"Dose ({planned_dose} mJ/cm²) exceeds maximum allowed ({protocol.max_dose} mJ/cm²)")
+            if planned_dose < protocol.initial_dose:
+                self.add_error('planned_dose', 
+                    f"Dose ({planned_dose} mJ/cm²) below minimum recommended ({protocol.initial_dose} mJ/cm²)")
+
+            # Check if scheduled date is in the past
+            from django.utils import timezone
+            if scheduled_date < timezone.now().date():
+                self.add_error('scheduled_date', "Cannot schedule sessions in the past")
+
+            # Validate device availability if selected
+            device = cleaned_data.get('device')
+            if device and not device.is_active:
+                self.add_error('device', "Selected device is currently inactive")
+            if device and device.needs_maintenance():
+                self.add_error('device', "Selected device requires maintenance")
 
         except Exception as e:
             logger.error(f"Error in form validation: {str(e)}")
-            raise forms.ValidationError("An error occurred during validation")
+            self.add_error(None, f"An error occurred during validation: {str(e)}")
 
         return cleaned_data
     
