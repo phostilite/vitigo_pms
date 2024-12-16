@@ -8,14 +8,16 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
 
 # Local application imports
 from .models import PatientRFIDCard, PhototherapyPlan, PhototherapySession
 from .utils import get_template_path
-from error_handling.views import handler500
+from error_handling.views import handler500, handler403
 from access_control.permissions import PermissionManager
 
 # Logger configuration
@@ -71,7 +73,7 @@ class RFIDDashboardView(LoginRequiredMixin, View):
             }
 
             template_path = get_template_path(
-                'rfid_dashboard.html',
+                'rfid/rfid_dashboard.html',
                 request.user.role,
                 'phototherapy_management'
             )
@@ -128,4 +130,38 @@ class RFIDCardIssueView(LoginRequiredMixin, View):
             logger.error(f"Error issuing RFID card: {str(e)}")
             messages.error(request, "An error occurred while issuing the RFID card")
 
+        return redirect('rfid_dashboard')
+
+@method_decorator(csrf_protect, name='dispatch')
+class RFIDCardEditView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+            messages.error(request, "You don't have permission to edit RFID cards")
+            return handler403(request)
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, pk):
+        try:
+            card = get_object_or_404(PatientRFIDCard, pk=pk)
+            
+            # Update fields
+            card.card_number = request.POST.get('card_number')
+            card.is_active = request.POST.get('is_active') == 'on'
+            
+            # Convert and validate expiry date
+            expiry_date = request.POST.get('expiry_date')
+            if expiry_date:
+                expiry_datetime = timezone.datetime.strptime(expiry_date, '%Y-%m-%d')
+                card.expires_at = timezone.make_aware(expiry_datetime)
+            
+            card.notes = request.POST.get('notes', '')
+            card.save()
+            
+            messages.success(request, "RFID card updated successfully")
+            logger.info(f"RFID card {card.id} updated by user {request.user.id}")
+            
+        except Exception as e:
+            logger.error(f"Error updating RFID card: {str(e)}")
+            messages.error(request, "Error updating RFID card")
+            
         return redirect('rfid_dashboard')
