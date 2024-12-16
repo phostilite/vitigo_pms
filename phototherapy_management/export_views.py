@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponse
 from django.utils import timezone
 from django.views import View
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Sum
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -381,6 +381,186 @@ class ProtocolExportView(LoginRequiredMixin, UserPassesTestMixin, View):
         protocol_table = Table(protocol_data, colWidths=[100, 80, 70, 70, 70, 60])
         protocol_table.setStyle(self.get_table_style())
         elements.append(protocol_table)
+
+        doc.build(elements)
+        return response
+
+    def get_table_style(self):
+        """Define common table style for PDF exports"""
+        return TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ])
+
+class HomeTherapyLogsExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'phototherapy_management')
+
+    def get(self, request):
+        try:
+            export_format = request.GET.get('export', 'excel')
+            data = self.gather_logs_data(request)
+            
+            # Explicitly check the format
+            if export_format == 'pdf':
+                return self.export_pdf(data)
+            else:  # default to excel
+                return self.export_excel(data)
+        except Exception as e:
+            logger.error(f"Home therapy logs export error: {str(e)}")
+            return HttpResponse('Export failed', status=500)
+
+    def gather_logs_data(self, request):
+        """Gather all home therapy logs data with filters"""
+        from .home_views import HomeTherapyLogsView
+        
+        # Reuse the filtering logic from HomeTherapyLogsView
+        view = HomeTherapyLogsView()
+        view.request = request
+        queryset = view.get_queryset()
+
+        return {
+            'logs': queryset.select_related('plan__patient'),
+            'total_logs': queryset.count(),
+            'total_duration': queryset.aggregate(total=Sum('duration_minutes'))['total'] or 0,
+            'unique_patients': queryset.values('plan__patient').distinct().count(),
+            'export_date': timezone.now()
+        }
+
+    def export_excel(self, data):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'fg_color': '#4B5563',
+            'font_color': 'white',
+            'border': 1
+        })
+        cell_format = workbook.add_format({'border': 1})
+
+        # Create sheet
+        sheet = workbook.add_worksheet('Home Therapy Logs')
+
+        # Define headers
+        headers = [
+            'Patient Name',
+            'Date',
+            'Time',
+            'Duration (mins)',
+            'Exposure Type',
+            'Body Areas',
+            'Notes',
+            'Side Effects'
+        ]
+
+        # Set column widths
+        widths = [25, 15, 15, 15, 20, 30, 30, 30]
+        for i, width in enumerate(widths):
+            sheet.set_column(i, i, width)
+
+        # Write headers
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+
+        # Write data
+        for row, log in enumerate(data['logs'], start=1):
+            sheet.write(row, 0, log.plan.patient.get_full_name(), cell_format)
+            sheet.write(row, 1, log.date.strftime('%Y-%m-%d'), cell_format)
+            sheet.write(row, 2, log.time.strftime('%H:%M'), cell_format)
+            sheet.write(row, 3, log.duration_minutes, cell_format)
+            sheet.write(row, 4, log.get_exposure_type_display(), cell_format)
+            sheet.write(row, 5, log.body_areas_treated, cell_format)
+            sheet.write(row, 6, log.notes or '', cell_format)
+            sheet.write(row, 7, log.side_effects or '', cell_format)
+
+        workbook.close()
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=home_therapy_logs.xlsx'
+        return response
+
+    def export_pdf(self, data):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename=home_therapy_logs.pdf'
+
+        # Use landscape mode with letter size for more width
+        doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Add custom style for wrapped text
+        styles.add(ParagraphStyle(
+            name='WrappedText',
+            parent=styles['Normal'],
+            fontSize=9,
+            wordWrap='CJK',
+            alignment=1  # Center alignment
+        ))
+
+        # Title and date
+        elements.append(Paragraph('Home Therapy Logs Report', styles['Heading1']))
+        elements.append(Paragraph(
+            f'Generated on: {data["export_date"].strftime("%Y-%m-%d %H:%M")}',
+            styles['Normal']
+        ))
+        elements.append(Spacer(1, 20))
+
+        # Summary section remains the same
+        elements.append(Paragraph('Summary', styles['Heading2']))
+        summary_data = [
+            ['Total Logs', str(data['total_logs'])],
+            ['Total Duration', f"{data['total_duration']} minutes"],
+            ['Unique Patients', str(data['unique_patients'])]
+        ]
+        summary_table = Table(summary_data, colWidths=[200, 100])
+        summary_table.setStyle(self.get_table_style())
+        elements.append(summary_table)
+        elements.append(Spacer(1, 20))
+
+        # Logs table with adjusted column widths and wrapped text
+        elements.append(Paragraph('Log Details', styles['Heading2']))
+        logs_data = [
+            ['Patient', 'Date', 'Duration', 'Exposure Type', 'Body Areas']
+        ]
+        
+        # Process the data with wrapped text for body areas
+        for log in data['logs']:
+            logs_data.append([
+                log.plan.patient.get_full_name(),
+                log.date.strftime('%Y-%m-%d'),
+                f"{log.duration_minutes} mins",
+                log.get_exposure_type_display(),
+                Paragraph(log.body_areas_treated, styles['WrappedText'])
+            ])
+
+        # Adjusted column widths (total should be around 700-750 for landscape letter)
+        logs_table = Table(logs_data, colWidths=[150, 80, 80, 100, 250])
+        
+        # Enhanced table style for better readability
+        table_style = self.get_table_style()
+        table_style.add('VALIGN', (0, 0), (-1, -1), 'MIDDLE')  # Vertical alignment
+        table_style.add('ROWHEIGHT', (0, 1), (-1, -1), 30)     # Minimum row height
+        
+        logs_table.setStyle(table_style)
+        elements.append(logs_table)
 
         doc.build(elements)
         return response

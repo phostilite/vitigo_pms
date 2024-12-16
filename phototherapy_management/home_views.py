@@ -33,6 +33,14 @@ class HomeTherapyLogsView(LoginRequiredMixin, ListView):
             messages.error(request, "An error occurred while accessing the page")
             return redirect('dashboard')
 
+    def get(self, request, *args, **kwargs):
+        export_format = request.GET.get('export')
+        if export_format in ['excel', 'pdf']:
+            from .export_views import HomeTherapyLogsExportView
+            export_view = HomeTherapyLogsExportView()
+            return export_view.get(request)
+        return super().get(request, *args, **kwargs)
+
     def get_template_names(self):
         try:
             return [get_template_path(
