@@ -308,3 +308,21 @@ class AddSessionReportView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while adding the problem report")
         
         return redirect('session_detail', session_id=session_id)
+
+
+class UpdateSessionNotesView(LoginRequiredMixin, View):
+    def post(self, request, session_id):
+        try:
+            session = PhototherapySession.objects.get(id=session_id)
+            session.staff_notes = request.POST.get('staff_notes', '')
+            session.save()
+            
+            messages.success(request, "Staff notes updated successfully")
+            
+        except PhototherapySession.DoesNotExist:
+            messages.error(request, "Session not found")
+        except Exception as e:
+            logger.error(f"Error updating staff notes: {str(e)}")
+            messages.error(request, "An error occurred while updating staff notes")
+        
+        return redirect('session_detail', session_id=session_id)

@@ -215,7 +215,8 @@
             <div class="bg-white rounded-lg shadow-md p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Staff Notes</h3>
-                    <button class="text-blue-600 hover:text-blue-800">
+                    <button data-modal-target="editNotesModal" data-modal-toggle="editNotesModal" 
+                            class="text-blue-600 hover:text-blue-800">
                         <i class="fas fa-edit mr-1"></i>Edit Notes
                     </button>
                 </div>
@@ -223,6 +224,50 @@
                     {{ session.staff_notes|default:"No staff notes recorded"|linebreaks }}
                 </div>
             </div>
+
+            <!-- Edit Notes Modal -->
+            <div id="editNotesModal" tabindex="-1" aria-hidden="true" 
+                 class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative w-full max-w-md max-h-full">
+                    <!-- Modal content -->
+                    <div class="relative bg-white rounded-lg shadow">
+                        <!-- Modal header -->
+                        <div class="flex items-center justify-between p-4 border-b rounded-t">
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                Edit Staff Notes
+                            </h3>
+                            <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="editNotesModal">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <!-- Modal body -->
+                        <form action="{% url 'update_session_notes' session.id %}" method="post" class="p-6">
+                            {% csrf_token %}
+                            <div class="mb-4">
+                                <label for="staff_notes" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Notes
+                                </label>
+                                <textarea id="staff_notes" name="staff_notes" rows="6"
+                                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">{{ session.staff_notes }}</textarea>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Add any relevant notes, observations, or instructions for this session.
+                                </p>
+                            </div>
+
+                            <!-- Modal footer -->
+                            <div class="flex items-center justify-end space-x-2">
+                                <button type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10" data-modal-hide="editNotesModal">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                                    Save Notes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Right Column - Patient & Protocol Info -->
