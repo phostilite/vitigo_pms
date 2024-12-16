@@ -18,10 +18,31 @@
             <p class="text-sm text-gray-600">Monitor and analyze phototherapy performance</p>
         </div>
         <div class="flex space-x-3">
-            <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
+            <!-- Flowbite Dropdown -->
+            <button id="dropdownDefaultButton" data-dropdown-toggle="dropdown" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 inline-flex items-center" type="button">
                 <i class="fas fa-download mr-2"></i>
                 Export Reports
+                <svg class="w-2.5 h-2.5 ml-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
+                </svg>
             </button>
+            <!-- Dropdown menu -->
+            <div id="dropdown" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-44">
+                <ul class="py-2 text-sm text-gray-700" aria-labelledby="dropdownDefaultButton">
+                    <li>
+                        <a href="{% url 'export_reports' %}?format=excel" class="block px-4 py-2 hover:bg-gray-100">
+                            <i class="fas fa-file-excel mr-2 text-green-600"></i>
+                            Excel Format
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'export_reports' %}?format=pdf" class="block px-4 py-2 hover:bg-gray-100">
+                            <i class="fas fa-file-pdf mr-2 text-red-600"></i>
+                            PDF Format
+                        </a>
+                    </li>
+                </ul>
+            </div>
             <a href="{% url 'report_problem' %}" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center">
                 <i class="fas fa-exclamation-triangle mr-2"></i>
                 Report Problem
@@ -252,6 +273,21 @@
         const problemType = document.getElementById('problemType');
         const applyFilters = document.getElementById('applyFilters');
 
+        // Update export links when filters change
+        function updateExportLinks() {
+            const filters = {
+                days: dateRange.value,
+                problemType: problemType.value
+            };
+
+            document.querySelectorAll('#dropdown a').forEach(link => {
+                const url = new URL(link.href);
+                url.searchParams.set('days', filters.days);
+                url.searchParams.set('problemType', filters.problemType);
+                link.href = url.toString();
+            });
+        }
+
         // Function to update reports based on filters
         function updateReports() {
             const filters = {
@@ -262,6 +298,14 @@
             // Show loading state
             document.querySelectorAll('table tbody').forEach(tbody => {
                 tbody.style.opacity = '0.5';
+            });
+
+            // Update export links with current filters
+            document.querySelectorAll('.dropdown-menu a').forEach(link => {
+                const url = new URL(link.href);
+                url.searchParams.set('days', filters.days);
+                url.searchParams.set('problemType', filters.problemType);
+                link.href = url.toString();
             });
 
             // Make AJAX request to fetch filtered data
@@ -314,16 +358,12 @@
         }
 
         // Attach event listeners
+        dateRange.addEventListener('change', updateExportLinks);
+        problemType.addEventListener('change', updateExportLinks);
         applyFilters.addEventListener('click', updateReports);
         
-        // Initialize tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-
-        // Initialize any charts or visualizations
-        // Add any additional JavaScript functionality here
+        // Initial update of export links
+        updateExportLinks();
     });
 </script>
 {% endblock %}

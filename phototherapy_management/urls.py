@@ -11,7 +11,7 @@ from . import (
     export_views as ev,
     home_views as hv
 )
-from .export_views import ProtocolExportView
+from .export_views import ProtocolExportView, ReportExportView  # Add ReportExportView import
 
 urlpatterns = [
     path('', v.PhototherapyManagementView.as_view(), name='phototherapy_management'),
@@ -44,6 +44,7 @@ urlpatterns = [
     path('session/<int:session_id>/update-status/', sv.UpdateSessionStatusView.as_view(), name='update_session_status'),
 
     path('reports/', rv.ReportManagementView.as_view(), name='report_management'),
+    path('reports/export/', ReportExportView.as_view(), name='export_reports'),  # Add this line
 
     path('rfid-dashboard/', rf.RFIDDashboardView.as_view(), name='rfid_dashboard'),
     path('rfid/issue/', rf.RFIDCardIssueView.as_view(), name='rfid_card_issue'),

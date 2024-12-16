@@ -14,11 +14,12 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from django.contrib import messages
 from django.shortcuts import redirect
+from datetime import timedelta
 
 from access_control.permissions import PermissionManager
 from .models import (
     PhototherapyPlan, PhototherapySession, PhototherapyDevice,
-    PhototherapyType, PhototherapyPayment, PhototherapyProgress, PhototherapyProtocol
+    PhototherapyType, PhototherapyPayment, PhototherapyProgress, PhototherapyProtocol, ProblemReport, DeviceMaintenance
 )
 
 logger = logging.getLogger(__name__)
@@ -743,4 +744,211 @@ class DeviceDataExportView(LoginRequiredMixin, UserPassesTestMixin, View):
             ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
             ('LEFTPADDING', (0, 0), (-1, -1), 6),
             ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ])
+
+class ReportExportView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'phototherapy_management')
+
+    def get(self, request):
+        try:
+            export_format = request.GET.get('format', 'excel')
+            date_range = request.GET.get('days', '30')
+            
+            # Get the data from the report management view's logic
+            data = self.gather_report_data(date_range)
+            
+            if export_format == 'pdf':
+                return self.export_pdf(data)
+            else:
+                return self.export_excel(data)
+                
+        except Exception as e:
+            logger.error(f"Report export error: {str(e)}")
+            messages.error(request, "Failed to export reports")
+            return redirect('report_management')
+
+    def gather_report_data(self, date_range):
+        """Gather all report data for the specified date range"""
+        today = timezone.now().date()
+        start_date = today - timedelta(days=int(date_range))
+        
+        problem_reports = ProblemReport.objects.filter(
+            reported_at__date__gte=start_date
+        ).select_related('session', 'reported_by')
+        
+        progress_records = PhototherapyProgress.objects.filter(
+            assessment_date__gte=start_date
+        ).select_related('plan', 'assessed_by')
+        
+        maintenance_records = DeviceMaintenance.objects.filter(
+            maintenance_date__gte=start_date
+        ).select_related('device')
+        
+        sessions = PhototherapySession.objects.filter(
+            scheduled_date__gte=start_date
+        )
+
+        return {
+            'date_range': date_range,
+            'problem_reports': problem_reports,
+            'progress_records': progress_records,
+            'maintenance_records': maintenance_records,
+            'sessions': sessions,
+            'export_date': timezone.now()
+        }
+
+    def export_excel(self, data):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'fg_color': '#4B5563',
+            'font_color': 'white',
+            'border': 1
+        })
+        cell_format = workbook.add_format({'border': 1})
+
+        # Problem Reports Sheet
+        self._create_problems_sheet(workbook, data['problem_reports'], header_format, cell_format)
+        
+        # Progress Sheet
+        self._create_progress_sheet(workbook, data['progress_records'], header_format, cell_format)
+        
+        # Maintenance Sheet
+        self._create_maintenance_sheet(workbook, data['maintenance_records'], header_format, cell_format)
+        
+        # Sessions Sheet
+        self._create_sessions_sheet(workbook, data['sessions'], header_format, cell_format)
+
+        workbook.close()
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=phototherapy_report_{timezone.now().strftime("%Y%m%d")}.xlsx'
+        return response
+
+    def _create_problems_sheet(self, workbook, problems, header_format, cell_format):
+        sheet = workbook.add_worksheet('Problem Reports')
+        headers = ['Date', 'Patient', 'Problem', 'Severity', 'Status', 'Resolution Time']
+        
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+            
+        for row, problem in enumerate(problems, start=1):
+            sheet.write(row, 0, problem.reported_at.strftime('%Y-%m-%d'), cell_format)
+            sheet.write(row, 1, problem.session.plan.patient.get_full_name(), cell_format)
+            sheet.write(row, 2, problem.problem_description, cell_format)
+            sheet.write(row, 3, problem.get_severity_display(), cell_format)
+            sheet.write(row, 4, 'Resolved' if problem.resolved else 'Pending', cell_format)
+            resolution_time = problem.resolved_at - problem.reported_at if problem.resolved else 'N/A'
+            sheet.write(row, 5, str(resolution_time), cell_format)
+
+    def _create_progress_sheet(self, workbook, progress_records, header_format, cell_format):
+        sheet = workbook.add_worksheet('Progress')
+        headers = ['Date', 'Patient', 'Response Level', 'Improvement %', 'Next Assessment']
+        
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+            
+        for row, progress in enumerate(progress_records, start=1):
+            sheet.write(row, 0, progress.assessment_date.strftime('%Y-%m-%d'), cell_format)
+            sheet.write(row, 1, progress.plan.patient.get_full_name(), cell_format)
+            sheet.write(row, 2, progress.get_response_level_display(), cell_format)
+            sheet.write(row, 3, progress.improvement_percentage, cell_format)
+            next_date = progress.next_assessment_date.strftime('%Y-%m-%d') if progress.next_assessment_date else 'N/A'
+            sheet.write(row, 4, next_date, cell_format)
+
+    def _create_maintenance_sheet(self, workbook, maintenance_records, header_format, cell_format):
+        sheet = workbook.add_worksheet('Maintenance')
+        headers = ['Date', 'Device', 'Type', 'Cost', 'Next Due', 'Performed By']
+        
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+            
+        for row, maintenance in enumerate(maintenance_records, start=1):
+            sheet.write(row, 0, maintenance.maintenance_date.strftime('%Y-%m-%d'), cell_format)
+            sheet.write(row, 1, maintenance.device.name, cell_format)
+            sheet.write(row, 2, maintenance.get_maintenance_type_display(), cell_format)
+            sheet.write(row, 3, float(maintenance.cost), cell_format)
+            next_due = maintenance.next_maintenance_due.strftime('%Y-%m-%d') if maintenance.next_maintenance_due else 'N/A'
+            sheet.write(row, 4, next_due, cell_format)
+            sheet.write(row, 5, maintenance.performed_by, cell_format)
+
+    def _create_sessions_sheet(self, workbook, sessions, header_format, cell_format):
+        sheet = workbook.add_worksheet('Sessions')
+        headers = ['Date', 'Patient', 'Device', 'Status', 'Duration', 'Dose']
+        
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, header_format)
+            
+        for row, session in enumerate(sessions, start=1):
+            sheet.write(row, 0, session.scheduled_date.strftime('%Y-%m-%d'), cell_format)
+            sheet.write(row, 1, session.plan.patient.get_full_name(), cell_format)
+            sheet.write(row, 2, session.device.name if session.device else 'N/A', cell_format)
+            sheet.write(row, 3, session.get_status_display(), cell_format)
+            sheet.write(row, 4, session.duration_seconds or 'N/A', cell_format)
+            sheet.write(row, 5, session.actual_dose or 'N/A', cell_format)
+
+    def export_pdf(self, data):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename=phototherapy_report_{timezone.now().strftime("%Y%m%d")}.pdf'
+
+        doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title
+        elements.append(Paragraph('Phototherapy Report', styles['Heading1']))
+        elements.append(Paragraph(f'Generated on: {data["export_date"].strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Problems Summary
+        elements.append(Paragraph('Problem Reports', styles['Heading2']))
+        problem_data = [['Date', 'Severity', 'Status']]
+        for problem in data['problem_reports']:
+            problem_data.append([
+                problem.reported_at.strftime('%Y-%m-%d'),
+                problem.get_severity_display(),
+                'Resolved' if problem.resolved else 'Pending'
+            ])
+        problem_table = Table(problem_data, colWidths=[100, 100, 100])
+        problem_table.setStyle(self.get_table_style())
+        elements.append(problem_table)
+        elements.append(Spacer(1, 20))
+
+        # Progress Summary
+        elements.append(Paragraph('Treatment Progress', styles['Heading2']))
+        progress_data = [['Date', 'Response', 'Improvement']]
+        for progress in data['progress_records']:
+            progress_data.append([
+                progress.assessment_date.strftime('%Y-%m-%d'),
+                progress.get_response_level_display(),
+                f"{progress.improvement_percentage}%"
+            ])
+        progress_table = Table(progress_data, colWidths=[100, 100, 100])
+        progress_table.setStyle(self.get_table_style())
+        elements.append(progress_table)
+
+        doc.build(elements)
+        return response
+
+    def get_table_style(self):
+        return TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ])
