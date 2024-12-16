@@ -15,6 +15,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
+from django.views.generic.edit import UpdateView, DeleteView
 
 # Local/application imports
 from error_handling.views import handler500, handler403
@@ -137,6 +138,38 @@ class CreatePhototherapyReminderView(LoginRequiredMixin, CreateView):
             logger.error(f"Error saving reminder: {str(e)}")
             messages.error(self.request, "Failed to create reminder")
             return self.form_invalid(form)
+
+class DeleteReminderView(LoginRequiredMixin, DeleteView):
+    model = PhototherapyReminder
+    success_url = reverse_lazy('reminders_dashboard')
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            reminder = self.get_object()
+            if reminder.status != 'PENDING':
+                messages.error(request, 'Cannot delete a reminder that has already been sent')
+                return redirect('reminders_dashboard')
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in delete reminder dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('reminders_dashboard')
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            reminder = self.get_object()
+            # Store reminder info for success message
+            reminder_type = reminder.get_reminder_type_display()
+            response = super().post(request, *args, **kwargs)
+            messages.success(
+                request, 
+                f'Successfully deleted {reminder_type} reminder'
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Error deleting reminder: {str(e)}")
+            messages.error(request, 'Failed to delete reminder')
+            return redirect('reminders_dashboard')
 
 @login_required
 @require_POST

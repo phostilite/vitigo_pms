@@ -49,6 +49,7 @@ urlpatterns = [
     path('reminders/create/', rm.CreatePhototherapyReminderView.as_view(), name='create_reminder'),
     path('reminders/send/', rm.send_reminder, name='send_reminder'),
     path('reminders/<int:reminder_id>/edit/', rm.edit_reminder, name='edit_reminder'),
+    path('reminders/<int:pk>/delete/', rm.DeleteReminderView.as_view(), name='delete_reminder'),
 
     path('export/', ev.PhototherapyDashboardExportView.as_view(), name='phototherapy_export'),
 
