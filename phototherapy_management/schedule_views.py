@@ -361,3 +361,31 @@ class UpdateRFIDTrackingView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while updating RFID tracking")
         
         return redirect('session_detail', session_id=session_id)
+
+
+class UpdateSessionStatusView(LoginRequiredMixin, View):
+    def post(self, request, session_id):
+        try:
+            session = PhototherapySession.objects.get(id=session_id)
+            status = request.POST.get('status')
+            
+            # Update status and related fields
+            session.status = status
+            
+            # Handle actual dose and duration if completed
+            if status == 'COMPLETED':
+                session.actual_date = timezone.now().date()
+                session.actual_dose = request.POST.get('actual_dose')
+                session.duration_seconds = request.POST.get('duration_seconds')
+                session.administered_by = request.user
+            
+            session.save()
+            messages.success(request, f"Session status updated to {session.get_status_display()}")
+            
+        except PhototherapySession.DoesNotExist:
+            messages.error(request, "Session not found")
+        except Exception as e:
+            logger.error(f"Error updating session status: {str(e)}")
+            messages.error(request, "An error occurred while updating session status")
+        
+        return redirect('session_detail', session_id=session_id)
