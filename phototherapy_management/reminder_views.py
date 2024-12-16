@@ -180,3 +180,29 @@ def send_reminder(request):
         messages.error(request, f'Failed to send reminder: {str(e)}')
 
     return redirect('reminders_dashboard')
+
+@login_required
+@require_POST
+def edit_reminder(request, reminder_id):
+    try:
+        reminder = PhototherapyReminder.objects.get(id=reminder_id)
+        
+        # Don't allow editing sent reminders
+        if reminder.status != 'PENDING':
+            messages.error(request, 'Cannot edit a reminder that has already been sent')
+            return redirect('reminders_dashboard')
+        
+        # Update reminder fields
+        reminder.message = request.POST.get('message')
+        reminder.scheduled_datetime = request.POST.get('scheduled_datetime')
+        reminder.save()
+        
+        messages.success(request, 'Reminder updated successfully')
+        
+    except PhototherapyReminder.DoesNotExist:
+        messages.error(request, 'Reminder not found')
+    except Exception as e:
+        logger.error(f"Error updating reminder: {str(e)}")
+        messages.error(request, 'Failed to update reminder')
+    
+    return redirect('reminders_dashboard')

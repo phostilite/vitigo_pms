@@ -176,7 +176,8 @@
                                         {% if reminder.status != 'PENDING' %}disabled{% endif %}>
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
-                                <button onclick="editReminder('{{ reminder.id }}')" 
+                                <button data-modal-target="editReminderModal{{ reminder.id }}" 
+                                        data-modal-toggle="editReminderModal{{ reminder.id }}"
                                         class="text-blue-600 hover:text-blue-900 transition-colors">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -186,12 +187,72 @@
                                 </button>
                             </td>
                         </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                No reminders found
-                            </td>
-                        </tr>
+
+                        <!-- Edit Reminder Modal -->
+                        <div id="editReminderModal{{ reminder.id }}" tabindex="-1" aria-hidden="true"
+                        class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                            <div class="relative w-full max-w-md max-h-full">
+                                <div class="relative bg-white rounded-lg shadow">
+                                    <!-- Modal Header -->
+                                    <div class="flex items-center justify-between px-6 py-4 border-b rounded-t">
+                                        <h3 class="text-xl font-semibold text-gray-900">
+                                            Edit Reminder
+                                        </h3>
+                                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="editReminderModal{{ reminder.id }}">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Modal Body -->
+                                    <form action="{% url 'edit_reminder' reminder.id %}" method="post">
+                                        {% csrf_token %}
+                                        <div class="p-8">
+                                            <div class="space-y-6">
+                                                <!-- Message Field -->
+                                                <div class="space-y-2">
+                                                    <label class="block text-sm font-medium text-gray-700">Message</label>
+                                                    <textarea 
+                                                        name="message" 
+                                                        rows="4" 
+                                                        required
+                                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-3"
+                                                    >{{ reminder.message }}</textarea>
+                                                </div>
+
+                                                <!-- Date & Time Field -->
+                                                <div class="space-y-2">
+                                                    <label class="block text-sm font-medium text-gray-700">Scheduled Date & Time</label>
+                                                    <input 
+                                                        type="datetime-local" 
+                                                        name="scheduled_datetime" 
+                                                        required
+                                                        value="{{ reminder.scheduled_datetime|date:'Y-m-d' }}T{{ reminder.scheduled_datetime|time:'H:i' }}"
+                                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-3"
+                                                    >
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Modal Footer -->
+                                        <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t rounded-b">
+                                            <button 
+                                                type="button" 
+                                                class="px-4 py-2.5 text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100" 
+                                                data-modal-hide="editReminderModal{{ reminder.id }}"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                type="submit" 
+                                                class="px-4 py-2.5 text-white bg-amber-500 rounded-lg hover:bg-amber-600"
+                                            >
+                                                Update Reminder
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                         {% endfor %}
                     </tbody>
                 </table>
