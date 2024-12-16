@@ -31,7 +31,8 @@ from .models import (
     PhototherapySession,
     PhototherapyType,
     PhototherapyPayment,
-    HomePhototherapyLog
+    HomePhototherapyLog,
+    PatientRFIDCard
 )
 from .forms import TreatmentPlanForm, PhototherapyTypeForm
 from .utils import get_template_path
@@ -481,6 +482,16 @@ class TreatmentPlanListView(LoginRequiredMixin, ListView):
             context['completed_plans'] = self.model.objects.filter(
                 sessions_completed__gte=models.F('total_sessions_planned')
             ).count()
+
+            # Add data needed for edit modal
+            context['protocols'] = PhototherapyProtocol.objects.filter(is_active=True)
+            context['rfid_cards'] = PatientRFIDCard.objects.filter(
+                is_active=True
+            ).exclude(
+                phototherapyplan__isnull=False,  # Exclude cards that are already assigned
+                phototherapyplan__is_active=True  # to active treatment plans
+            )
+
         except Exception as e:
             logger.error(f"Error getting context data: {str(e)}")
             messages.error(self.request, "Error loading page data")
@@ -704,4 +715,46 @@ class DeactivateTreatmentPlanView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error deactivating treatment plan: {str(e)}")
             messages.error(request, "Error deactivating treatment plan")
+            return redirect('treatment_plan_detail', pk=pk)
+
+
+class EditTreatmentPlanView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                messages.error(request, "You don't have permission to modify treatment plans")
+                return handler403(request)
+
+            plan = get_object_or_404(PhototherapyPlan, pk=pk)
+            
+            # Convert reminder frequency from string to integer
+            reminder_frequency_map = {
+                'NONE': 0,
+                'DAILY': 1,
+                'WEEKLY': 7
+            }
+            
+            # Update fields with proper type conversion
+            try:
+                plan.protocol_id = int(request.POST.get('protocol'))
+                plan.total_sessions_planned = int(request.POST.get('total_sessions_planned'))
+                plan.current_dose = float(request.POST.get('current_dose'))
+                plan.total_cost = float(request.POST.get('total_cost'))
+                plan.rfid_card_id = request.POST.get('rfid_card') or None
+                plan.reminder_frequency = int(request.POST.get('reminder_frequency', 1))  # Default to 1 if not provided
+                plan.special_instructions = request.POST.get('special_instructions')
+                
+                plan.save()
+                messages.success(request, "Treatment plan updated successfully")
+                
+            except (ValueError, TypeError) as e:
+                logger.error(f"Data conversion error: {str(e)}")
+                messages.error(request, "Invalid data provided for treatment plan update")
+                return redirect('treatment_plan_detail', pk=pk)
+            
+            return redirect('treatment_plan_detail', pk=pk)
+            
+        except Exception as e:
+            logger.error(f"Error updating treatment plan: {str(e)}")
+            messages.error(request, "Error updating treatment plan")
             return redirect('treatment_plan_detail', pk=pk)

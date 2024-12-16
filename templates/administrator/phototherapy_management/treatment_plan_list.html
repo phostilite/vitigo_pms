@@ -212,9 +212,11 @@
                                 <a href="{% url 'treatment_plan_detail' plan.id %}" class="text-blue-600 hover:text-blue-900">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="#" class="text-green-600 hover:text-green-900">
+                                <button data-modal-target="editPlanModal{{ plan.id }}" 
+                                        data-modal-toggle="editPlanModal{{ plan.id }}"
+                                        class="text-green-600 hover:text-green-900">
                                     <i class="fas fa-edit"></i>
-                                </a>
+                                </button>
                                 {% if plan.is_active %}
                                 <button data-modal-target="deactivatePlanModal{{ plan.id }}" data-modal-toggle="deactivatePlanModal{{ plan.id }}" class="text-red-600 hover:text-red-900">
                                     <i class="fas fa-ban"></i>
@@ -227,7 +229,8 @@
                             </div>
                         </td>
                     </tr>
-
+                    
+                    {% include './treatment_plan/edit_modal.html' %}
                     {% include './treatment_plan/activate_plan.html' %}
                     {% include './treatment_plan/deactivate_plan.html' %}
                     {% endfor %}
