@@ -62,6 +62,7 @@ urlpatterns = [
     path('reminders/', rm.PhototherapyRemindersDashboardView.as_view(), name='reminders_dashboard'),
     path('reminders/create/', rm.CreatePhototherapyReminderView.as_view(), name='create_reminder'),
     path('reminders/send/', rm.send_reminder, name='send_reminder'),
+    path('reminders/send-all/', rm.SendAllRemindersView.as_view(), name='send_all_reminders'),
     path('reminders/<int:reminder_id>/edit/', rm.edit_reminder, name='edit_reminder'),
     path('reminders/<int:pk>/delete/', rm.DeleteReminderView.as_view(), name='delete_reminder'),
 

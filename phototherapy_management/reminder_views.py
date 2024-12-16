@@ -1,5 +1,6 @@
 # Standard library imports
 import logging
+from datetime import timedelta
 
 # Django imports
 from django.contrib import messages
@@ -16,6 +17,9 @@ from django.conf import settings
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.views.generic.edit import UpdateView, DeleteView
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
+
 
 # Local/application imports
 from error_handling.views import handler500, handler403
@@ -77,7 +81,7 @@ class PhototherapyRemindersDashboardView(LoginRequiredMixin, ListView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                'phototherapy_reminders_dashboard.html',
+                'reminders/phototherapy_reminders_dashboard.html',
                 self.request.user.role,
                 'phototherapy_management'
             )]
@@ -120,7 +124,7 @@ class CreatePhototherapyReminderView(LoginRequiredMixin, CreateView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                'create_reminder.html',
+                'reminders/create_reminder.html',
                 self.request.user.role,
                 'phototherapy_management'
             )]
@@ -239,3 +243,84 @@ def edit_reminder(request, reminder_id):
         messages.error(request, 'Failed to update reminder')
     
     return redirect('reminders_dashboard')
+
+@method_decorator(csrf_protect, name='dispatch')
+class SendAllRemindersView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+            messages.error(request, "You don't have permission to send reminders")
+            return handler403(request)
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        try:
+            # Get notification preferences
+            send_email = request.POST.get('send_email') == 'on'
+            send_sms = request.POST.get('send_sms') == 'on'
+
+            if not (send_email or send_sms):
+                messages.error(request, "Please select at least one notification method")
+                return redirect('reminders_dashboard')
+
+            # Get all pending reminders for today
+            today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = today_start + timedelta(days=1)
+            
+            pending_reminders = PhototherapyReminder.objects.filter(
+                status='PENDING',
+                scheduled_datetime__range=(today_start, today_end)
+            ).select_related('plan', 'plan__patient')
+
+            success_count = 0
+            failed_count = 0
+
+            for reminder in pending_reminders:
+                try:
+                    if send_email:
+                        # Send email reminder
+                        send_mail(
+                            subject='Phototherapy Reminder',
+                            message=reminder.message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[reminder.plan.patient.email],
+                            html_message=render_to_string(
+                                'emails/phototherapy/reminder.html',
+                                {'reminder': reminder}
+                            )
+                        )
+
+                    if send_sms:
+                        # Implement SMS sending logic here
+                        pass
+
+                    # Update reminder status
+                    reminder.status = 'SENT'
+                    reminder.sent_at = timezone.now()
+                    reminder.save()
+                    success_count += 1
+
+                except Exception as e:
+                    logger.error(f"Failed to send reminder {reminder.id}: {str(e)}")
+                    reminder.status = 'FAILED'
+                    reminder.error_message = str(e)
+                    reminder.save()
+                    failed_count += 1
+
+            if success_count > 0:
+                messages.success(
+                    request, 
+                    f"Successfully sent {success_count} reminder{'s' if success_count != 1 else ''}"
+                )
+            if failed_count > 0:
+                messages.error(
+                    request, 
+                    f"Failed to send {failed_count} reminder{'s' if failed_count != 1 else ''}"
+                )
+            if success_count == 0 and failed_count == 0:
+                messages.info(request, "No pending reminders found for today")
+
+        except Exception as e:
+            logger.error(f"Error in send all reminders: {str(e)}")
+            messages.error(request, "An error occurred while sending reminders")
+
+        return redirect('reminders_dashboard')
