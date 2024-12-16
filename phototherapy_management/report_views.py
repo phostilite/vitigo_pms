@@ -31,14 +31,42 @@ User = get_user_model()
 class ReportManagementView(LoginRequiredMixin, View):
     def get(self, request):
         try:
-            # Get date ranges
+            # Get filter parameters
+            search_query = request.GET.get('search', '')
+            status = request.GET.get('status', '')
+            sort_by = request.GET.get('sort', '-reported_at')
+            date_range = request.GET.get('date_range', '30')
+
+            # Base querysets
             today = timezone.now().date()
-            last_30_days = today - timedelta(days=30)
+            start_date = today - timedelta(days=int(date_range))
             
-            # Problem Reports Analysis
+            # Problem Reports Analysis with filters
             problem_reports = ProblemReport.objects.select_related(
                 'session', 'reported_by', 'resolved_by'
-            ).annotate(
+            )
+
+            # Apply filters
+            if search_query:
+                problem_reports = problem_reports.filter(
+                    Q(problem_description__icontains=search_query) |
+                    Q(session__plan__patient__first_name__icontains=search_query) |
+                    Q(session__plan__patient__last_name__icontains=search_query)
+                )
+            
+            if status:
+                problem_reports = problem_reports.filter(
+                    resolved=(status == 'resolved')
+                )
+
+            # Apply sorting
+            if sort_by:
+                problem_reports = problem_reports.order_by(sort_by)
+
+            # Filter by date range
+            problem_reports = problem_reports.filter(reported_at__date__gte=start_date)
+
+            problem_reports = problem_reports.annotate(
                 resolution_time=ExpressionWrapper(
                     F('resolved_at') - F('reported_at'),
                     output_field=DurationField()
@@ -58,7 +86,7 @@ class ReportManagementView(LoginRequiredMixin, View):
             progress_records = PhototherapyProgress.objects.select_related(
                 'plan', 'assessed_by'
             ).filter(
-                assessment_date__gte=last_30_days
+                assessment_date__gte=start_date
             )
             
             progress_stats = {
@@ -85,13 +113,13 @@ class ReportManagementView(LoginRequiredMixin, View):
                     next_maintenance_due__lte=today
                 ).count(),
                 'total_cost': maintenance_records.filter(
-                    maintenance_date__gte=last_30_days
+                    maintenance_date__gte=start_date
                 ).aggregate(total=Sum('cost'))['total'] or 0
             }
 
             # Compliance Tracking
             sessions = PhototherapySession.objects.filter(
-                scheduled_date__gte=last_30_days
+                scheduled_date__gte=start_date
             )
             
             compliance_stats = {
@@ -107,13 +135,17 @@ class ReportManagementView(LoginRequiredMixin, View):
                 'progress_stats': progress_stats,
                 'maintenance_stats': maintenance_stats,
                 'compliance_stats': compliance_stats,
-                'recent_problems': problem_reports.order_by('-reported_at')[:10],
+                'recent_problems': problem_reports[:10],
                 'pending_maintenance': maintenance_records.filter(
                     next_maintenance_due__lte=today
                 ).order_by('next_maintenance_due')[:5],
                 'recent_progress': progress_records.order_by(
                     '-assessment_date'
-                )[:5]
+                )[:5],
+                'search_query': search_query,
+                'current_status': status,
+                'current_sort': sort_by,
+                'current_date_range': date_range
             }
 
             template_path = get_template_path(

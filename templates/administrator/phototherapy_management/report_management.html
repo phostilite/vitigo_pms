@@ -109,6 +109,62 @@
         </div>
     </div>
 
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="p-4">
+            <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Search -->
+                <div class="relative">
+                    <input type="text" name="search" value="{{ search_query }}"
+                           placeholder="Search reports..."
+                           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                    <button type="submit" class="absolute right-3 top-2.5 text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+
+                <!-- Status Filter -->
+                <div>
+                    <select name="status" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div>
+                    <select name="date_range" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                        <option value="7" {% if current_date_range == '7' %}selected{% endif %}>Last 7 days</option>
+                        <option value="30" {% if current_date_range == '30' %}selected{% endif %}>Last 30 days</option>
+                        <option value="90" {% if current_date_range == '90' %}selected{% endif %}>Last 90 days</option>
+                        <option value="180" {% if current_date_range == '180' %}selected{% endif %}>Last 180 days</option>
+                    </select>
+                </div>
+
+                <!-- Sort -->
+                <div>
+                    <select name="sort" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                        <option value="-reported_at" {% if current_sort == '-reported_at' %}selected{% endif %}>Newest First</option>
+                        <option value="reported_at" {% if current_sort == 'reported_at' %}selected{% endif %}>Oldest First</option>
+                        <option value="-severity" {% if current_sort == '-severity' %}selected{% endif %}>Severity: High to Low</option>
+                        <option value="severity" {% if current_sort == 'severity' %}selected{% endif %}>Severity: Low to High</option>
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        <i class="fas fa-filter mr-2"></i>Apply Filters
+                    </button>
+                    <a href="{% url 'report_management' %}" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                        <i class="fas fa-sync-alt mr-2"></i>Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Recent Problems Section -->
     <div class="bg-white rounded-lg shadow mb-6">
         <div class="p-4 border-b border-gray-200">
@@ -239,131 +295,21 @@
             </div>
         </div>
     </div>
-
-    <!-- Filter Controls -->
-    <div class="fixed bottom-4 right-4">
-        <div class="bg-white rounded-lg shadow-lg p-4">
-            <div class="flex space-x-4">
-                <select id="dateRange" class="border rounded-lg px-4 py-2 text-sm">
-                    <option value="7">Last 7 days</option>
-                    <option value="30" selected>Last 30 days</option>
-                    <option value="90">Last 90 days</option>
-                    <option value="180">Last 180 days</option>
-                </select>
-                <select id="problemType" class="border rounded-lg px-4 py-2 text-sm">
-                    <option value="">All Problems</option>
-                    <option value="SEVERE">Severe Problems</option>
-                    <option value="MODERATE">Moderate Problems</option>
-                    <option value="MILD">Mild Problems</option>
-                </select>
-                <button id="applyFilters" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
-                    Apply Filters
-                </button>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize filter controls
-        const dateRange = document.getElementById('dateRange');
-        const problemType = document.getElementById('problemType');
-        const applyFilters = document.getElementById('applyFilters');
-
-        // Update export links when filters change
-        function updateExportLinks() {
-            const filters = {
-                days: dateRange.value,
-                problemType: problemType.value
-            };
-
-            document.querySelectorAll('#dropdown a').forEach(link => {
-                const url = new URL(link.href);
-                url.searchParams.set('days', filters.days);
-                url.searchParams.set('problemType', filters.problemType);
-                link.href = url.toString();
+        // Update export links to include current filters
+        const searchParams = new URLSearchParams(window.location.search);
+        document.querySelectorAll('#dropdown a').forEach(link => {
+            const url = new URL(link.href);
+            searchParams.forEach((value, key) => {
+                url.searchParams.set(key, value);
             });
-        }
-
-        // Function to update reports based on filters
-        function updateReports() {
-            const filters = {
-                days: dateRange.value,
-                problemType: problemType.value
-            };
-
-            // Show loading state
-            document.querySelectorAll('table tbody').forEach(tbody => {
-                tbody.style.opacity = '0.5';
-            });
-
-            // Update export links with current filters
-            document.querySelectorAll('.dropdown-menu a').forEach(link => {
-                const url = new URL(link.href);
-                url.searchParams.set('days', filters.days);
-                url.searchParams.set('problemType', filters.problemType);
-                link.href = url.toString();
-            });
-
-            // Make AJAX request to fetch filtered data
-            fetch(`{% url 'report_management' %}?${new URLSearchParams(filters)}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Update statistics and tables with new data
-                    updateStatistics(data.stats);
-                    updateTables(data.problems, data.maintenance, data.progress);
-                })
-                .catch(error => {
-                    console.error('Error fetching report data:', error);
-                    showErrorMessage('Failed to update reports. Please try again.');
-                })
-                .finally(() => {
-                    // Remove loading state
-                    document.querySelectorAll('table tbody').forEach(tbody => {
-                        tbody.style.opacity = '1';
-                    });
-                });
-        }
-
-        // Function to update statistics cards
-        function updateStatistics(stats) {
-            // Update compliance stats
-            document.querySelector('[data-stat="compliance-rate"]').textContent = 
-                `${stats.compliance_stats.compliance_rate.toFixed(1)}%`;
-            
-            // Update problem stats
-            document.querySelector('[data-stat="unresolved-issues"]').textContent = 
-                stats.problem_stats.unresolved;
-            
-            // Update improvement stats
-            document.querySelector('[data-stat="avg-improvement"]').textContent = 
-                `${stats.progress_stats.avg_improvement.toFixed(1)}%`;
-            
-            // Update maintenance stats
-            document.querySelector('[data-stat="pending-maintenance"]').textContent = 
-                stats.maintenance_stats.pending_maintenance;
-        }
-
-        // Function to show error messages
-        function showErrorMessage(message) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded';
-            alertDiv.role = 'alert';
-            alertDiv.textContent = message;
-            document.body.appendChild(alertDiv);
-            setTimeout(() => alertDiv.remove(), 5000);
-        }
-
-        // Attach event listeners
-        dateRange.addEventListener('change', updateExportLinks);
-        problemType.addEventListener('change', updateExportLinks);
-        applyFilters.addEventListener('click', updateReports);
-        
-        // Initial update of export links
-        updateExportLinks();
+            link.href = url.toString();
+        });
     });
 </script>
 {% endblock %}
