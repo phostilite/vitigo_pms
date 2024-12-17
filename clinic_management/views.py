@@ -85,6 +85,9 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
             # Recent Activities
             context.update(self.get_recent_activities())
 
+            # Staff Status
+            context.update(self.get_staff_status(today))
+
         except Exception as e:
             logger.error(f"Error getting clinic dashboard context: {str(e)}")
             messages.error(self.request, "Some dashboard data may be incomplete")
@@ -348,6 +351,63 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
                 'active_consultations': 0,
                 'completed_today': 0,
                 'recent_activities': []
+            }
+
+    def get_staff_status(self, today):
+        """Get simplified staff status for the dashboard"""
+        try:
+            # Get active staff assignments for today
+            active_assignments = StaffAssignment.objects.filter(
+                date=today,
+                status='IN_PROGRESS'
+            ).select_related('staff', 'staff__role', 'area')
+
+            # Get limited numbers of doctors and staff
+            active_doctors = [{
+                'name': assignment.staff.get_full_name(),
+                'status': 'BUSY' if assignment.status == 'IN_PROGRESS' else 'AVAILABLE',
+                'specialization': assignment.staff.role.name,
+                'location': assignment.area.name,
+            } for assignment in active_assignments.filter(
+                staff__role__name='DOCTOR'
+            )[:3]]  # Limit to 3 doctors
+
+            support_staff = [{
+                'name': assignment.staff.get_full_name(),
+                'status': 'BUSY' if assignment.status == 'IN_PROGRESS' else 'AVAILABLE',
+                'role': assignment.staff.role.name,
+            } for assignment in active_assignments.filter(
+                ~Q(staff__role__name='DOCTOR')
+            )[:4]]  # Limit to 4 support staff
+
+            # Get total counts for summary
+            total_doctors = active_assignments.filter(staff__role__name='DOCTOR').count()
+            total_support = active_assignments.filter(~Q(staff__role__name='DOCTOR')).count()
+
+            return {
+                'total_staff_on_duty': total_doctors + total_support,
+                'total_doctors': total_doctors,
+                'total_staff': total_support,
+                'active_doctors': active_doctors,
+                'support_staff': support_staff,
+                'more_doctors': total_doctors > 3,  # Flag if there are more doctors
+                'more_staff': total_support > 4,    # Flag if there are more staff
+                'remaining_doctors': total_doctors - 3 if total_doctors > 3 else 0,
+                'remaining_staff': total_support - 4 if total_support > 4 else 0
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting staff status: {str(e)}")
+            return {
+                'total_staff_on_duty': 0,
+                'total_doctors': 0,
+                'total_staff': 0,
+                'active_doctors': [],
+                'support_staff': [],
+                'more_doctors': False,
+                'more_staff': False,
+                'remaining_doctors': 0,
+                'remaining_staff': 0
             }
 
     def get_time_ago(self, timestamp):
