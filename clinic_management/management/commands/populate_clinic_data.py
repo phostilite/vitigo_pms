@@ -35,14 +35,40 @@ class Command(BaseCommand):
             with transaction.atomic():
                 self.stdout.write('Starting clinic data population...')
                 
-                # Create sample data in sequence
+                # Create roles first
                 roles = self.create_roles()
-                users = self.create_users(roles)
+                
+                # Check if we have any users
+                if User.objects.count() == 0:
+                    users = self.create_users(roles)
+                else:
+                    # Get existing users and ensure they have roles
+                    users = list(User.objects.all())
+                    for user in users:
+                        if not user.role:
+                            # Assign a random role if none exists
+                            user.role = random.choice(roles)
+                            user.save()
+                            logger.info(f'Assigned role {user.role.name} to user {user}')
+                
                 areas = self.create_clinic_areas()
                 stations = self.create_clinic_stations(areas)
                 visit_types = self.create_visit_types()
-                checklists = self.create_checklists(visit_types)
-                terminals = self.create_payment_terminals()
+                
+                # Only create new records if they don't exist
+                if not VisitChecklist.objects.exists():
+                    checklists = self.create_checklists(visit_types)
+                else:
+                    checklists = VisitChecklist.objects.all()
+                    logger.info('Using existing checklists')
+                
+                if not PaymentTerminal.objects.exists():
+                    terminals = self.create_payment_terminals()
+                else:
+                    terminals = PaymentTerminal.objects.all()
+                    logger.info('Using existing payment terminals')
+
+                # Continue with visit creation and related data
                 visits = self.create_clinic_visits(options['visits'], users, visit_types)
                 
                 # Create related data
@@ -78,11 +104,14 @@ class Command(BaseCommand):
                     }
                 )
                 roles.append(role)
-            logger.info(f'Created {len(roles)} roles')
+                if created:
+                    logger.info(f'Created role: {role_name}')
+                else:
+                    logger.info(f'Using existing role: {role_name}')
             return roles
         except Exception as e:
             logger.error(f'Error creating roles: {str(e)}')
-            raise
+            return Role.objects.all()
 
     def create_users(self, roles):
         users = []
@@ -115,37 +144,47 @@ class Command(BaseCommand):
         
         try:
             for name, code, capacity, requires_doctor in area_data:
-                area = ClinicArea.objects.create(
-                    name=name,
+                area, created = ClinicArea.objects.get_or_create(
                     code=code,
-                    description=f'{name} area of the clinic',
-                    capacity=capacity,
-                    requires_doctor=requires_doctor
+                    defaults={
+                        'name': name,
+                        'description': f'{name} area of the clinic',
+                        'capacity': capacity,
+                        'requires_doctor': requires_doctor
+                    }
                 )
                 areas.append(area)
-            logger.info(f'Created {len(areas)} clinic areas')
+                if created:
+                    logger.info(f'Created clinic area: {name}')
+                else:
+                    logger.info(f'Using existing clinic area: {name}')
             return areas
         except Exception as e:
             logger.error(f'Error creating clinic areas: {str(e)}')
-            raise
+            return ClinicArea.objects.all()  # Return existing areas if creation fails
 
     def create_clinic_stations(self, areas):
         stations = []
         try:
             for area in areas:
-                for i in range(1, random.randint(2, 5)):
-                    station = ClinicStation.objects.create(
-                        area=area,
-                        name=f'{area.name} Station {i}',
-                        station_number=f'{area.code}-{i:02d}',
-                        current_status='AVAILABLE'
-                    )
-                    stations.append(station)
-            logger.info(f'Created {len(stations)} clinic stations')
+                existing_stations = ClinicStation.objects.filter(area=area).count()
+                if existing_stations == 0:
+                    for i in range(1, random.randint(2, 5)):
+                        station = ClinicStation.objects.create(
+                            area=area,
+                            name=f'{area.name} Station {i}',
+                            station_number=f'{area.code}-{i:02d}',
+                            current_status='AVAILABLE'
+                        )
+                        stations.append(station)
+                        logger.info(f'Created station: {station.name}')
+                else:
+                    stations.extend(ClinicStation.objects.filter(area=area))
+                    logger.info(f'Using existing stations for area: {area.name}')
             return stations
         except Exception as e:
             logger.error(f'Error creating clinic stations: {str(e)}')
-            raise
+            return ClinicStation.objects.all()
 
     def create_visit_types(self):
         visit_types = []
@@ -159,19 +198,24 @@ class Command(BaseCommand):
         
         try:
             for name, code, duration in type_data:
-                visit_type = VisitType.objects.create(
-                    name=name,
+                visit_type, created = VisitType.objects.get_or_create(
                     code=code,
-                    description=f'Visit type for {name}',
-                    default_duration=duration,
-                    requires_doctor=code in ['INIT', 'FOLLOW', 'PROC']
+                    defaults={
+                        'name': name,
+                        'description': f'Visit type for {name}',
+                        'default_duration': duration,
+                        'requires_doctor': code in ['INIT', 'FOLLOW', 'PROC']
+                    }
                 )
                 visit_types.append(visit_type)
-            logger.info(f'Created {len(visit_types)} visit types')
+                if created:
+                    logger.info(f'Created visit type: {name}')
+                else:
+                    logger.info(f'Using existing visit type: {name}')
             return visit_types
         except Exception as e:
             logger.error(f'Error creating visit types: {str(e)}')
-            raise
+            return VisitType.objects.all()
 
     def create_checklists(self, visit_types):
         checklists = []
@@ -222,9 +266,26 @@ class Command(BaseCommand):
         statuses = ['REGISTERED', 'WAITING', 'IN_PROGRESS', 'COMPLETED']
         
         try:
-            patients = [u for u in users if u.role.name == 'PATIENT']
-            doctors = [u for u in users if u.role.name == 'DOCTOR']
-            
+            # Filter users with roles safely
+            patients = [u for u in users if u.role and u.role.name == 'PATIENT']
+            if not patients:
+                # If no patients found, create a test patient
+                patient_role = Role.objects.get_or_create(
+                    name='PATIENT',
+                    defaults={
+                        'display_name': 'Patient',
+                        'description': 'Role for patients'
+                    }
+                )[0]
+                test_patient = User.objects.create(
+                    email='testpatient@example.com',
+                    first_name='Test',
+                    last_name='Patient',
+                    role=patient_role
+                )
+                patients = [test_patient]
+                logger.info('Created test patient user')
+
             for _ in range(num_visits):
                 visit = ClinicVisit.objects.create(
                     patient=random.choice(patients),
@@ -235,6 +296,8 @@ class Command(BaseCommand):
                     created_by=random.choice(users)
                 )
                 visits.append(visit)
+                logger.info(f'Created clinic visit for patient {visit.patient}')
+            
             logger.info(f'Created {len(visits)} clinic visits')
             return visits
         except Exception as e:
@@ -243,13 +306,20 @@ class Command(BaseCommand):
 
     def create_checklist_completions(self, visits, checklists, users):
         try:
+            # Convert queryset to list if needed
+            checklist_list = list(checklists)
+            user_list = list(users)
+            
             for visit in visits:
-                for checklist in random.sample(checklists, k=random.randint(1, 3)):
+                # Calculate number of checklists to create (between 1 and 3, or less if fewer checklists exist)
+                num_checklists = min(random.randint(1, 3), len(checklist_list))
+                
+                for checklist in random.sample(checklist_list, k=num_checklists):
                     VisitChecklistCompletion.objects.create(
                         visit=visit,
                         checklist_item=checklist,
                         status=random.choice(['PENDING', 'COMPLETED']),
-                        completed_by=random.choice(users) if random.choice([True, False]) else None
+                        completed_by=random.choice(user_list) if random.choice([True, False]) else None
                     )
             logger.info('Created checklist completions')
         except Exception as e:
@@ -313,16 +383,21 @@ class Command(BaseCommand):
         try:
             for i in range(7):
                 date = timezone.now().date() - timedelta(days=i)
-                ClinicDaySheet.objects.create(
-                    date=date,
-                    status=random.choice(['PLANNED', 'IN_PROGRESS', 'COMPLETED']),
-                    total_appointments=random.randint(20, 50),
-                    total_walk_ins=random.randint(5, 15),
-                    total_patients=random.randint(25, 65),
-                    opened_by=random.choice(users),
-                    closed_by=random.choice(users) if random.choice([True, False]) else None
-                )
-            logger.info('Created day sheets')
+                # Check if day sheet already exists for this date
+                if not ClinicDaySheet.objects.filter(date=date).exists():
+                    ClinicDaySheet.objects.create(
+                        date=date,
+                        status=random.choice(['PLANNED', 'IN_PROGRESS', 'COMPLETED']),
+                        total_appointments=random.randint(20, 50),
+                        total_walk_ins=random.randint(5, 15),
+                        total_patients=random.randint(25, 65),
+                        opened_by=random.choice(users),
+                        closed_by=random.choice(users) if random.choice([True, False]) else None
+                    )
+                    logger.info(f'Created day sheet for {date}')
+                else:
+                    logger.info(f'Day sheet already exists for {date}')
+            logger.info('Finished processing day sheets')
         except Exception as e:
             logger.error(f'Error creating day sheets: {str(e)}')
             raise
@@ -409,16 +484,21 @@ class Command(BaseCommand):
             for i in range(30):
                 date = timezone.now().date() - timedelta(days=i)
                 for area in areas:
-                    ClinicMetrics.objects.create(
-                        date=date,
-                        area=area,
-                        total_patients=random.randint(10, 50),
-                        avg_wait_time=random.uniform(5.0, 60.0),
-                        max_wait_time=random.uniform(60.0, 120.0),
-                        total_no_shows=random.randint(0, 5),
-                        capacity_utilization=random.uniform(50.0, 95.0)
-                    )
-            logger.info('Created clinic metrics')
+                    # Check if metrics already exist for this date and area
+                    if not ClinicMetrics.objects.filter(date=date, area=area).exists():
+                        ClinicMetrics.objects.create(
+                            date=date,
+                            area=area,
+                            total_patients=random.randint(10, 50),
+                            avg_wait_time=random.uniform(5.0, 60.0),
+                            max_wait_time=random.uniform(60.0, 120.0),
+                            total_no_shows=random.randint(0, 5),
+                            capacity_utilization=random.uniform(50.0, 95.0)
+                        )
+                        logger.info(f'Created clinic metrics for {area.name} on {date}')
+                    else:
+                        logger.info(f'Metrics already exist for {area.name} on {date}')
+            logger.info('Finished processing clinic metrics')
         except Exception as e:
             logger.error(f'Error creating clinic metrics: {str(e)}')
             raise
