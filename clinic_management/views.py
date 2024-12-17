@@ -155,27 +155,50 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
         try:
             waiting_lists = WaitingList.objects.filter(
                 status='WAITING'
-            ).select_related('area', 'visit')
-            
-            waiting_by_area = defaultdict(list)
+            ).select_related(
+                'area',
+                'visit',
+                'visit__patient'
+            ).order_by('priority', 'join_time')
+
+            # Format queue data for the template
+            queue = []
             for waiting in waiting_lists:
-                waiting_by_area[waiting.area.name].append({
-                    'patient_name': waiting.visit.patient.get_full_name(),
+                queue.append({
+                    'token_number': f"{waiting.priority}{waiting.id}",  # Format: A123, B456, etc.
                     'priority': waiting.priority,
-                    'wait_time': waiting.calculate_wait_time(),
-                    'estimated_time': waiting.estimated_wait_time
+                    'name': waiting.visit.patient.get_full_name(),
+                    'id': waiting.visit.patient.id,
+                    'profile_picture': waiting.visit.patient.profile_picture if hasattr(waiting.visit.patient, 'profile_picture') else None,
+                    'visit_type': waiting.visit.visit_type.name,
+                    'status': waiting.status,
+                    'wait_time': int((timezone.now() - waiting.join_time).total_seconds() / 60),  # in minutes
+                    'area': waiting.area.name
                 })
-                
+
+            # Calculate average wait time
+            if queue:
+                avg_wait_time = sum(item['wait_time'] for item in queue) / len(queue)
+            else:
+                avg_wait_time = 0
+
+            # Count high priority patients
+            high_priority_count = sum(1 for item in queue if item['priority'] == 'A')
+
             return {
-                'waiting_by_area': dict(waiting_by_area),
-                'total_waiting': waiting_lists.count(),
-                'long_wait_count': waiting_lists.filter(
-                    join_time__lte=timezone.now() - timedelta(minutes=30)
-                ).count()
+                'queue': queue,
+                'avg_wait_time': round(avg_wait_time, 1),
+                'high_priority_count': high_priority_count,
+                'total_waiting': len(queue)
             }
         except Exception as e:
             logger.error(f"Error getting waiting list info: {str(e)}")
-            return {}
+            return {
+                'queue': [],
+                'avg_wait_time': 0,
+                'high_priority_count': 0,
+                'total_waiting': 0
+            }
 
     def get_resource_utilization(self):
         try:

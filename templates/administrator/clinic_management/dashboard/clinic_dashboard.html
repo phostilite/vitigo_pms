@@ -27,6 +27,28 @@
     <!-- Quick Stats Section -->
     {% include './sections/quick_stats.html' %}
 
-    
+    <!-- Main Dashboard Grid -->
+    <div class="grid grid-cols-12 gap-6">
+        <!-- Left Column (Wide) -->
+        <div class="col-span-12 lg:col-span-8">
+            <!-- Patient Queue and Flow -->
+            {% include './sections/patient_queue.html' %}
+
+            <!-- Resource Utilization -->
+
+            <!-- Recent Activities Table -->
+
+        </div>
+
+        <!-- Right Column (Narrow) -->
+        <div class="col-span-12 lg:col-span-4">
+            <!-- Staff Status -->
+            
+            <!-- Quick Links -->
+
+            <!-- Performance Metrics -->
+  
+        </div>
+    </div>
 </div>
 {% endblock %}
