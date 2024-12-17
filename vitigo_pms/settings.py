@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'webhooks',
     'sandbox',
     'body_mapping',
+    'clinic_management'
 ]
 
 MIDDLEWARE = [

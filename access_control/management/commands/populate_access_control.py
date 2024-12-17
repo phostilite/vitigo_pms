@@ -28,6 +28,7 @@ class Command(BaseCommand):
             {'name': 'hr_management', 'display_name': 'HR Management', 'url_name': 'hr_dashboard', 'order': 31},
             {'name': 'reporting_and_analytics', 'display_name': 'Reports & Analytics', 'url_name': 'reporting_dashboard', 'order': 32},
             {'name': 'access_control', 'display_name': 'Access Control', 'url_name': 'access_control_dashboard', 'order': 33},
+            {'name': 'clinic_management', 'display_name': 'Clinic Management', 'url_name': 'clinic_dashboard', 'order': 34},
             
             # Support & Settings
             {'name': 'help_support', 'display_name': 'Help & Support', 'url_name': 'help_support_dashboard', 'order': 40},
