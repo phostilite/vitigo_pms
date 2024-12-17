@@ -91,7 +91,7 @@ class Command(BaseCommand):
 
     def create_roles(self):
         roles = []
-        role_names = ['DOCTOR', 'NURSE', 'RECEPTIONIST', 'ADMIN', 'PATIENT']
+        role_names = ['DOCTOR', 'NURSE', 'RECEPTIONIST', 'ADMINISTRATOR', 'PATIENT']
         
         try:
             for role_name in role_names:

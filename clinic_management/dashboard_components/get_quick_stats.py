@@ -55,13 +55,10 @@ def get_quick_stats(today):
             stations = ClinicStation.objects.filter(is_active=True)
             
             # Count all treatment rooms (including consultation and exam rooms)
-            total_rooms = stations.filter(
-                station_type__in=['ROOM', 'CONSULT', 'EXAM']
-            ).count()
+            total_rooms = stations.count()
             
             # Count occupied treatment rooms
             occupied_rooms = stations.filter(
-                station_type__in=['ROOM', 'CONSULT', 'EXAM'],
                 current_status='OCCUPIED'
             ).count()
 

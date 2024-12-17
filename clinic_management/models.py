@@ -37,17 +37,6 @@ class ClinicStation(models.Model):
     area = models.ForeignKey(ClinicArea, on_delete=models.CASCADE, related_name='stations')
     name = models.CharField(max_length=100)
     station_number = models.CharField(max_length=20)
-    station_type = models.CharField(
-        max_length=20,
-        choices=[
-            ('ROOM', 'Treatment Room'),
-            ('CONSULT', 'Consultation Room'),
-            ('EXAM', 'Examination Room'),
-            ('EQUIPMENT', 'Equipment Station'),
-            ('OTHER', 'Other')
-        ],
-        default='ROOM'
-    )
     is_active = models.BooleanField(default=True)
     current_status = models.CharField(
         max_length=20,

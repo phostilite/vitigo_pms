@@ -6,6 +6,7 @@ from collections import defaultdict
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Avg, Max, Q, Sum, F, ExpressionWrapper, DurationField
+from django.db import models
 from django.utils import timezone
 from django.contrib import messages
 from django.db import transaction
@@ -202,14 +203,40 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
 
     def get_resource_utilization(self):
         try:
+            # Get active areas and their current utilization
+            areas = ClinicArea.objects.filter(is_active=True).annotate(
+                current_patients=models.Count('current_visits'),
+                station_count=models.Count('stations'),
+                occupied_stations=models.Count(
+                    'stations',
+                    filter=models.Q(stations__current_status='OCCUPIED')
+                )
+            )
+
+            # Calculate basic metrics
+            resources = [
+                {
+                    'area_name': area.name,
+                    'capacity': area.capacity,
+                    'current_patients': area.current_patients,
+                    'utilization_percent': (area.current_patients / area.capacity * 100) if area.capacity > 0 else 0,
+                    'available_stations': area.station_count - area.occupied_stations
+                }
+                for area in areas
+            ]
+
             return {
-                'room_utilization': self.calculate_resource_utilization('ROOM'),
-                'equipment_utilization': self.calculate_resource_utilization('EQUIPMENT'),
-                'staff_utilization': self.calculate_resource_utilization('STAFF')
+                'resources': resources,
+                'total_capacity': sum(area.capacity for area in areas),
+                'total_current': sum(area.current_patients for area in areas),
             }
         except Exception as e:
             logger.error(f"Error getting resource utilization: {str(e)}")
-            return {}
+            return {
+                'resources': [],
+                'total_capacity': 0,
+                'total_current': 0
+            }
 
     def get_staff_assignments(self, today):
         try:

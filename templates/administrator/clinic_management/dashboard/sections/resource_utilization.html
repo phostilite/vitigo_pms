@@ -1,0 +1,68 @@
+<div class="bg-white rounded-lg shadow-md">
+    <!-- Section Header -->
+    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+            <h2 class="text-lg font-semibold text-gray-900">Resource Utilization</h2>
+        </div>
+        <div class="flex gap-2">
+            <a href="#" class="text-sm text-indigo-600 hover:text-indigo-700">
+                View Details
+            </a>
+            <select id="resourceTimeRange" class="text-sm border border-gray-300 rounded-md p-2">
+                <option value="realtime">Real-time View</option>
+                <option value="today">Today's Summary</option>
+                <option value="week">Weekly Overview</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-2 gap-4 p-4">
+        <div class="bg-indigo-50 p-4 rounded-lg">
+            <p class="text-sm text-indigo-600 font-medium">Total Capacity</p>
+            <p class="text-2xl font-bold text-indigo-900">{{ total_capacity }}</p>
+        </div>
+        <div class="bg-green-50 p-4 rounded-lg">
+            <p class="text-sm text-green-600 font-medium">Currently Occupied</p>
+            <p class="text-2xl font-bold text-green-900">{{ total_current }}</p>
+        </div>
+    </div>
+
+    <!-- Resource Table -->
+    <div class="p-4">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Area</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilization</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Stations</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for resource in resources %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ resource.area_name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div class="flex items-center">
+                                <div class="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                    <div class="bg-indigo-600 h-2.5 rounded-full" style="width: {{ resource.utilization_percent }}%"></div>
+                                </div>
+                                <span>{{ resource.utilization_percent|floatformat:0 }}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ resource.available_stations }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
