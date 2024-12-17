@@ -81,6 +81,9 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
             
             # Performance Metrics
             context.update(self.get_performance_metrics(today))
+            
+            # Recent Activities
+            context.update(self.get_recent_activities())
 
         except Exception as e:
             logger.error(f"Error getting clinic dashboard context: {str(e)}")
@@ -301,6 +304,66 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
         except Exception as e:
             logger.error(f"Error getting performance metrics: {str(e)}")
             return {}
+
+    def get_recent_activities(self):
+        try:
+            today = timezone.now().date()
+            
+            # Get basic metrics for today
+            context = {
+                'today_checkins': ClinicVisit.objects.filter(
+                    registration_time__date=today
+                ).count(),
+                'active_consultations': ClinicVisit.objects.filter(
+                    status='IN_PROGRESS'
+                ).count(),
+                'completed_today': ClinicVisit.objects.filter(
+                    status='COMPLETED',
+                    end_time__date=today
+                ).count()
+            }
+            
+            # Get last 10 activities
+            activities = ClinicVisit.objects.filter(
+                registration_time__date=today
+            ).select_related(
+                'patient', 'current_area'
+            ).order_by('-registration_time')[:10]
+            
+            # Format activities for display
+            context['recent_activities'] = [{
+                'time': activity.registration_time,
+                'patient_name': activity.patient.get_full_name(),
+                'description': f"{activity.visit_type.name} Visit",
+                'location': activity.current_area.name if activity.current_area else 'Reception',
+                'status': activity.status
+            } for activity in activities]
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"Error getting recent activities: {str(e)}")
+            return {
+                'today_checkins': 0,
+                'active_consultations': 0,
+                'completed_today': 0,
+                'recent_activities': []
+            }
+
+    def get_time_ago(self, timestamp):
+        """Helper method to format time difference in a human-readable format"""
+        now = timezone.now()
+        diff = now - timestamp
+
+        if diff.days > 0:
+            return f"{diff.days}d ago"
+        hours = diff.seconds // 3600
+        if hours > 0:
+            return f"{hours}h ago"
+        minutes = (diff.seconds % 3600) // 60
+        if minutes > 0:
+            return f"{minutes}m ago"
+        return "Just now"
 
     # Helper methods
     def calculate_resource_utilization(self, resource_type):
