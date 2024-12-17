@@ -296,17 +296,108 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
             return {}
 
     def get_performance_metrics(self, today):
+        """Get performance metrics for the dashboard"""
         try:
-            metrics = ClinicMetrics.objects.filter(date=today)
+            # Get metrics from ClinicMetrics model
+            today_metrics = ClinicMetrics.objects.filter(date=today)
+            yesterday = today - timedelta(days=1)
+            yesterday_metrics = ClinicMetrics.objects.filter(date=yesterday)
+
+            # Calculate satisfaction rate
+            satisfaction_rate = 85  # Example: Could be calculated from patient feedback
+            previous_satisfaction = 82.5
+
+            # Calculate wait times
+            avg_wait_time = today_metrics.aggregate(
+                avg=Avg('avg_wait_time')
+            )['avg'] or 0
+            previous_wait_time = yesterday_metrics.aggregate(
+                avg=Avg('avg_wait_time')
+            )['avg'] or 0
+            wait_time_percentage = min((avg_wait_time / 30) * 100, 100)  # Based on 30-minute target
+            wait_time_trend = '↓ {}m'.format(round(previous_wait_time - avg_wait_time, 1)) if previous_wait_time > avg_wait_time else '↑ {}m'.format(round(avg_wait_time - previous_wait_time, 1))
+
+            # Calculate efficiency metrics
+            resource_efficiency = today_metrics.aggregate(
+                avg=Avg('capacity_utilization')
+            )['avg'] or 0
+
+            # Calculate staff productivity
+            completed_visits = ClinicVisit.objects.filter(
+                status='COMPLETED',
+                end_time__date=today
+            ).count()
+            active_staff = StaffAssignment.objects.filter(
+                date=today,
+                status='IN_PROGRESS'
+            ).count()
+            staff_productivity = (completed_visits / active_staff * 100) if active_staff > 0 else 0
+
+            # Calculate patient flow metrics
+            current_hour = timezone.now().hour
+            visits_today = ClinicVisit.objects.filter(
+                registration_time__date=today
+            ).count()
+            patient_flow_rate = round(visits_today / (current_hour + 1) if current_hour > 0 else visits_today)
+            flow_rate_percentage = min((patient_flow_rate / 10) * 100, 100)  # Based on target of 10 patients/hour
+
+            # Calculate key statistics
+            completed_consultations = ClinicVisit.objects.filter(
+                status='COMPLETED',
+                end_time__date=today
+            ).count()
             
+            total_scheduled = ClinicVisit.objects.filter(
+                registration_time__date=today
+            ).count()
+            no_shows = ClinicVisit.objects.filter(
+                status='NO_SHOW',
+                registration_time__date=today
+            ).count()
+            no_show_rate = round((no_shows / total_scheduled * 100) if total_scheduled > 0 else 0, 1)
+
+            # Calculate revenue metrics
+            total_revenue = VisitPaymentTransaction.objects.filter(
+                status='COMPLETED',
+                processed_at__date=today
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            revenue_per_patient = round(total_revenue / completed_consultations if completed_consultations > 0 else 0)
+
             return {
-                'daily_metrics': metrics,
-                'performance_indicators': self.calculate_performance_indicators(metrics),
-                'efficiency_scores': self.calculate_efficiency_scores(today)
+                'satisfaction_rate': round(satisfaction_rate, 1),
+                'previous_satisfaction': round(previous_satisfaction, 1),
+                'avg_wait_time': round(avg_wait_time),
+                'previous_wait_time': round(previous_wait_time),
+                'wait_time_percentage': round(wait_time_percentage),
+                'wait_time_trend': wait_time_trend,
+                'resource_efficiency': round(resource_efficiency),
+                'staff_productivity': round(staff_productivity),
+                'patient_flow_rate': patient_flow_rate,
+                'flow_rate_percentage': round(flow_rate_percentage),
+                'completed_consultations': completed_consultations,
+                'no_show_rate': no_show_rate,
+                'revenue_per_patient': revenue_per_patient,
+                'last_updated': timezone.now().strftime('%H:%M')
             }
+
         except Exception as e:
             logger.error(f"Error getting performance metrics: {str(e)}")
-            return {}
+            return {
+                'satisfaction_rate': 0,
+                'previous_satisfaction': 0,
+                'avg_wait_time': 0,
+                'previous_wait_time': 0,
+                'wait_time_percentage': 0,
+                'wait_time_trend': '0m',
+                'resource_efficiency': 0,
+                'staff_productivity': 0,
+                'patient_flow_rate': 0,
+                'flow_rate_percentage': 0,
+                'completed_consultations': 0,
+                'no_show_rate': 0,
+                'revenue_per_patient': 0,
+                'last_updated': timezone.now().strftime('%H:%M')
+            }
 
     def get_recent_activities(self):
         try:

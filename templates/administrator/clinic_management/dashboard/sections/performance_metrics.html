@@ -1,0 +1,124 @@
+<!-- administrator/clinic_management/dashboard/sections/performance_metrics.html -->
+
+<div class="bg-white rounded-lg shadow-md mt-6">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <h3 class="font-semibold text-gray-900">Performance Metrics</h3>
+        </div>
+        <select class="text-sm border border-gray-300 rounded-md p-2">
+            <option>Today</option>
+            <option>This Week</option>
+            <option>This Month</option>
+        </select>
+    </div>
+ 
+    <!-- Key Metrics Grid -->
+    <div class="p-4 grid grid-cols-2 gap-4">
+        <!-- Patient Satisfaction -->
+        <div class="p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-600">Patient Satisfaction</span>
+                <span class="text-2xl font-bold text-green-600">{{ satisfaction_rate }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-green-500 rounded-full h-2" style="width: {{ satisfaction_rate }}%"></div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500">
+                <span>Previous: {{ previous_satisfaction }}%</span>
+                <span class="text-green-600">↑ 2.5%</span>
+            </div>
+        </div>
+ 
+        <!-- Average Wait Time -->
+        <div class="p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-600">Avg Wait Time</span>
+                <span class="text-2xl font-bold {% if avg_wait_time > 30 %}text-red-600{% else %}text-blue-600{% endif %}">
+                    {{ avg_wait_time }}m
+                </span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="{% if avg_wait_time > 30 %}bg-red-500{% else %}bg-blue-500{% endif %} rounded-full h-2" 
+                     style="width: {{ wait_time_percentage }}%"></div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500">
+                <span>Target: 20m</span>
+                <span class="{% if avg_wait_time > previous_wait_time %}text-red-600{% else %}text-green-600{% endif %}">
+                    {{ wait_time_trend }}
+                </span>
+            </div>
+        </div>
+    </div>
+ 
+    <!-- Detailed Metrics -->
+    <div class="p-4 space-y-4">
+        <!-- Resource Efficiency -->
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <span class="text-sm font-medium text-gray-600">Resource Efficiency</span>
+                <span class="text-sm text-gray-500">{{ resource_efficiency }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-indigo-500 rounded-full h-2" style="width: {{ resource_efficiency }}%"></div>
+            </div>
+        </div>
+ 
+        <!-- Staff Productivity -->
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <span class="text-sm font-medium text-gray-600">Staff Productivity</span>
+                <span class="text-sm text-gray-500">{{ staff_productivity }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-purple-500 rounded-full h-2" style="width: {{ staff_productivity }}%"></div>
+            </div>
+        </div>
+ 
+        <!-- Patient Flow Rate -->
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <span class="text-sm font-medium text-gray-600">Patient Flow Rate</span>
+                <span class="text-sm text-gray-500">{{ patient_flow_rate }}/hour</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-yellow-500 rounded-full h-2" style="width: {{ flow_rate_percentage }}%"></div>
+            </div>
+        </div>
+    </div>
+ 
+    <!-- Key Statistics -->
+    <div class="p-4 border-t border-gray-200 grid grid-cols-3 gap-4 bg-gray-50">
+        <!-- Completed Consultations -->
+        <div class="text-center">
+            <div class="text-2xl font-bold text-gray-900">{{ completed_consultations }}</div>
+            <div class="text-xs text-gray-600">Completed</div>
+        </div>
+ 
+        <!-- No-Show Rate -->
+        <div class="text-center">
+            <div class="text-2xl font-bold text-gray-900">{{ no_show_rate }}%</div>
+            <div class="text-xs text-gray-600">No-Show Rate</div>
+        </div>
+ 
+        <!-- Revenue per Patient -->
+        <div class="text-center">
+            <div class="text-2xl font-bold text-gray-900">₹{{ revenue_per_patient }}</div>
+            <div class="text-xs text-gray-600">Avg Revenue/Patient</div>
+        </div>
+    </div>
+ 
+    <!-- Footer -->
+    <div class="p-4 border-t border-gray-200 flex justify-between items-center">
+        <span class="text-sm text-gray-600">Last updated: {{ last_updated }}</span>
+        <a href="#" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            View Full Report
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+    </div>
+ </div>
