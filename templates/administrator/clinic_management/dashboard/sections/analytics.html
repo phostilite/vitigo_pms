@@ -1,0 +1,234 @@
+<!-- administrator/clinic_management/dashboard/sections/analytics.html -->
+
+<div class="bg-white rounded-lg shadow-md">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <h2 class="text-lg font-semibold text-gray-900">Analytics Overview</h2>
+        </div>
+        <div class="flex items-center gap-4">
+            <select class="text-sm border border-gray-300 rounded-md p-2">
+                <option>Last 7 Days</option>
+                <option>Last 30 Days</option>
+                <option>Last 90 Days</option>
+                <option>Custom Range</option>
+            </select>
+            <button class="text-sm text-blue-600 hover:text-blue-800">Download Report</button>
+        </div>
+    </div>
+
+    <!-- Analytics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+        <!-- Patient Demographics -->
+        <div class="p-4 border rounded-lg">
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Patient Demographics</h3>
+            <div class="relative" style="height: 200px;">
+                <!-- Insert Chart Here (Using Chart.js or similar) -->
+                <canvas id="demographicsChart"></canvas>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                <div>Male: {{ male_percentage }}%</div>
+                <div>Female: {{ female_percentage }}%</div>
+                <div>Avg Age: {{ average_age }}</div>
+                <div>New Patients: {{ new_patients_count }}</div>
+            </div>
+        </div>
+
+        <!-- Visit Distribution -->
+        <div class="p-4 border rounded-lg">
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Visit Distribution</h3>
+            <div class="relative" style="height: 200px;">
+                <!-- Insert Chart Here -->
+                <canvas id="visitDistributionChart"></canvas>
+            </div>
+            <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-xs text-gray-600">
+                    <span>Initial Consultations</span>
+                    <span>{{ initial_consultations_count }}</span>
+                </div>
+                <div class="flex justify-between text-xs text-gray-600">
+                    <span>Follow-ups</span>
+                    <span>{{ followup_count }}</span>
+                </div>
+                <div class="flex justify-between text-xs text-gray-600">
+                    <span>Procedures</span>
+                    <span>{{ procedures_count }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Trends -->
+        <div class="p-4 border rounded-lg">
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Performance Trends</h3>
+            <div class="relative" style="height: 200px;">
+                <!-- Insert Chart Here -->
+                <canvas id="performanceTrendsChart"></canvas>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <div class="flex items-center gap-1">
+                    <span class="h-2 w-2 rounded-full bg-blue-500"></span>
+                    <span class="text-gray-600">Wait Time</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="h-2 w-2 rounded-full bg-green-500"></span>
+                    <span class="text-gray-600">Satisfaction</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Metrics -->
+    <div class="p-4 border-t border-gray-200">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Key Metrics Cards -->
+           <div class="p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-600">Patient Load</span>
+                <span class="text-lg font-bold text-gray-900">{{ daily_patient_load }}</span>
+            </div>
+            <div class="flex items-center text-xs">
+                <span class="text-green-600">↑ {{ patient_load_growth }}%</span>
+                <span class="text-gray-500 ml-2">vs last period</span>
+            </div>
+        </div>
+
+        <div class="p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-600">Conversion Rate</span>
+                <span class="text-lg font-bold text-gray-900">{{ conversion_rate }}%</span>
+            </div>
+            <div class="flex items-center text-xs">
+                <span class="text-green-600">↑ {{ conversion_rate_growth }}%</span>
+                <span class="text-gray-500 ml-2">vs last period</span>
+            </div>
+        </div>
+
+        <div class="p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-600">Avg Treatment Time</span>
+                <span class="text-lg font-bold text-gray-900">{{ avg_treatment_time }}m</span>
+            </div>
+            <div class="flex items-center text-xs">
+                <span class="text-red-600">↓ {{ treatment_time_change }}%</span>
+                <span class="text-gray-500 ml-2">vs last period</span>
+            </div>
+        </div>
+
+        <div class="p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-600">Resource Utilization</span>
+                <span class="text-lg font-bold text-gray-900">{{ resource_utilization }}%</span>
+            </div>
+            <div class="flex items-center text-xs">
+                <span class="text-green-600">↑ {{ utilization_growth }}%</span>
+                <span class="text-gray-500 ml-2">vs last period</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Treatment Analytics -->
+<div class="p-4 border-t border-gray-200">
+    <h3 class="text-sm font-medium text-gray-700 mb-3">Treatment Analytics</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Treatment Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Cases</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Success Rate</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg Duration</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for treatment in treatment_analytics %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ treatment.type }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ treatment.total_cases }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                <div class="bg-green-500 rounded-full h-2" style="width: {{ treatment.success_rate }}%"></div>
+                            </div>
+                            <span class="text-sm text-gray-900">{{ treatment.success_rate }}%</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ treatment.avg_duration }} days</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Footer with Chart.js Integration -->
+<div class="p-4 bg-gray-50 border-t border-gray-200">
+    <div class="flex justify-between items-center">
+        <span class="text-sm text-gray-600">Data updated: {{ last_updated }}</span>
+        <div class="flex items-center gap-4">
+            <a href="#" class="text-sm text-blue-600 hover:text-blue-800">Download Raw Data</a>
+            <a href="#" class="text-sm text-blue-600 hover:text-blue-800">
+                View Detailed Analytics →
+            </a>
+        </div>
+    </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Initialize charts
+const demographicsChart = new Chart(
+    document.getElementById('demographicsChart'),
+    {
+        type: 'pie',
+        data: {
+            labels: ['Male', 'Female', 'Other'],
+            datasets: [{
+                data: [{{ male_percentage }}, {{ female_percentage }}, {{ other_percentage }}],
+                backgroundColor: ['#3B82F6', '#EC4899', '#9CA3AF']
+            }]
+        }
+    }
+);
+
+const visitDistributionChart = new Chart(
+    document.getElementById('visitDistributionChart'),
+    {
+        type: 'bar',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+            datasets: [{
+                label: 'Visits',
+                data: {{ visit_distribution|safe }},
+                backgroundColor: '#6366F1'
+            }]
+        }
+    }
+);
+
+const performanceTrendsChart = new Chart(
+    document.getElementById('performanceTrendsChart'),
+    {
+        type: 'line',
+        data: {
+            labels: {{ performance_dates|safe }},
+            datasets: [
+                {
+                    label: 'Wait Time',
+                    data: {{ wait_times|safe }},
+                    borderColor: '#3B82F6'
+                },
+                {
+                    label: 'Satisfaction',
+                    data: {{ satisfaction_scores|safe }},
+                    borderColor: '#10B981'
+                }
+            ]
+        }
+    }
+);
+</script>

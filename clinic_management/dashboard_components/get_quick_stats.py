@@ -1,7 +1,7 @@
 from datetime import timedelta
-from django.db.models import Avg, Count, Sum, F, ExpressionWrapper, DurationField
+from django.db.models import Avg, Count, F, ExpressionWrapper, DurationField
 from django.utils import timezone
-from clinic_management.models import ClinicVisit, ClinicStation, VisitPaymentTransaction, StaffAssignment
+from clinic_management.models import ClinicVisit, ClinicStation, StaffAssignment
 import logging
 from django.contrib.auth import get_user_model
 
@@ -28,7 +28,7 @@ def get_quick_stats(today):
             # Convert timedelta to minutes if not None
             avg_wait_time = round(avg_wait_minutes.total_seconds() / 60) if avg_wait_minutes else 0
             
-            # Get current queue count (active_queue)
+            # Get current queue count
             active_queue = ClinicVisit.objects.filter(
                 status='WAITING'
             ).count()
@@ -54,7 +54,7 @@ def get_quick_stats(today):
             # Calculate resource utilization stats
             stations = ClinicStation.objects.filter(is_active=True)
             
-            # Count all treatment rooms (including consultation and exam rooms)
+            # Count all treatment rooms
             total_rooms = stations.count()
             
             # Count occupied treatment rooms
@@ -67,30 +67,6 @@ def get_quick_stats(today):
             
             # Calculate available rooms
             available_rooms = total_rooms - occupied_rooms
-
-            # Calculate today's revenue and comparison with last week
-            today_transactions = VisitPaymentTransaction.objects.filter(
-                processed_at__date=today,
-                status='COMPLETED'
-            )
-            
-            today_revenue = today_transactions.aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-
-            # Calculate last week's revenue for the same weekday
-            last_week = today - timedelta(days=7)
-            last_week_revenue = VisitPaymentTransaction.objects.filter(
-                processed_at__date=last_week,
-                status='COMPLETED'
-            ).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-
-            # Calculate revenue growth percentage
-            revenue_growth = 0
-            if last_week_revenue > 0:
-                revenue_growth = round(((today_revenue - last_week_revenue) / last_week_revenue) * 100, 1)
 
             # Get staff assignments for today
             staff_assignments = StaffAssignment.objects.filter(
@@ -128,10 +104,10 @@ def get_quick_stats(today):
             
             total_appointments = today_appointments.count()
             
-            # Get upcoming appointments - using time_slot's start_time
+            # Get upcoming appointments
             upcoming_appointments = today_appointments.filter(
                 status__in=['REGISTERED', 'WAITING'],
-                appointment__time_slot__start_time__gte=now.time()  # Compare with current time
+                appointment__time_slot__start_time__gte=now.time()
             ).order_by('appointment__time_slot__start_time')
             
             upcoming_count = upcoming_appointments.count()
@@ -159,9 +135,6 @@ def get_quick_stats(today):
                 'resource_utilization': resource_utilization,
                 'available_rooms': available_rooms,
                 'total_rooms': total_rooms,
-                'today_revenue': today_revenue,
-                'revenue_growth': revenue_growth,
-                'last_week_revenue': last_week_revenue,
                 'staff_on_duty': staff_on_duty,
                 'total_staff': total_staff,
                 'doctors_on_duty': doctors_on_duty,

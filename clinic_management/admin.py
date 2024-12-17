@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     ClinicArea, ClinicStation, VisitType, ClinicVisit, VisitChecklist,
-    VisitChecklistCompletion, PaymentTerminal, VisitPaymentTransaction,
+    VisitChecklistCompletion,
     ClinicFlow, WaitingList, ClinicDaySheet, StaffAssignment,
     ResourceAllocation, ClinicNotification, OperationalAlert, ClinicMetrics
 )
@@ -78,25 +78,6 @@ class VisitChecklistCompletionAdmin(admin.ModelAdmin):
     fields = ('visit', 'checklist_item', 'status', 'completed_by', 
               'completed_at', 'notes', 'created_at', 'updated_at')
     readonly_fields = ('created_at', 'updated_at')
-
-@admin.register(PaymentTerminal)
-class PaymentTerminalAdmin(admin.ModelAdmin):
-    list_display = ('name', 'terminal_id', 'terminal_type', 'location', 'is_active')
-    search_fields = ('name', 'terminal_id')
-    list_filter = ('terminal_type', 'is_active')
-    fields = ('name', 'terminal_id', 'location', 'terminal_type', 'is_active',
-              'last_maintenance', 'notes', 'created_at', 'updated_at')
-    readonly_fields = ('created_at', 'updated_at')
-
-@admin.register(VisitPaymentTransaction)
-class VisitPaymentTransactionAdmin(admin.ModelAdmin):
-    list_display = ('visit', 'amount', 'payment_method', 'status', 'processed_at')
-    search_fields = ('receipt_number', 'transaction_id')
-    list_filter = ('payment_method', 'status')
-    fields = ('visit', 'amount', 'payment_method', 'terminal', 'transaction_id',
-              'status', 'receipt_number', 'notes', 'processed_by', 'processed_at',
-              'updated_at')
-    readonly_fields = ('processed_at', 'updated_at')
 
 @admin.register(ClinicFlow)
 class ClinicFlowAdmin(admin.ModelAdmin):

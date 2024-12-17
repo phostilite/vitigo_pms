@@ -1,6 +1,7 @@
 # Standard library imports
 from datetime import datetime, timedelta
 from collections import defaultdict
+import random
 
 # Django imports
 from django.views.generic import TemplateView
@@ -17,8 +18,7 @@ from error_handling.views import handler403, handler500
 from .models import (
     ClinicVisit, ClinicArea, ClinicStation, VisitType,
     ClinicFlow, WaitingList, ClinicDaySheet, 
-    StaffAssignment, OperationalAlert, ClinicMetrics,
-    PaymentTerminal, VisitPaymentTransaction
+    StaffAssignment, OperationalAlert, ClinicMetrics
 )
 from .utils import get_template_path
 from .dashboard_components.get_quick_stats import get_quick_stats
@@ -55,39 +55,22 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
         try:
             today = timezone.now().date()
             
-            # Quick Statistics
+            # Get all the existing context data
             context.update(get_quick_stats(today))
-            
-            # Current Clinic Status
             context.update(self.get_clinic_status())
-            
-            # Visit Analytics
             context.update(self.get_visit_analytics(today))
-            
-            # Waiting List Information
             context.update(self.get_waiting_list_info())
-            
-            # Resource Utilization
             context.update(self.get_resource_utilization())
-            
-            # Staff Assignments
             context.update(self.get_staff_assignments(today))
-            
-            # Financial Overview
             context.update(self.get_financial_overview(today))
-            
-            # Alerts and Notifications
             context.update(self.get_alerts_and_notifications())
-            
-            # Performance Metrics
             context.update(self.get_performance_metrics(today))
-            
-            # Recent Activities
             context.update(self.get_recent_activities())
-
-            # Staff Status
             context.update(self.get_staff_status(today))
-
+            
+            # Add analytics data
+            context.update(self.get_analytics_data(today))
+            
         except Exception as e:
             logger.error(f"Error getting clinic dashboard context: {str(e)}")
             messages.error(self.request, "Some dashboard data may be incomplete")
@@ -263,117 +246,23 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
             return {}
 
     def get_financial_overview(self, today):
-        """Get financial summary data for the dashboard"""
+        """Temporary financial summary for clinic operations"""
         try:
-            # Get all transactions for today
-            today_transactions = VisitPaymentTransaction.objects.filter(
-                processed_at__date=today
-            )
-            
-            # Calculate total revenue and growth
-            total_revenue = today_transactions.filter(
-                status='COMPLETED'
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            yesterday = today - timedelta(days=1)
-            yesterday_revenue = VisitPaymentTransaction.objects.filter(
-                processed_at__date=yesterday,
-                status='COMPLETED'
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            revenue_growth = round(((total_revenue - yesterday_revenue) / yesterday_revenue * 100) if yesterday_revenue > 0 else 0, 1)
-            revenue_target_percentage = round((total_revenue / 50000) * 100, 1)  # Example: Daily target of 50,000
-            
-            # Pending payments analysis
-            pending_transactions = VisitPaymentTransaction.objects.filter(status='PENDING')
-            pending_payments = pending_transactions.aggregate(total=Sum('amount'))['total'] or 0
-            pending_count = pending_transactions.count()
-            
-            # Aging analysis
-            overdue_transactions = pending_transactions.filter(processed_at__date__lt=today)
-            overdue_amount = overdue_transactions.aggregate(total=Sum('amount'))['total'] or 0
-            due_today_amount = pending_transactions.filter(processed_at__date=today).aggregate(total=Sum('amount'))['total'] or 0
-            
-            # Today's collections by payment method
-            collections = today_transactions.filter(status='COMPLETED')
-            today_collections = collections.aggregate(total=Sum('amount'))['total'] or 0
-            cash_collections = collections.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0
-            online_collections = collections.filter(payment_method='UPI').aggregate(total=Sum('amount'))['total'] or 0
-            card_collections = collections.filter(payment_method='CARD').aggregate(total=Sum('amount'))['total'] or 0
-            
-            # Outstanding balance aging
-            thirty_days_ago = today - timedelta(days=30)
-            sixty_days_ago = today - timedelta(days=60)
-            ninety_days_ago = today - timedelta(days=90)
-            
-            aging_30_days = pending_transactions.filter(
-                processed_at__date__gte=thirty_days_ago
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            aging_60_days = pending_transactions.filter(
-                processed_at__date__gte=sixty_days_ago,
-                processed_at__date__lt=thirty_days_ago
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            aging_90_days = pending_transactions.filter(
-                processed_at__date__lt=sixty_days_ago
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            outstanding_balance = aging_30_days + aging_60_days + aging_90_days
-            
-            # Recent transactions
-            recent_transactions = VisitPaymentTransaction.objects.select_related(
-                'visit__patient'
-            ).order_by('-processed_at')[:5]
-            
-            formatted_transactions = [{
-                'id': t.id,
-                'patient_name': t.visit.patient.get_full_name(),
-                'service': t.visit.visit_type.name,
-                'amount': t.amount,
-                'status': t.status,
-                'date': t.processed_at.strftime('%Y-%m-%d %H:%M')
-            } for t in recent_transactions]
-
             return {
-                'total_revenue': total_revenue,
-                'revenue_growth': revenue_growth,
-                'revenue_target_percentage': revenue_target_percentage,
-                'pending_payments': pending_payments,
-                'pending_count': pending_count,
-                'overdue_amount': overdue_amount,
-                'due_today_amount': due_today_amount,
-                'today_collections': today_collections,
-                'cash_collections': cash_collections,
-                'online_collections': online_collections,
-                'card_collections': card_collections,
-                'outstanding_balance': outstanding_balance,
-                'aging_30_days': aging_30_days,
-                'aging_60_days': aging_60_days,
-                'aging_90_days': aging_90_days,
-                'recent_transactions': formatted_transactions,
+                'total_visits': ClinicVisit.objects.filter(
+                    registration_time__date=today
+                ).count(),
+                'completed_visits': ClinicVisit.objects.filter(
+                    status='COMPLETED',
+                    end_time__date=today
+                ).count(),
                 'last_updated': timezone.now().strftime('%H:%M')
             }
-            
         except Exception as e:
             logger.error(f"Error getting financial overview: {str(e)}")
             return {
-                'total_revenue': 0,
-                'revenue_growth': 0,
-                'revenue_target_percentage': 0,
-                'pending_payments': 0,
-                'pending_count': 0,
-                'overdue_amount': 0,
-                'due_today_amount': 0,
-                'today_collections': 0,
-                'cash_collections': 0,
-                'online_collections': 0,
-                'card_collections': 0,
-                'outstanding_balance': 0,
-                'aging_30_days': 0,
-                'aging_60_days': 0,
-                'aging_90_days': 0,
-                'recent_transactions': [],
+                'total_visits': 0,
+                'completed_visits': 0,
                 'last_updated': timezone.now().strftime('%H:%M')
             }
 
@@ -452,11 +341,8 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
             no_show_rate = round((no_shows / total_scheduled * 100) if total_scheduled > 0 else 0, 1)
 
             # Calculate revenue metrics
-            total_revenue = VisitPaymentTransaction.objects.filter(
-                status='COMPLETED',
-                processed_at__date=today
-            ).aggregate(total=Sum('amount'))['total'] or 0
-            revenue_per_patient = round(total_revenue / completed_consultations if completed_consultations > 0 else 0)
+            total_revenue = 0
+            revenue_per_patient = 0
 
             return {
                 'satisfaction_rate': round(satisfaction_rate, 1),
@@ -620,14 +506,6 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
         # Implementation for calculating staff coverage
         pass
 
-    def get_payment_method_breakdown(self, transactions):
-        # Implementation for getting payment method breakdown
-        pass
-
-    def get_terminal_status(self):
-        # Implementation for getting terminal status
-        pass
-
     def get_recent_notifications(self):
         # Implementation for getting recent notifications
         pass
@@ -643,3 +521,120 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
     def calculate_efficiency_scores(self, date):
         # Implementation for calculating efficiency scores
         pass
+
+    def get_analytics_data(self, today):
+        """Get analytics data for the dashboard"""
+        try:
+            # Get visits in last 30 days
+            thirty_days_ago = today - timedelta(days=30)
+            visits = ClinicVisit.objects.filter(
+                registration_time__date__gte=thirty_days_ago
+            ).select_related('patient', 'visit_type')
+
+            # Calculate gender distribution
+            total_patients = visits.count()
+            male_count = visits.filter(patient__gender='M').count()
+            female_count = visits.filter(patient__gender='F').count()
+            other_count = total_patients - male_count - female_count
+
+            # Calculate age distribution
+            ages = [visit.patient.age for visit in visits if hasattr(visit.patient, 'age')]
+            average_age = sum(ages) / len(ages) if ages else 0
+
+            # Get new patients in last 30 days
+            new_patients_count = visits.values('patient').distinct().count()
+
+            # Calculate visit distribution by day
+            visit_distribution = [
+                visits.filter(registration_time__week_day=i).count()
+                for i in range(1, 7)  # Monday to Saturday
+            ]
+
+            # Calculate performance metrics
+            performance_dates = [(today - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(7)]
+            wait_times = []
+            satisfaction_scores = []
+            
+            for date in performance_dates:
+                daily_visits = visits.filter(registration_time__date=date)
+                # Average wait time calculation
+                wait_time = daily_visits.aggregate(
+                    avg_wait=Avg(ExpressionWrapper(
+                        F('start_time') - F('check_in_time'),
+                        output_field=DurationField()
+                    ))
+                )['avg_wait']
+                wait_times.append(wait_time.total_seconds() / 60 if wait_time else 0)
+                
+                # Example satisfaction score (replace with actual calculation)
+                satisfaction_scores.append(85 + (random.randint(-5, 5)))
+
+            # Treatment analytics data
+            treatment_analytics = []
+            visit_types = VisitType.objects.filter(is_active=True)
+            
+            for vtype in visit_types:
+                type_visits = visits.filter(visit_type=vtype)
+                total_cases = type_visits.count()
+                if total_cases:
+                    success_rate = (type_visits.filter(status='COMPLETED').count() / total_cases) * 100
+                    avg_duration = type_visits.aggregate(
+                        avg_dur=Avg(ExpressionWrapper(
+                            F('end_time') - F('start_time'),
+                            output_field=DurationField()
+                        ))
+                    )['avg_dur']
+                    
+                    treatment_analytics.append({
+                        'type': vtype.name,
+                        'total_cases': total_cases,
+                        'success_rate': round(success_rate, 1),
+                        'avg_duration': round(avg_duration.total_seconds() / 86400) if avg_duration else 0  # Convert to days
+                    })
+
+            # Daily metrics
+            daily_visits = visits.filter(registration_time__date=today)
+            daily_patient_load = daily_visits.count()
+            previous_day_load = visits.filter(
+                registration_time__date=today - timedelta(days=1)
+            ).count()
+            patient_load_growth = ((daily_patient_load - previous_day_load) / previous_day_load * 100) if previous_day_load else 0
+
+            return {
+                # Demographics
+                'male_percentage': round((male_count / total_patients * 100) if total_patients else 0, 1),
+                'female_percentage': round((female_count / total_patients * 100) if total_patients else 0, 1),
+                'other_percentage': round((other_count / total_patients * 100) if total_patients else 0, 1),
+                'average_age': round(average_age, 1),
+                'new_patients_count': new_patients_count,
+
+                # Visit statistics
+                'initial_consultations_count': visits.filter(visit_type__name__icontains='initial').count(),
+                'followup_count': visits.filter(visit_type__name__icontains='follow').count(),
+                'procedures_count': visits.filter(visit_type__name__icontains='procedure').count(),
+                'visit_distribution': visit_distribution,
+
+                # Performance data
+                'performance_dates': performance_dates,
+                'wait_times': wait_times,
+                'satisfaction_scores': satisfaction_scores,
+
+                # Daily metrics
+                'daily_patient_load': daily_patient_load,
+                'patient_load_growth': round(patient_load_growth, 1),
+                'conversion_rate': 75,  # Example fixed value - implement actual calculation
+                'conversion_rate_growth': 5,  # Example fixed value - implement actual calculation
+                'avg_treatment_time': 45,  # Example fixed value - implement actual calculation
+                'treatment_time_change': -2,  # Example fixed value - implement actual calculation
+                'resource_utilization': 82,  # Example fixed value - implement actual calculation
+                'utilization_growth': 3,  # Example fixed value - implement actual calculation
+
+                # Treatment analytics
+                'treatment_analytics': treatment_analytics,
+
+                # Last updated timestamp
+                'last_updated': timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+        except Exception as e:
+            logger.error(f"Error getting analytics data: {str(e)}")
+            return {}
