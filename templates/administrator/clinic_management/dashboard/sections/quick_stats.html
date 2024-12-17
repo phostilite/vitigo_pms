@@ -1,0 +1,150 @@
+<!-- administrator/clinic_management/dashboard/sections/quick_stats.html -->
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <!-- Total Patients Today -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Today's Patients</p>
+                <p class="text-2xl font-bold text-gray-900">{{ total_patients_today }}</p>
+            </div>
+            <div class="p-3 bg-blue-50 rounded-full">
+                <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-2 flex items-center text-sm">
+            <span class="text-green-500 font-medium flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                </svg>
+                12%
+            </span>
+            <span class="text-gray-500 ml-2">vs yesterday</span>
+        </div>
+    </div>
+ 
+    <!-- Current Queue -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Current Queue</p>
+                <p class="text-2xl font-bold text-gray-900">{{ active_queue }}</p>
+            </div>
+            <div class="p-3 bg-yellow-50 rounded-full">
+                <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-2">
+            <div class="flex justify-between text-sm text-gray-600">
+                <span>Average wait: {{ avg_wait_time }} mins</span>
+                <span>{{ high_priority }} urgent</span>
+            </div>
+        </div>
+    </div>
+ 
+    <!-- Completed Visits -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Completed Visits</p>
+                <p class="text-2xl font-bold text-gray-900">{{ completed_visits }}</p>
+            </div>
+            <div class="p-3 bg-green-50 rounded-full">
+                <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-green-500 rounded-full h-2" style="width: {{ completion_rate }}%"></div>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">{{ completion_rate }}% of daily target</p>
+        </div>
+    </div>
+ 
+    <!-- Resource Utilization -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Resource Usage</p>
+                <p class="text-2xl font-bold text-gray-900">{{ resource_utilization }}%</p>
+            </div>
+            <div class="p-3 bg-purple-50 rounded-full">
+                <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mt-2">
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-600">{{ available_rooms }} rooms available</span>
+                <span class="text-purple-600 font-medium">View Details</span>
+            </div>
+        </div>
+    </div>
+ 
+    <!-- Extra Stats (Collapse on mobile) -->
+    <div class="lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
+        <!-- Today's Revenue -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md p-6 text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-medium opacity-80">Today's Revenue</p>
+                    <p class="text-2xl font-bold">₹{{ today_revenue }}</p>
+                </div>
+                <svg class="w-12 h-12 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="font-medium flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                    </svg>
+                    8.2%
+                </span>
+                <span class="ml-2 opacity-80">vs last week</span>
+            </div>
+        </div>
+ 
+        <!-- Staff on Duty -->
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-md p-6 text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-medium opacity-80">Staff on Duty</p>
+                    <p class="text-2xl font-bold">{{ staff_on_duty }}/{{ total_staff }}</p>
+                </div>
+                <svg class="w-12 h-12 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+            </div>
+            <div class="mt-4 flex justify-between text-sm">
+                <span>{{ doctors_on_duty }} Doctors</span>
+                <span>{{ nurses_on_duty }} Nurses</span>
+                <span>{{ staff_on_duty }} Staff</span>
+            </div>
+        </div>
+ 
+        <!-- Upcoming Appointments -->
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-md p-6 text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-medium opacity-80">Today's Schedule</p>
+                    <p class="text-2xl font-bold">{{ total_appointments }}</p>
+                </div>
+                <svg class="w-12 h-12 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div class="mt-4 flex justify-between text-sm">
+                <span>{{ upcoming_count }} Upcoming</span>
+                <span class="px-2 py-1 bg-white bg-opacity-20 rounded-full">Next: {{ next_appointment_time }}</span>
+            </div>
+        </div>
+    </div>
+ </div>

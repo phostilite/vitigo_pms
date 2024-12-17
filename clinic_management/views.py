@@ -1,28 +1,43 @@
-from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views import View
-from django.views.generic import CreateView, ListView, DetailView
-from django.urls import reverse_lazy
-from django.db.models import Q, Count, Avg, Sum
-from django.utils import timezone
-import logging
-from django.db.models.functions import Coalesce
-from django.db.models import FloatField, IntegerField
+# Standard library imports
+from datetime import datetime, timedelta
+from collections import defaultdict
 
+# Django imports
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Avg, Max, Q, Sum, F, ExpressionWrapper, DurationField
+from django.utils import timezone
+from django.contrib import messages
+from django.db import transaction
+
+# Local imports
 from access_control.permissions import PermissionManager
-from error_handling.views import handler403, handler404, handler500
+from error_handling.views import handler403, handler500
 from .models import (
-    ClinicArea, ClinicStation, VisitType, ClinicVisit, VisitChecklist,
-    VisitChecklistCompletion, WaitingList, ClinicDaySheet, StaffAssignment,
-    ResourceAllocation, ClinicNotification, OperationalAlert, ClinicMetrics
+    ClinicVisit, ClinicArea, ClinicStation, VisitType,
+    ClinicFlow, WaitingList, ClinicDaySheet, 
+    StaffAssignment, OperationalAlert, ClinicMetrics,
+    PaymentTerminal, VisitPaymentTransaction
 )
 from .utils import get_template_path
+from .dashboard_components.get_quick_stats import get_quick_stats
+from user_management.models import CustomUser
+import logging
 
 logger = logging.getLogger(__name__)
 
-class ClinicManagementView(LoginRequiredMixin, View):
+class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'dashboard/clinic_dashboard.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/dashboard/clinic_dashboard.html']
+
     def dispatch(self, request, *args, **kwargs):
         try:
             if not PermissionManager.check_module_access(request.user, 'clinic_management'):
@@ -34,142 +49,238 @@ class ClinicManagementView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while accessing clinic management")
             return handler500(request, exception=str(e))
 
-    def get(self, request):
-        try:
-            template_path = get_template_path('dashboard/clinic_dashboard.html', request.user.role, 'clinic_management')
-            context = self.get_context_data()
-            
-            # Handle pagination for visits
-            if 'current_visits' in context:
-                page = request.GET.get('page', 1)
-                paginator = Paginator(context['current_visits'], 10)
-                try:
-                    visits_page = paginator.page(page)
-                except (PageNotAnInteger, EmptyPage):
-                    visits_page = paginator.page(1)
-                context['current_visits'] = visits_page
-                context['paginator'] = paginator
-
-            return render(request, template_path, context)
-        except Exception as e:
-            logger.error(f"Error in clinic management view: {str(e)}")
-            messages.error(request, "An error occurred while loading clinic data")
-            return handler500(request, exception=str(e))
-
-    def get_context_data(self):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         try:
             today = timezone.now().date()
-            yesterday = today - timezone.timedelta(days=1)
             
-            # Get current day sheet with default
-            day_sheet = ClinicDaySheet.objects.filter(date=today).first() or {
-                'date': today,
-                'total_patients': 0,
-                'total_appointments': 0,
-                'total_walk_ins': 0
-            }
-
-            # Calculate metrics first
-            metrics = {
-                'total_visits': ClinicVisit.objects.filter(
-                    registration_time__date=today
-                ).count(),
-                'completed_visits': ClinicVisit.objects.filter(
-                    status='COMPLETED',
-                    registration_time__date=today
-                ).count(),
-                'waiting_count': WaitingList.objects.filter(
-                    status='WAITING'
-                ).count(),
-                'average_wait_time': WaitingList.objects.filter(
-                    status='WAITING'
-                ).aggregate(avg=Avg('estimated_wait_time'))['avg'] or 0
-            }
-
-            # Calculate yesterday's metrics for comparison
-            yesterday_metrics = {
-                'total_visits': ClinicVisit.objects.filter(
-                    registration_time__date=yesterday
-                ).count()
-            }
-
-            # Calculate growth percentage
-            visit_growth = 0
-            if yesterday_metrics['total_visits'] > 0:
-                visit_growth = ((metrics['total_visits'] - yesterday_metrics['total_visits']) 
-                              / yesterday_metrics['total_visits'] * 100)
-
-            context = {
-                'day_sheet': day_sheet,
-                'metrics': metrics,
-                'yesterday_metrics': yesterday_metrics,
-                'visit_growth': round(visit_growth, 1),
-                
-                'current_visits': ClinicVisit.objects.select_related(
-                    'patient', 'current_area'
-                ).filter(
-                    status__in=['REGISTERED', 'WAITING', 'IN_PROGRESS']
-                ) or [],
-                
-                'waiting_lists': WaitingList.objects.select_related(
-                    'area', 'visit'
-                ).filter(status='WAITING').order_by('priority', 'join_time') or [],
-                
-                'staff_assignments': StaffAssignment.objects.select_related(
-                    'staff', 'area'
-                ).filter(
-                    date=today,
-                    status='IN_PROGRESS'
-                ) or [],
-                
-                'area_stats': ClinicArea.objects.annotate(
-                    current_patients=Count(
-                        'current_visits',
-                        filter=Q(current_visits__status__in=['WAITING', 'IN_PROGRESS']),
-                        output_field=IntegerField()
-                    ),
-                    waiting_count=Count(
-                        'waiting_list',
-                        filter=Q(waiting_list__status='WAITING'),
-                        output_field=IntegerField()
-                    ),
-                    avg_wait_time=Coalesce(
-                        Avg('waiting_list__estimated_wait_time'),
-                        0,
-                        output_field=FloatField()
-                    )
-                ) or [],
-                
-                'active_alerts': OperationalAlert.objects.select_related('area').filter(
-                    status='ACTIVE'
-                ).order_by('-priority', '-created_at')[:5] or [],
-                
-                'priority_stats': ClinicVisit.objects.filter(
-                    registration_time__date=today
-                ).values('priority').annotate(
-                    count=Count('id')
-                ) or []
-            }
+            # Quick Statistics
+            context.update(get_quick_stats(today))
             
-            return context
+            # Current Clinic Status
+            context.update(self.get_clinic_status())
+            
+            # Visit Analytics
+            context.update(self.get_visit_analytics(today))
+            
+            # Waiting List Information
+            context.update(self.get_waiting_list_info())
+            
+            # Resource Utilization
+            context.update(self.get_resource_utilization())
+            
+            # Staff Assignments
+            context.update(self.get_staff_assignments(today))
+            
+            # Financial Overview
+            context.update(self.get_financial_overview(today))
+            
+            # Alerts and Notifications
+            context.update(self.get_alerts_and_notifications())
+            
+            # Performance Metrics
+            context.update(self.get_performance_metrics(today))
 
         except Exception as e:
-            logger.error(f"Error getting context data: {str(e)}")
-            # Return comprehensive default context
+            logger.error(f"Error getting clinic dashboard context: {str(e)}")
+            messages.error(self.request, "Some dashboard data may be incomplete")
+            
+        return context
+
+    def get_clinic_status(self):
+        try:
+            areas = ClinicArea.objects.filter(is_active=True)
+            area_status = []
+            
+            for area in areas:
+                area_status.append({
+                    'name': area.name,
+                    'current_capacity': area.current_visits.count(),
+                    'max_capacity': area.capacity,
+                    'utilization': (area.current_visits.count() / area.capacity * 100) if area.capacity > 0 else 0,
+                    'available_stations': area.stations.filter(
+                        current_status='AVAILABLE'
+                    ).count()
+                })
+                
             return {
-                'day_sheet': {'date': timezone.now().date()},
-                'metrics': {
-                    'total_visits': 0,
-                    'completed_visits': 0,
-                    'waiting_count': 0,
-                    'average_wait_time': 0
-                },
-                'yesterday_metrics': {'total_visits': 0},
-                'visit_growth': 0,
-                'current_visits': [],
-                'waiting_lists': [],
-                'staff_assignments': [],
-                'area_stats': [],
-                'active_alerts': [],
-                'priority_stats': []
+                'area_status': area_status,
+                'total_active_stations': ClinicStation.objects.filter(
+                    is_active=True
+                ).count(),
+                'occupied_stations': ClinicStation.objects.filter(
+                    current_status='OCCUPIED'
+                ).count()
             }
+        except Exception as e:
+            logger.error(f"Error getting clinic status: {str(e)}")
+            return {}
+
+    def get_visit_analytics(self, today):
+        try:
+            visit_types = VisitType.objects.filter(is_active=True)
+            visit_distribution = []
+            
+            for visit_type in visit_types:
+                visit_distribution.append({
+                    'type': visit_type.name,
+                    'count': ClinicVisit.objects.filter(
+                        visit_type=visit_type,
+                        registration_time__date=today
+                    ).count()
+                })
+            
+            return {
+                'visit_distribution': visit_distribution,
+                'priority_distribution': {
+                    'high': ClinicVisit.objects.filter(
+                        priority='A',
+                        registration_time__date=today
+                    ).count(),
+                    'medium': ClinicVisit.objects.filter(
+                        priority='B',
+                        registration_time__date=today
+                    ).count(),
+                    'low': ClinicVisit.objects.filter(
+                        priority='C',
+                        registration_time__date=today
+                    ).count()
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting visit analytics: {str(e)}")
+            return {}
+
+    def get_waiting_list_info(self):
+        try:
+            waiting_lists = WaitingList.objects.filter(
+                status='WAITING'
+            ).select_related('area', 'visit')
+            
+            waiting_by_area = defaultdict(list)
+            for waiting in waiting_lists:
+                waiting_by_area[waiting.area.name].append({
+                    'patient_name': waiting.visit.patient.get_full_name(),
+                    'priority': waiting.priority,
+                    'wait_time': waiting.calculate_wait_time(),
+                    'estimated_time': waiting.estimated_wait_time
+                })
+                
+            return {
+                'waiting_by_area': dict(waiting_by_area),
+                'total_waiting': waiting_lists.count(),
+                'long_wait_count': waiting_lists.filter(
+                    join_time__lte=timezone.now() - timedelta(minutes=30)
+                ).count()
+            }
+        except Exception as e:
+            logger.error(f"Error getting waiting list info: {str(e)}")
+            return {}
+
+    def get_resource_utilization(self):
+        try:
+            return {
+                'room_utilization': self.calculate_resource_utilization('ROOM'),
+                'equipment_utilization': self.calculate_resource_utilization('EQUIPMENT'),
+                'staff_utilization': self.calculate_resource_utilization('STAFF')
+            }
+        except Exception as e:
+            logger.error(f"Error getting resource utilization: {str(e)}")
+            return {}
+
+    def get_staff_assignments(self, today):
+        try:
+            assignments = StaffAssignment.objects.filter(
+                date=today,
+                status__in=['SCHEDULED', 'IN_PROGRESS']
+            ).select_related('staff', 'area', 'station')
+            
+            return {
+                'current_assignments': assignments,
+                'staff_coverage': self.calculate_staff_coverage(assignments),
+                'unassigned_areas': ClinicArea.objects.filter(
+                    is_active=True
+                ).exclude(id__in=assignments.values_list('area', flat=True))
+            }
+        except Exception as e:
+            logger.error(f"Error getting staff assignments: {str(e)}")
+            return {}
+
+    def get_financial_overview(self, today):
+        try:
+            transactions = VisitPaymentTransaction.objects.filter(
+                processed_at__date=today
+            )
+            
+            return {
+                'total_revenue': transactions.filter(
+                    status='COMPLETED'
+                ).aggregate(total=Sum('amount'))['total'] or 0,
+                'payment_methods': self.get_payment_method_breakdown(transactions),
+                'terminal_status': self.get_terminal_status(),
+                'pending_payments': transactions.filter(
+                    status='PENDING'
+                ).count()
+            }
+        except Exception as e:
+            logger.error(f"Error getting financial overview: {str(e)}")
+            return {}
+
+    def get_alerts_and_notifications(self):
+        try:
+            return {
+                'active_alerts': OperationalAlert.objects.filter(
+                    status='ACTIVE'
+                ).order_by('-priority', '-created_at'),
+                'recent_notifications': self.get_recent_notifications(),
+                'system_warnings': self.get_system_warnings()
+            }
+        except Exception as e:
+            logger.error(f"Error getting alerts and notifications: {str(e)}")
+            return {}
+
+    def get_performance_metrics(self, today):
+        try:
+            metrics = ClinicMetrics.objects.filter(date=today)
+            
+            return {
+                'daily_metrics': metrics,
+                'performance_indicators': self.calculate_performance_indicators(metrics),
+                'efficiency_scores': self.calculate_efficiency_scores(today)
+            }
+        except Exception as e:
+            logger.error(f"Error getting performance metrics: {str(e)}")
+            return {}
+
+    # Helper methods
+    def calculate_resource_utilization(self, resource_type):
+        # Implementation for calculating resource utilization
+        pass
+
+    def calculate_staff_coverage(self, assignments):
+        # Implementation for calculating staff coverage
+        pass
+
+    def get_payment_method_breakdown(self, transactions):
+        # Implementation for getting payment method breakdown
+        pass
+
+    def get_terminal_status(self):
+        # Implementation for getting terminal status
+        pass
+
+    def get_recent_notifications(self):
+        # Implementation for getting recent notifications
+        pass
+
+    def get_system_warnings(self):
+        # Implementation for getting system warnings
+        pass
+
+    def calculate_performance_indicators(self, metrics):
+        # Implementation for calculating performance indicators
+        pass
+
+    def calculate_efficiency_scores(self, date):
+        # Implementation for calculating efficiency scores
+        pass
