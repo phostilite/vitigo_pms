@@ -263,24 +263,119 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
             return {}
 
     def get_financial_overview(self, today):
+        """Get financial summary data for the dashboard"""
         try:
-            transactions = VisitPaymentTransaction.objects.filter(
+            # Get all transactions for today
+            today_transactions = VisitPaymentTransaction.objects.filter(
                 processed_at__date=today
             )
             
+            # Calculate total revenue and growth
+            total_revenue = today_transactions.filter(
+                status='COMPLETED'
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            yesterday = today - timedelta(days=1)
+            yesterday_revenue = VisitPaymentTransaction.objects.filter(
+                processed_at__date=yesterday,
+                status='COMPLETED'
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            revenue_growth = round(((total_revenue - yesterday_revenue) / yesterday_revenue * 100) if yesterday_revenue > 0 else 0, 1)
+            revenue_target_percentage = round((total_revenue / 50000) * 100, 1)  # Example: Daily target of 50,000
+            
+            # Pending payments analysis
+            pending_transactions = VisitPaymentTransaction.objects.filter(status='PENDING')
+            pending_payments = pending_transactions.aggregate(total=Sum('amount'))['total'] or 0
+            pending_count = pending_transactions.count()
+            
+            # Aging analysis
+            overdue_transactions = pending_transactions.filter(processed_at__date__lt=today)
+            overdue_amount = overdue_transactions.aggregate(total=Sum('amount'))['total'] or 0
+            due_today_amount = pending_transactions.filter(processed_at__date=today).aggregate(total=Sum('amount'))['total'] or 0
+            
+            # Today's collections by payment method
+            collections = today_transactions.filter(status='COMPLETED')
+            today_collections = collections.aggregate(total=Sum('amount'))['total'] or 0
+            cash_collections = collections.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0
+            online_collections = collections.filter(payment_method='UPI').aggregate(total=Sum('amount'))['total'] or 0
+            card_collections = collections.filter(payment_method='CARD').aggregate(total=Sum('amount'))['total'] or 0
+            
+            # Outstanding balance aging
+            thirty_days_ago = today - timedelta(days=30)
+            sixty_days_ago = today - timedelta(days=60)
+            ninety_days_ago = today - timedelta(days=90)
+            
+            aging_30_days = pending_transactions.filter(
+                processed_at__date__gte=thirty_days_ago
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            aging_60_days = pending_transactions.filter(
+                processed_at__date__gte=sixty_days_ago,
+                processed_at__date__lt=thirty_days_ago
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            aging_90_days = pending_transactions.filter(
+                processed_at__date__lt=sixty_days_ago
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            outstanding_balance = aging_30_days + aging_60_days + aging_90_days
+            
+            # Recent transactions
+            recent_transactions = VisitPaymentTransaction.objects.select_related(
+                'visit__patient'
+            ).order_by('-processed_at')[:5]
+            
+            formatted_transactions = [{
+                'id': t.id,
+                'patient_name': t.visit.patient.get_full_name(),
+                'service': t.visit.visit_type.name,
+                'amount': t.amount,
+                'status': t.status,
+                'date': t.processed_at.strftime('%Y-%m-%d %H:%M')
+            } for t in recent_transactions]
+
             return {
-                'total_revenue': transactions.filter(
-                    status='COMPLETED'
-                ).aggregate(total=Sum('amount'))['total'] or 0,
-                'payment_methods': self.get_payment_method_breakdown(transactions),
-                'terminal_status': self.get_terminal_status(),
-                'pending_payments': transactions.filter(
-                    status='PENDING'
-                ).count()
+                'total_revenue': total_revenue,
+                'revenue_growth': revenue_growth,
+                'revenue_target_percentage': revenue_target_percentage,
+                'pending_payments': pending_payments,
+                'pending_count': pending_count,
+                'overdue_amount': overdue_amount,
+                'due_today_amount': due_today_amount,
+                'today_collections': today_collections,
+                'cash_collections': cash_collections,
+                'online_collections': online_collections,
+                'card_collections': card_collections,
+                'outstanding_balance': outstanding_balance,
+                'aging_30_days': aging_30_days,
+                'aging_60_days': aging_60_days,
+                'aging_90_days': aging_90_days,
+                'recent_transactions': formatted_transactions,
+                'last_updated': timezone.now().strftime('%H:%M')
             }
+            
         except Exception as e:
             logger.error(f"Error getting financial overview: {str(e)}")
-            return {}
+            return {
+                'total_revenue': 0,
+                'revenue_growth': 0,
+                'revenue_target_percentage': 0,
+                'pending_payments': 0,
+                'pending_count': 0,
+                'overdue_amount': 0,
+                'due_today_amount': 0,
+                'today_collections': 0,
+                'cash_collections': 0,
+                'online_collections': 0,
+                'card_collections': 0,
+                'outstanding_balance': 0,
+                'aging_30_days': 0,
+                'aging_60_days': 0,
+                'aging_90_days': 0,
+                'recent_transactions': [],
+                'last_updated': timezone.now().strftime('%H:%M')
+            }
 
     def get_alerts_and_notifications(self):
         try:
