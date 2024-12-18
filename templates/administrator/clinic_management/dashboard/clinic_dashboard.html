@@ -35,7 +35,7 @@
                 </div>
             </div>
             <div class="mt-4">
-                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                <a href="{% url 'clinic_management:active_visits' %}" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
                     View Details <i class="fas fa-arrow-right ml-2"></i>
                 </a>
             </div>
@@ -53,7 +53,7 @@
                 </div>
             </div>
             <div class="mt-4">
-                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                <a href="{% url 'clinic_management:active_checklists' %}" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
                     Manage Checklists <i class="fas fa-arrow-right ml-2"></i>
                 </a>
             </div>
@@ -71,7 +71,7 @@
                 </div>
             </div>
             <div class="mt-4">
-                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                <a href="{% url 'clinic_management:visit_status_config' %}" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
                     Configure Statuses <i class="fas fa-arrow-right ml-2"></i>
                 </a>
             </div>
@@ -89,7 +89,7 @@
                 </div>
             </div>
             <div class="mt-4">
-                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                <a href="{% url 'clinic_management:completed_visits_report' %}" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
                     View Report <i class="fas fa-arrow-right ml-2"></i>
                 </a>
             </div>
@@ -144,8 +144,8 @@
                     <span class="text-indigo-600 font-medium">Manage Lists</span>
                 </a>
                 <a href="#" class="flex flex-col items-center p-4 bg-pink-50 rounded-lg hover:bg-pink-100 transition-all transform hover:scale-105">
-                    <i class="fas fa-tasks text-pink-600 text-2xl mb-2"></i>
-                    <span class="text-pink-600 font-medium">Templates</span>
+                    <i class="fas fa-list-check text-pink-600 text-2xl mb-2"></i>
+                    <span class="text-pink-600 font-medium">Checklist Items</span>
                 </a>
                 <a href="#" class="flex flex-col items-center p-4 bg-cyan-50 rounded-lg hover:bg-cyan-100 transition-all transform hover:scale-105">
                     <i class="fas fa-chart-pie text-cyan-600 text-2xl mb-2"></i>
@@ -164,28 +164,68 @@
                     <i class="fas fa-toggle-on text-emerald-600 mr-2"></i>
                     Status Management
                 </h2>
-                <button class="text-emerald-600 hover:text-emerald-700">
-                    <i class="fas fa-plus-circle"></i>
-                </button>
+                <a href="#" class="px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center">
+                    <i class="fas fa-plus mr-2"></i>
+                    New Status
+                </a>
             </div>
             <div class="p-4">
-                <div class="space-y-3">
-                    {% for status in visit_statuses %}
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div class="flex items-center">
-                            <span class="w-3 h-3 rounded-full bg-{{ status.color }}-500 mr-3"></span>
-                            <span class="font-medium">{{ status.name }}</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <button class="text-gray-600 hover:text-blue-600">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="text-gray-600 hover:text-red-600">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Active Cases</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Order</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Is Active</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for status in visit_statuses %}
+                            <tr>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <span class="w-3 h-3 rounded-full mr-2" style="background-color: {{ status.color_code }}"></span>
+                                        <span class="font-medium text-gray-900">{{ status.display_name }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        {{ status.active_visits }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <button class="text-gray-400 hover:text-gray-600" title="Move Up">
+                                            <i class="fas fa-arrow-up"></i>
+                                        </button>
+                                        <span class="text-gray-900">{{ status.order }}</span>
+                                        <button class="text-gray-400 hover:text-gray-600" title="Move Down">
+                                            <i class="fas fa-arrow-down"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" {% if status.is_active %}checked{% endif %}>
+                                        <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-800" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-800" title="Delete" {% if status.active_visits > 0 %}disabled{% endif %}>
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

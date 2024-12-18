@@ -9,8 +9,6 @@ from django.db import models
 from django.utils import timezone
 
 # Local application imports
-from appointment_management.models import Appointment
-from consultation_management.models import Consultation
 
 # Initialize commonly used variables
 User = get_user_model()
@@ -82,22 +80,6 @@ class ClinicVisit(models.Model):
     )
     registration_time = models.DateTimeField(auto_now_add=True)
     completion_time = models.DateTimeField(null=True, blank=True)
-    
-    # Related Appointments/Consultations
-    appointment = models.OneToOneField(
-        Appointment,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='clinic_visit'
-    )
-    consultation = models.OneToOneField(
-        Consultation,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='clinic_visit'
-    )
     
     # Metadata
     created_by = models.ForeignKey(
