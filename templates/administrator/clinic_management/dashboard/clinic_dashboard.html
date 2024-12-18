@@ -1,61 +1,250 @@
 {% extends '../../base.html' %}
 {% load static %}
-
 {% block title %}Clinic Management Dashboard{% endblock %}
-
 {% block content %}
 <div class="min-h-screen bg-gray-50 p-4 mt-14 sm:ml-64">
-    <!-- Dashboard Header -->
-    <div class="mb-8">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-6 sm:p-8">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div class="space-y-2">
-                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Clinic Management</h1>
-                        <p class="text-sm sm:text-base text-gray-600">Comprehensive clinic operations and patient flow management</p>
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Clinic Management</h1>
+            <p class="mt-1 text-sm text-gray-600">Administrative Dashboard</p>
+        </div>
+        <div class="flex space-x-3">
+            <button class="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                <i class="fas fa-file-excel mr-2"></i>
+                Export Data
+            </button>
+            <button class="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                <i class="fas fa-cog mr-2"></i>
+                Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Total Active Visits -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex-shrink-0 bg-white/20 rounded-lg p-3">
+                    <i class="fas fa-hospital-user text-white text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-white/80 text-sm">Active Visits</p>
+                    <p class="text-white text-2xl font-bold">{{ active_visits_count }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                    View Details <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Active Checklists -->
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex-shrink-0 bg-white/20 rounded-lg p-3">
+                    <i class="fas fa-tasks text-white text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-white/80 text-sm">Active Checklists</p>
+                    <p class="text-white text-2xl font-bold">{{ active_checklists }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                    Manage Checklists <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Visit Statuses -->
+        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg shadow-lg p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex-shrink-0 bg-white/20 rounded-lg p-3">
+                    <i class="fas fa-clipboard-check text-white text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-white/80 text-sm">Status Types</p>
+                    <p class="text-white text-2xl font-bold">{{ status_types_count }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                    Configure Statuses <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Completed Today -->
+        <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow-lg p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex-shrink-0 bg-white/20 rounded-lg p-3">
+                    <i class="fas fa-check-circle text-white text-2xl"></i>
+                </div>
+                <div class="text-right">
+                    <p class="text-white/80 text-sm">Completed Today</p>
+                    <p class="text-white text-2xl font-bold">{{ completed_today }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="#" class="text-white/80 text-sm hover:text-white flex items-center justify-end">
+                    View Report <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Administrative Tools -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Visit Management -->
+        <div class="bg-white rounded-lg shadow-lg">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+                <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-hospital text-blue-600 mr-2"></i>
+                    Visit Management
+                </h2>
+            </div>
+            <div class="p-4 grid grid-cols-2 gap-4">
+                <a href="#" class="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-plus-circle text-blue-600 text-2xl mb-2"></i>
+                    <span class="text-blue-600 font-medium">New Visit</span>
+                </a>
+                <a href="#" class="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-list text-green-600 text-2xl mb-2"></i>
+                    <span class="text-green-600 font-medium">All Visits</span>
+                </a>
+                <a href="#" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-history text-purple-600 text-2xl mb-2"></i>
+                    <span class="text-purple-600 font-medium">Visit Logs</span>
+                </a>
+                <a href="#" class="flex flex-col items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-chart-line text-orange-600 text-2xl mb-2"></i>
+                    <span class="text-orange-600 font-medium">Analytics</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Checklist Configuration -->
+        <div class="bg-white rounded-lg shadow-lg">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+                <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-tasks text-purple-600 mr-2"></i>
+                    Checklist Configuration
+                </h2>
+            </div>
+            <div class="p-4 grid grid-cols-2 gap-4">
+                <a href="#" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-plus-square text-purple-600 text-2xl mb-2"></i>
+                    <span class="text-purple-600 font-medium">New Checklist</span>
+                </a>
+                <a href="#" class="flex flex-col items-center p-4 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-clipboard-list text-indigo-600 text-2xl mb-2"></i>
+                    <span class="text-indigo-600 font-medium">Manage Lists</span>
+                </a>
+                <a href="#" class="flex flex-col items-center p-4 bg-pink-50 rounded-lg hover:bg-pink-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-tasks text-pink-600 text-2xl mb-2"></i>
+                    <span class="text-pink-600 font-medium">Templates</span>
+                </a>
+                <a href="#" class="flex flex-col items-center p-4 bg-cyan-50 rounded-lg hover:bg-cyan-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-chart-pie text-cyan-600 text-2xl mb-2"></i>
+                    <span class="text-cyan-600 font-medium">Reports</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Management & Recent Activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Status Management -->
+        <div class="bg-white rounded-lg shadow-lg">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-toggle-on text-emerald-600 mr-2"></i>
+                    Status Management
+                </h2>
+                <button class="text-emerald-600 hover:text-emerald-700">
+                    <i class="fas fa-plus-circle"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="space-y-3">
+                    {% for status in visit_statuses %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center">
+                            <span class="w-3 h-3 rounded-full bg-{{ status.color }}-500 mr-3"></span>
+                            <span class="font-medium">{{ status.name }}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="text-gray-600 hover:text-blue-600">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="text-gray-600 hover:text-red-600">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
                     </div>
-                    
-                    <!-- Quick Action Buttons -->
-                    {% include './sections/quick_actions.html' %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Log -->
+        <div class="bg-white rounded-lg shadow-lg">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-history text-blue-600 mr-2"></i>
+                    Recent Activity
+                </h2>
+                <button class="text-sm text-blue-600 hover:text-blue-700">View All</button>
+            </div>
+            <div class="p-4">
+                <div class="space-y-4">
+                    {% for log in recent_logs %}
+                    <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex-shrink-0">
+                            <span class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <i class="fas fa-user-clock text-blue-600"></i>
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900">
+                                {{ log.action }}
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                {{ log.timestamp }}
+                            </p>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Stats Section -->
-    {% include './sections/quick_stats.html' %}
-
-    <!-- Main Dashboard Grid -->
-    <div class="grid grid-cols-12 gap-6">
-        <!-- Left Column (Wide) -->
-        <div class="col-span-12 lg:col-span-8">
-            <!-- Patient Queue and Flow -->
-            {% include './sections/patient_queue.html' %}
-
-            <!-- Resource Utilization -->
-            {% include './sections/resource_utilization.html' %}
-
-            <!-- Recent Activities Table -->
-            {% include './sections/recent_activities.html' %}
+    <!-- Export Data Section -->
+    <div class="mt-6 bg-white rounded-lg shadow-lg">
+        <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+            <h2 class="text-lg font-semibold text-gray-900 flex items-center">
+                <i class="fas fa-file-export text-indigo-600 mr-2"></i>
+                Export Data
+            </h2>
         </div>
-
-        <!-- Right Column (Narrow) -->
-        <div class="col-span-12 lg:col-span-4">
-            <!-- Staff Status -->
-            {% include './sections/staff_status.html' %}
-
-            <!-- Quick Links -->
-            {% include './sections/quick_links.html' %}
-
-            <!-- Performance Metrics -->
-            {% include './sections/performance_metrics.html' %}
+        <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button class="flex items-center justify-center space-x-2 p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
+                <i class="fas fa-file-excel"></i>
+                <span>Export Visit Data</span>
+            </button>
+            <button class="flex items-center justify-center space-x-2 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
+                <i class="fas fa-file-pdf"></i>
+                <span>Export Checklist Report</span>
+            </button>
+            <button class="flex items-center justify-center space-x-2 p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors">
+                <i class="fas fa-chart-pie"></i>
+                <span>Analytics Report</span>
+            </button>
         </div>
-    </div>
-
-    <!-- Bottom Full Width Sections -->
-    <div class="mt-6 grid grid-cols-1 gap-6">
-        <!-- Analytics -->
-        {% include './sections/analytics.html' %}
     </div>
 </div>
 {% endblock %}
