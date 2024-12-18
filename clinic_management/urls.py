@@ -14,4 +14,6 @@ urlpatterns = [
     path('visit_status_config/', views.VisitStatusConfigView.as_view(), name='visit_status_config'),
 
     path('completed_visits_report/', views.CompletedVisitsReportView.as_view(), name='completed_visits_report'),
+
+    path('new_visit/', views.NewVisitView.as_view(), name='new_visit'),
 ]

@@ -7,7 +7,9 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.views.generic import ListView, TemplateView
+from django.views.generic import ListView, TemplateView, CreateView
+from django.urls import reverse_lazy
+from django.http import JsonResponse
 
 # Django database imports
 from django.db import models
@@ -25,6 +27,7 @@ from clinic_management.models import (
 )
 from error_handling.views import handler403, handler500
 from .utils import get_template_path
+from .forms import NewVisitForm
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -601,4 +604,71 @@ class CompletedVisitsReportView(LoginRequiredMixin, ListView):
         except Exception as e:
             logger.error(f"Error in visit reports dispatch: {str(e)}")
             messages.error(request, "An error occurred while accessing visit reports")
+            return handler500(request, exception=str(e))
+
+
+class NewVisitView(LoginRequiredMixin, CreateView):
+    form_class = NewVisitForm
+    success_url = reverse_lazy('clinic_management:active_visits')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'visits/new_visit.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/visits/new_visit.html']
+
+    def form_valid(self, form):
+        try:
+            # Set the created_by field to current user
+            form.instance.created_by = self.request.user
+            
+            # Set the initial status
+            if form.initial_status:
+                form.instance.current_status = form.initial_status
+            else:
+                messages.warning(self.request, "Default status 'REGISTERED' not found. Please check status configuration.")
+                return super().form_invalid(form)
+
+            response = super().form_valid(form)
+
+            # Create initial status log entry
+            VisitStatusLog.objects.create(
+                visit=self.object,
+                status=self.object.current_status,
+                changed_by=self.request.user,
+                notes="Initial visit registration"
+            )
+
+            messages.success(self.request, f"Visit {self.object.visit_number} created successfully.")
+            return response
+
+        except Exception as e:
+            logger.error(f"Error creating new visit: {str(e)}")
+            messages.error(self.request, "An error occurred while creating the visit.")
+            return super().form_invalid(form)
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+            
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to create new visits")
+                logger.warning(f"User {request.user} attempted to access new visit creation without permission")
+                return handler403(request, exception="Access denied to create visits")
+
+            # Add session tracking for audit purposes
+            request.session['last_visit_action'] = 'new_visit_form'
+            request.session['visit_form_access_time'] = timezone.now().isoformat()
+
+            return super().dispatch(request, *args, **kwargs)
+            
+        except Exception as e:
+            logger.error(f"Error in new visit dispatch: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while accessing new visit form")
             return handler500(request, exception=str(e))
