@@ -786,3 +786,107 @@ class AllVisitsView(LoginRequiredMixin, ListView):
             logger.error(f"Error in all visits dispatch: {str(e)}")
             messages.error(request, "An error occurred while accessing all visits")
             return handler500(request, exception=str(e))
+
+
+class VisitLogsView(LoginRequiredMixin, ListView):
+    context_object_name = 'logs'
+    paginate_by = 20
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'visits/visit_logs.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/visits/visit_logs.html']
+
+    def get_queryset(self):
+        # Get filter parameters
+        date_from = self.request.GET.get('date_from')
+        date_to = self.request.GET.get('date_to')
+        visit_number = self.request.GET.get('visit_number')
+        status = self.request.GET.get('status')
+
+        # Base queryset with related data
+        queryset = VisitStatusLog.objects.select_related(
+            'visit', 
+            'status', 
+            'changed_by',
+            'visit__patient'
+        ).order_by('-timestamp')
+
+        # Apply filters
+        try:
+            if date_from:
+                date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                queryset = queryset.filter(timestamp__date__gte=date_from)
+            
+            if date_to:
+                date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+                queryset = queryset.filter(timestamp__date__lte=date_to)
+
+            if visit_number:
+                queryset = queryset.filter(visit__visit_number__icontains=visit_number)
+
+            if status:
+                queryset = queryset.filter(status__name=status)
+
+        except ValueError as e:
+            logger.error(f"Date parsing error: {str(e)}")
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context.update({
+                'date_from': self.request.GET.get('date_from', ''),
+                'date_to': self.request.GET.get('date_to', ''),
+                'visit_number': self.request.GET.get('visit_number', ''),
+                'selected_status': self.request.GET.get('status', ''),
+                
+                # Add all statuses for filter
+                'all_statuses': VisitStatus.objects.filter(is_active=True),
+                
+                # Add summary statistics
+                'total_logs': self.get_queryset().count(),
+                'today_logs': self.get_queryset().filter(
+                    timestamp__date=timezone.now().date()
+                ).count(),
+                'status_changes': self.get_status_change_stats()
+            })
+        except Exception as e:
+            logger.error(f"Error getting context data: {str(e)}")
+            messages.error(self.request, "Error loading some data")
+            
+        return context
+
+    def get_status_change_stats(self):
+        """Get statistics about status changes"""
+        try:
+            today = timezone.now().date()
+            return self.get_queryset().filter(
+                timestamp__date=today
+            ).values(
+                'status__name',
+                'status__display_name'
+            ).annotate(
+                count=Count('id')
+            ).order_by('-count')
+        except Exception as e:
+            logger.error(f"Error getting status change stats: {str(e)}")
+            return []
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to access Visit Logs")
+                return handler403(request, exception="Access denied to visit logs")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in visit logs dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing visit logs")
+            return handler500(request, exception=str(e))

@@ -18,4 +18,6 @@ urlpatterns = [
     path('new_visit/', views.NewVisitView.as_view(), name='new_visit'),
 
     path('all_visits/', views.AllVisitsView.as_view(), name='all_visits'),
+
+    path('visit_logs/', views.VisitLogsView.as_view(), name='visit_logs'),
 ]
