@@ -16,4 +16,6 @@ urlpatterns = [
     path('completed_visits_report/', views.CompletedVisitsReportView.as_view(), name='completed_visits_report'),
 
     path('new_visit/', views.NewVisitView.as_view(), name='new_visit'),
+
+    path('all_visits/', views.AllVisitsView.as_view(), name='all_visits'),
 ]

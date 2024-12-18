@@ -672,3 +672,117 @@ class NewVisitView(LoginRequiredMixin, CreateView):
             logger.error(f"Error in new visit dispatch: {str(e)}", exc_info=True)
             messages.error(request, "An error occurred while accessing new visit form")
             return handler500(request, exception=str(e))
+
+
+class AllVisitsView(LoginRequiredMixin, ListView):
+    model = ClinicVisit
+    context_object_name = 'visits'
+    paginate_by = 15
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'visits/all_visits.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/visits/all_visits.html']
+
+    def get_queryset(self):
+        # Get selected date range from request
+        date_from = self.request.GET.get('date_from')
+        date_to = self.request.GET.get('date_to')
+        
+        # Base queryset
+        queryset = ClinicVisit.objects.select_related(
+            'patient',
+            'current_status',
+            'created_by'
+        )
+
+        # Apply date filters
+        try:
+            if date_from:
+                queryset = queryset.filter(visit_date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+            if date_to:
+                queryset = queryset.filter(visit_date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError as e:
+            logger.error(f"Date parsing error: {str(e)}")
+
+        # Apply search filter
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(patient__first_name__icontains=search) |
+                Q(patient__last_name__icontains=search) |
+                Q(visit_number__icontains=search)
+            )
+
+        # Status filter
+        status = self.request.GET.get('status')
+        if status:
+            queryset = queryset.filter(current_status__name=status)
+
+        # Priority filter
+        priority = self.request.GET.get('priority')
+        if priority:
+            queryset = queryset.filter(priority=priority)
+
+        return queryset.order_by('-visit_date', '-registration_time')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            # Add filter values to context
+            context.update({
+                'date_from': self.request.GET.get('date_from', ''),
+                'date_to': self.request.GET.get('date_to', ''),
+                'search_query': self.request.GET.get('search', ''),
+                'current_status': self.request.GET.get('status', ''),
+                'current_priority': self.request.GET.get('priority', ''),
+                
+                # Add all possible statuses for filter
+                'all_statuses': VisitStatus.objects.filter(is_active=True),
+                
+                # Add priority choices
+                'priority_choices': ClinicVisit.PRIORITY_CHOICES,
+                
+                # Add summary statistics
+                'total_visits': self.get_queryset().count(),
+                'completed_visits': self.get_queryset().filter(
+                    current_status__name='COMPLETED'
+                ).count(),
+                'status_distribution': self.get_status_distribution()
+            })
+            
+        except Exception as e:
+            logger.error(f"Error getting context data: {str(e)}")
+            messages.error(self.request, "Error loading some data")
+            
+        return context
+
+    def get_status_distribution(self):
+        """Get count of visits grouped by status"""
+        try:
+            return self.get_queryset().values(
+                'current_status__name',
+                'current_status__display_name'
+            ).annotate(
+                count=Count('id')
+            ).order_by('-count')
+        except Exception as e:
+            logger.error(f"Error getting status distribution: {str(e)}")
+            return []
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to access All Visits")
+                return handler403(request, exception="Access denied to all visits")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in all visits dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing all visits")
+            return handler500(request, exception=str(e))
