@@ -1098,3 +1098,81 @@ class ManageChecklistsView(LoginRequiredMixin, ListView):
             'total_items': ChecklistItem.objects.count()
         })
         return context
+
+
+class ChecklistItemsView(LoginRequiredMixin, ListView):
+    model = ChecklistItem
+    context_object_name = 'items'
+    paginate_by = 15
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'checklists/checklist_items.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/checklists/checklist_items.html']
+
+    def get_queryset(self):
+        queryset = ChecklistItem.objects.select_related('checklist').order_by('checklist__name', 'order')
+
+        # Filter by checklist if specified
+        checklist_id = self.request.GET.get('checklist')
+        if checklist_id:
+            queryset = queryset.filter(checklist_id=checklist_id)
+
+        # Search functionality
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(description__icontains=search_query) |
+                Q(checklist__name__icontains=search_query)
+            )
+
+        # Required items filter
+        required_filter = self.request.GET.get('required')
+        if required_filter == 'yes':
+            queryset = queryset.filter(is_required=True)
+        elif required_filter == 'no':
+            queryset = queryset.filter(is_required=False)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context.update({
+                'search_query': self.request.GET.get('search', ''),
+                'selected_checklist': self.request.GET.get('checklist', ''),
+                'required_filter': self.request.GET.get('required', 'all'),
+                'checklists': ClinicChecklist.objects.filter(is_active=True),
+                'total_items': ChecklistItem.objects.count(),
+                'required_items': ChecklistItem.objects.filter(is_required=True).count(),
+                'summary': {
+                    'total_checklists': ClinicChecklist.objects.filter(is_active=True).count(),
+                    'avg_items_per_checklist': round(
+                        ChecklistItem.objects.count() / 
+                        max(ClinicChecklist.objects.filter(is_active=True).count(), 1),
+                        1
+                    )
+                }
+            })
+        except Exception as e:
+            logger.error(f"Error getting context data: {str(e)}")
+            messages.error(self.request, "Error loading some data")
+            
+        return context
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to access Checklist Items")
+                return handler403(request, exception="Access denied to checklist items")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in checklist items dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing checklist items")
+            return handler500(request, exception=str(e))
