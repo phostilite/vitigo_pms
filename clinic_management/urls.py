@@ -1,6 +1,6 @@
 # URLs configuration (add to urls.py)
 from django.urls import path
-from . import views
+from . import views, export_views
 
 app_name = 'clinic_management'
 
@@ -32,4 +32,6 @@ urlpatterns = [
     path('visit-status/<int:pk>/delete/', views.DeleteVisitStatusView.as_view(), name='delete_visit_status'),
     path('visit-status/<int:pk>/edit/', views.EditVisitStatusView.as_view(), name='edit_visit_status'),
     path('activities/', views.AllActivitiesView.as_view(), name='all_activities'),
+    
+    path('export/', export_views.ClinicDashboardExportView.as_view(), name='dashboard_export'),
 ]

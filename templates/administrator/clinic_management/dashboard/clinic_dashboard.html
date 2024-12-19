@@ -10,10 +10,23 @@
             <p class="mt-1 text-sm text-gray-600">Administrative Dashboard</p>
         </div>
         <div class="flex space-x-3">
-            <button class="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                <i class="fas fa-file-excel mr-2"></i>
-                Export Data
-            </button>
+            <div class="dropdown relative">
+                <button id="exportDropdown" data-dropdown-toggle="exportDropdownItems" class="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                    <i class="fas fa-file-excel mr-2"></i>
+                    Export Data
+                    <i class="fas fa-chevron-down ml-2"></i>
+                </button>
+                <div id="exportDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10">
+                    <a href="{% url 'clinic_management:dashboard_export' %}?format=excel" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-excel mr-3 text-green-600"></i>
+                        <span class="text-sm text-gray-700">Export to Excel</span>
+                    </a>
+                    <a href="{% url 'clinic_management:dashboard_export' %}?format=pdf" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-pdf mr-3 text-red-600"></i>
+                        <span class="text-sm text-gray-700">Export to PDF</span>
+                    </a>
+                </div>
+            </div>
             <button class="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
                 <i class="fas fa-cog mr-2"></i>
                 Settings
