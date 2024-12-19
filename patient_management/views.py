@@ -26,7 +26,7 @@ from .models import (
     Medication,
     MedicalHistory
 )
-from .forms import PatientRegistrationForm
+from .forms import PatientRegistrationForm, PatientProfileForm, MedicalHistoryForm
 
 # Configure logging and user model
 User = get_user_model()
@@ -215,3 +215,69 @@ class PatientRegistrationView(LoginRequiredMixin, View):
                 return render(request, self.get_template_name(), {'form': form})
         
         return render(request, self.get_template_name(), {'form': form})
+
+
+class CreatePatientProfileView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'patient_management'):
+            messages.error(request, "You don't have permission to create patient profiles")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('create_patient_profile.html', self.request.user.role, 'patient_management')
+
+    def get(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            
+            # Check if profile already exists
+            if hasattr(user, 'patient_profile'):
+                messages.error(request, "Patient profile already exists")
+                return redirect('patient_detail', user_id=user_id)
+            
+            profile_form = PatientProfileForm()
+            medical_history_form = MedicalHistoryForm()
+            
+            return render(request, self.get_template_name(), {
+                'user': user,
+                'profile_form': profile_form,
+                'medical_history_form': medical_history_form
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in CreatePatientProfileView GET: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while loading the form")
+            return redirect('patient_detail', user_id=user_id)
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            
+            profile_form = PatientProfileForm(request.POST)
+            medical_history_form = MedicalHistoryForm(request.POST)
+            
+            if profile_form.is_valid() and medical_history_form.is_valid():
+                # Create patient profile
+                patient = profile_form.save(commit=False)
+                patient.user = user
+                patient.save()
+                
+                # Create medical history
+                medical_history = medical_history_form.save(commit=False)
+                medical_history.patient = patient
+                medical_history.save()
+                
+                messages.success(request, "Patient profile created successfully")
+                return redirect('patient_detail', user_id=user_id)
+                
+            return render(request, self.get_template_name(), {
+                'user': user,
+                'profile_form': profile_form,
+                'medical_history_form': medical_history_form
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in CreatePatientProfileView POST: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while creating the profile")
+            return redirect('patient_detail', user_id=user_id)

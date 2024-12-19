@@ -144,3 +144,112 @@ class PatientRegistrationForm(forms.ModelForm):
             )
         
         return user
+
+
+class PatientProfileForm(forms.ModelForm):
+    date_of_birth = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        help_text="Select the patient's date of birth from the calendar"
+    )
+    
+    gender = forms.ChoiceField(
+        choices=Patient.GENDER_CHOICES,
+        help_text="Select the patient's gender identity"
+    )
+    
+    blood_group = forms.ChoiceField(
+        choices=Patient.BLOOD_GROUP_CHOICES,
+        required=False,
+        help_text="Select the patient's blood group if known"
+    )
+    
+    address = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3}),
+        help_text="Enter the patient's complete residential address including city and postal code"
+    )
+    
+    phone_number = forms.CharField(
+        help_text="Enter a valid mobile number that can be used for appointments and notifications"
+    )
+    
+    emergency_contact_name = forms.CharField(
+        help_text="Full name of a person to contact in case of medical emergencies"
+    )
+    
+    emergency_contact_number = forms.CharField(
+        help_text="Valid phone number of the emergency contact person"
+    )
+    
+    vitiligo_onset_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}), 
+        required=False,
+        help_text="Approximate date when vitiligo symptoms were first noticed"
+    )
+    
+    vitiligo_type = forms.CharField(
+        required=False,
+        help_text="Specify the type of vitiligo if diagnosed (e.g., Focal, Segmental, Non-segmental)"
+    )
+    
+    affected_body_areas = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'List all body areas affected by vitiligo'
+        }),
+        required=False,
+        help_text="Describe all areas where vitiligo patches are present, including size and location"
+    )
+
+    class Meta:
+        model = Patient
+        fields = ['date_of_birth', 'gender', 'blood_group', 'address', 'phone_number',
+                 'emergency_contact_name', 'emergency_contact_number', 'vitiligo_onset_date',
+                 'vitiligo_type', 'affected_body_areas']
+
+
+class MedicalHistoryForm(forms.ModelForm):
+    allergies = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'List any allergies to medications, foods, or substances'
+        }),
+        required=False,
+        help_text="Include all known allergies and reactions. Write 'None known' if no allergies"
+    )
+    
+    chronic_conditions = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'List any ongoing medical conditions'
+        }),
+        required=False,
+        help_text="Include all chronic conditions, autoimmune disorders, and ongoing health issues"
+    )
+    
+    past_surgeries = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'List previous surgeries with dates'
+        }),
+        required=False,
+        help_text="List all surgeries with approximate dates and any complications if applicable"
+    )
+    
+    family_history = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'Include relevant family medical history'
+        }),
+        required=False,
+        help_text="Include family history of vitiligo, autoimmune conditions, and other relevant hereditary conditions"
+    )
+
+    class Meta:
+        model = MedicalHistory
+        fields = ['allergies', 'chronic_conditions', 'past_surgeries', 'family_history']
+        widgets = {
+            'allergies': forms.Textarea(attrs={'rows': 3}),
+            'chronic_conditions': forms.Textarea(attrs={'rows': 3}),
+            'past_surgeries': forms.Textarea(attrs={'rows': 3}),
+            'family_history': forms.Textarea(attrs={'rows': 3}),
+        }
