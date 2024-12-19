@@ -13,4 +13,6 @@ urlpatterns = [
     path('low-stock/', views.LowStockItemsView.as_view(), name='low_stock_items'),
     
     path('orders/pending/', views.PendingOrdersView.as_view(), name='pending_orders'),
+    
+    path('suppliers/', views.SuppliersManagementView.as_view(), name='suppliers_management'),
 ]

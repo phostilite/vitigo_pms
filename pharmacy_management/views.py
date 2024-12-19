@@ -520,3 +520,77 @@ class PendingOrdersView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error getting pending orders data: {str(e)}")
             return {}
+
+class SuppliersManagementView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to manage suppliers")
+                return handler403(request, exception="Access denied to supplier management")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in suppliers management dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing supplier management")
+            return handler500(request, exception=str(e))
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('suppliers_management.html', request.user.role, 'pharmacy_management')
+            context = self.get_context_data(request)
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in suppliers management view: {str(e)}")
+            messages.error(request, "An error occurred while loading suppliers")
+            return handler500(request, exception=str(e))
+
+    def get_context_data(self, request):
+        try:
+            # Get filter parameters
+            search_query = request.GET.get('search', '')
+            status = request.GET.get('status', '')
+
+            # Base queryset with related data
+            suppliers = Supplier.objects.prefetch_related(
+                'purchaseorder_set'
+            ).annotate(
+                total_orders=models.Count('purchaseorder'),
+                last_order_date=models.Max('purchaseorder__order_date')
+            )
+
+            # Apply filters
+            if search_query:
+                suppliers = suppliers.filter(
+                    models.Q(name__icontains=search_query) |
+                    models.Q(contact_person__icontains=search_query) |
+                    models.Q(email__icontains=search_query)
+                )
+
+            if status:
+                suppliers = suppliers.filter(is_active=(status == 'active'))
+
+            # Pagination
+            page = request.GET.get('page', 1)
+            paginator = Paginator(suppliers.order_by('-is_active', 'name'), 10)
+            try:
+                suppliers = paginator.page(page)
+            except PageNotAnInteger:
+                suppliers = paginator.page(1)
+            except EmptyPage:
+                suppliers = paginator.page(paginator.num_pages)
+
+            return {
+                'suppliers': suppliers,
+                'total_suppliers': Supplier.objects.count(),
+                'active_suppliers': Supplier.objects.filter(is_active=True).count(),
+                'filters': {
+                    'search': search_query,
+                    'status': status
+                },
+                'statistics': {
+                    'total_orders': PurchaseOrder.objects.count(),
+                    'recent_orders': PurchaseOrder.objects.order_by('-order_date')[:5]
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting suppliers context data: {str(e)}")
+            return {}
