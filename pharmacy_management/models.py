@@ -74,3 +74,32 @@ class PurchaseOrderItem(models.Model):
     def __str__(self):
         return f"{self.medication.name} - Qty: {self.quantity}"
 
+class StockAdjustment(models.Model):
+    ADJUSTMENT_TYPE_CHOICES = [
+        ('ADD', 'Stock Addition'),
+        ('REMOVE', 'Stock Removal'),
+        ('CORRECTION', 'Stock Correction'),
+    ]
+
+    medication = models.ForeignKey(Medication, on_delete=models.CASCADE, related_name='stock_adjustments')
+    adjustment_type = models.CharField(max_length=20, choices=ADJUSTMENT_TYPE_CHOICES)
+    quantity = models.IntegerField(help_text="Use positive number for additions, negative for removals")
+    reason = models.TextField()
+    adjusted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    adjusted_at = models.DateTimeField(auto_now_add=True)
+    reference_number = models.CharField(max_length=50, blank=True, help_text="External reference number if any")
+    
+    def save(self, *args, **kwargs):
+        # Update the medication stock
+        stock = self.medication.stock
+        if self.adjustment_type in ['ADD', 'CORRECTION']:
+            stock.quantity += self.quantity
+        else:
+            stock.quantity -= self.quantity
+        stock.save()
+        
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.get_adjustment_type_display()} - {self.medication.name} ({self.quantity})"
+

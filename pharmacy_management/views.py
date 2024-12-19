@@ -22,10 +22,11 @@ from .models import (
     MedicationStock,
     PurchaseOrder,
     Supplier,
-    PurchaseOrderItem
+    PurchaseOrderItem,
+    StockAdjustment
 )
 from django.forms import formset_factory
-from .forms import MedicationForm
+from .forms import MedicationForm, StockAdjustmentForm
 
 # Configure logging and user model
 User = get_user_model()
@@ -284,3 +285,45 @@ class MedicationCreateView(LoginRequiredMixin, CreateView):
             logger.error(f"Error saving medication: {str(e)}")
             messages.error(self.request, "Error saving medication")
             return self.form_invalid(form)
+
+class StockAdjustmentView(LoginRequiredMixin, CreateView):
+    form_class = StockAdjustmentForm
+    success_url = reverse_lazy('pharmacy_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to adjust stock")
+                return handler403(request, exception="Access denied to stock adjustment")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in stock adjustment dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing stock adjustment")
+            return handler500(request, exception=str(e))
+
+    def get_template_names(self):
+        return [get_template_path('stock_adjustment.html', self.request.user.role, 'pharmacy_management')]
+
+    def form_valid(self, form):
+        try:
+            form.instance.adjusted_by = self.request.user
+            adjustment = form.save()
+            
+            # Add success message with details
+            messages.success(
+                self.request,
+                f"Stock adjusted successfully: {adjustment.get_adjustment_type_display()} "
+                f"of {abs(adjustment.quantity)} units for {adjustment.medication.name}"
+            )
+            return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Error saving stock adjustment: {str(e)}")
+            messages.error(self.request, "Error adjusting stock")
+            return self.form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['recent_adjustments'] = StockAdjustment.objects.select_related(
+            'medication', 'adjusted_by'
+        ).order_by('-adjusted_at')[:5]
+        return context
