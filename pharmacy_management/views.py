@@ -462,3 +462,54 @@ class AllMedicationsView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error getting medications context data: {str(e)}")
             return {}
+
+class PendingOrdersView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to view pending orders")
+                return handler403(request, exception="Access denied to pending orders")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in pending orders dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing pending orders")
+            return handler500(request, exception=str(e))
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('pending_orders.html', request.user.role, 'pharmacy_management')
+            context = self.get_context_data()
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in pending orders view: {str(e)}")
+            messages.error(request, "An error occurred while loading pending orders")
+            return handler500(request, exception=str(e))
+
+    def get_context_data(self):
+        try:
+            orders = PurchaseOrder.objects.select_related(
+                'supplier', 'created_by'
+            ).prefetch_related(
+                'items__medication'
+            ).filter(
+                status='PENDING'
+            ).order_by('-order_date')
+
+            # Calculate statistics
+            total_pending_value = sum(order.total_amount for order in orders)
+            overdue_orders = orders.filter(
+                expected_delivery_date__lt=timezone.now().date()
+            ).count()
+
+            return {
+                'orders': orders,
+                'total_pending_value': total_pending_value,
+                'total_orders': orders.count(),
+                'overdue_orders': overdue_orders,
+                'suppliers': Supplier.objects.filter(
+                    id__in=orders.values_list('supplier_id', flat=True)
+                ).distinct()
+            }
+        except Exception as e:
+            logger.error(f"Error getting pending orders data: {str(e)}")
+            return {}

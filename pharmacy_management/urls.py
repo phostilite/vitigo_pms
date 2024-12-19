@@ -8,4 +8,5 @@ urlpatterns = [
     path('stock/adjust/', views.StockAdjustmentView.as_view(), name='stock_adjustment'),
     path('low-stock/', views.LowStockItemsView.as_view(), name='low_stock_items'),
     path('medications/', views.AllMedicationsView.as_view(), name='all_medications'),
+    path('orders/pending/', views.PendingOrdersView.as_view(), name='pending_orders'),
 ]
