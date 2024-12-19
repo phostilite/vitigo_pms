@@ -26,6 +26,9 @@ class Medication(models.Model):
     def __str__(self):
         return f"{self.name} - {self.strength} {self.dosage_form}"
 
+    class Meta:
+        ordering = ['name']  # Add this inner class to set default ordering
+
 class MedicationStock(models.Model):
     medication = models.OneToOneField(Medication, on_delete=models.CASCADE, related_name='stock')
     quantity = models.PositiveIntegerField(default=0)

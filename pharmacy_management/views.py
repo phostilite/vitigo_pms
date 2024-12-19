@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Sum, F
+from django.db import models
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
@@ -382,4 +383,82 @@ class LowStockItemsView(LoginRequiredMixin, View):
             }
         except Exception as e:
             logger.error(f"Error getting low stock context data: {str(e)}")
+            return {}
+
+class AllMedicationsView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to view medications")
+                return handler403(request, exception="Access denied to medications list")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in medications list dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing medications list")
+            return handler500(request, exception=str(e))
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('all_medications.html', request.user.role, 'pharmacy_management')
+            context = self.get_context_data(request)
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in medications list view: {str(e)}")
+            messages.error(request, "An error occurred while loading medications list")
+            return handler500(request, exception=str(e))
+
+    def get_context_data(self, request):
+        try:
+            # Get filter parameters
+            search_query = request.GET.get('search', '')
+            medication_type = request.GET.get('type', '')
+            status = request.GET.get('status', '')
+
+            # Base queryset with explicit ordering
+            medications = Medication.objects.select_related('stock').all().order_by('name', 'id')
+
+            # Apply filters
+            if search_query:
+                medications = medications.filter(
+                    models.Q(name__icontains=search_query) |
+                    models.Q(generic_name__icontains=search_query) |
+                    models.Q(manufacturer__icontains=search_query)
+                )
+
+            if medication_type:
+                medications = medications.filter(requires_prescription=(medication_type == 'PRESCRIPTION'))
+
+            if status:
+                if status == 'LOW_STOCK':
+                    medications = medications.filter(stock__quantity__lte=F('stock__reorder_level'))
+                elif status == 'OUT_OF_STOCK':
+                    medications = medications.filter(stock__quantity=0)
+
+            # Get counts before pagination
+            total_count = medications.count()
+            active_count = medications.filter(is_active=True).count()
+            low_stock_count = medications.filter(stock__quantity__lte=F('stock__reorder_level')).count()
+
+            # Pagination
+            page = request.GET.get('page', 1)
+            paginator = Paginator(medications, 10)
+            try:
+                paginated_medications = paginator.page(page)
+            except (PageNotAnInteger, EmptyPage):
+                paginated_medications = paginator.page(1)
+
+            return {
+                'medications': paginated_medications,
+                'paginator': paginator,
+                'total_count': total_count,
+                'active_count': active_count,
+                'low_stock_count': low_stock_count,
+                'filters': {
+                    'search': search_query,
+                    'type': medication_type,
+                    'status': status
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting medications context data: {str(e)}")
             return {}
