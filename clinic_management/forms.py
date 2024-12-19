@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import ClinicVisit, VisitStatus
+from .models import ClinicVisit, VisitStatus, ClinicChecklist
 
 class NewVisitForm(forms.ModelForm):
     # Override the patient field to use Select2
@@ -44,3 +44,25 @@ class NewVisitForm(forms.ModelForm):
         self.fields['notes'].widget.attrs.update({
             'class': 'block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none'
         })
+
+class NewChecklistForm(forms.ModelForm):
+    class Meta:
+        model = ClinicChecklist
+        fields = ['name', 'description', 'is_active', 'order']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500',
+                'placeholder': 'Enter checklist name'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500',
+                'rows': 3,
+                'placeholder': 'Enter checklist description'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'rounded border-gray-300 text-purple-600 focus:ring-purple-500'
+            }),
+            'order': forms.NumberInput(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+            })
+        }

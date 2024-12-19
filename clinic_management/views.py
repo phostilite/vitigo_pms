@@ -994,3 +994,26 @@ class VisitAnalyticsView(LoginRequiredMixin, TemplateView):
             logger.error(f"Error in visit analytics dispatch: {str(e)}")
             messages.error(request, "An error occurred while accessing visit analytics")
             return handler500(request, exception=str(e))
+
+
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView
+from .forms import NewChecklistForm
+from .models import ClinicChecklist
+
+class NewChecklistView(SuccessMessageMixin, CreateView):
+    model = ClinicChecklist
+    form_class = NewChecklistForm
+    template_name = 'administrator/clinic_management/checklists/new_checklist.html'
+    success_url = reverse_lazy('clinic_management:clinic_dashboard')
+    success_message = "Checklist '%(name)s' was created successfully"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Create New Checklist'
+        context['breadcrumbs'] = [
+            {'label': 'Dashboard', 'url': reverse_lazy('clinic_management:clinic_dashboard')},
+            {'label': 'New Checklist', 'url': '#'},
+        ]
+        return context
