@@ -65,41 +65,8 @@
         </div>
     </div>
 
-    <!-- Filters -->
-    <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
-        <form method="get" class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
-            <div class="flex flex-wrap items-center gap-4">
-                <select name="type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5">
-                    <option value="">All Types</option>
-                    <option value="PRESCRIPTION" {% if filters.type == 'PRESCRIPTION' %}selected{% endif %}>Prescription Only</option>
-                    <option value="OTC" {% if filters.type == 'OTC' %}selected{% endif %}>Over The Counter</option>
-                </select>
-
-                <select name="status" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5">
-                    <option value="">All Status</option>
-                    <option value="IN_STOCK" {% if filters.status == 'IN_STOCK' %}selected{% endif %}>In Stock</option>
-                    <option value="LOW_STOCK" {% if filters.status == 'LOW_STOCK' %}selected{% endif %}>Low Stock</option>
-                    <option value="OUT_OF_STOCK" {% if filters.status == 'OUT_OF_STOCK' %}selected{% endif %}>Out of Stock</option>
-                </select>
-            </div>
-
-            <div class="flex items-center space-x-4">
-                <div class="relative flex-1">
-                    <input type="text" 
-                           name="search" 
-                           value="{{ filters.search }}"
-                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full pl-10 p-2.5" 
-                           placeholder="Search medications...">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <i class="fas fa-search text-gray-400"></i>
-                    </div>
-                </div>
-                <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Filter
-                </button>
-            </div>
-        </form>
-    </div>
+    <!-- Filters and Search -->
+    {% include './components/filters.html' with filters=filters show_supplier=False clear_url='all_medications' %}
 
     <!-- Medications Table -->
     <div class="bg-white rounded-lg shadow-sm">

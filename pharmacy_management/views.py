@@ -89,57 +89,64 @@ class PharmacyManagementView(LoginRequiredMixin, View):
 
     def get_context_data(self):
         try:
-            medications = Medication.objects.select_related(
-                'stock'
-            ).all()
+            # Get filter parameters
+            search_query = self.request.GET.get('search', '')
+            medication_type = self.request.GET.get('type', '')
+            status = self.request.GET.get('status', '')
+            supplier_id = self.request.GET.get('supplier', '')
 
-            purchase_orders = PurchaseOrder.objects.select_related(
-                'supplier',
-                'created_by'
-            ).prefetch_related(
-                'items__medication'
-            ).filter(status='PENDING')
+            # Base queryset
+            medications = Medication.objects.select_related('stock').all()
 
-            now = timezone.now()
-            month_start = now.replace(day=1)
+            # Apply filters
+            if search_query:
+                medications = medications.filter(
+                    models.Q(name__icontains=search_query) |
+                    models.Q(generic_name__icontains=search_query) |
+                    models.Q(manufacturer__icontains=search_query)
+                )
 
-            # Enhanced analytics
-            monthly_revenue = PurchaseOrder.objects.filter(
-                status='RECEIVED',
-                order_date__gte=month_start,
-                order_date__lte=now
-            ).aggregate(total=Sum('total_amount'))['total'] or 0
+            if medication_type:
+                medications = medications.filter(requires_prescription=(medication_type == 'PRESCRIPTION'))
 
-            previous_month = (month_start - timezone.timedelta(days=1)).replace(day=1)
-            previous_revenue = PurchaseOrder.objects.filter(
-                status='RECEIVED',
-                order_date__gte=previous_month,
-                order_date__lte=month_start
-            ).aggregate(total=Sum('total_amount'))['total'] or 0
+            if status:
+                if status == 'LOW_STOCK':
+                    medications = medications.filter(stock__quantity__lte=F('stock__reorder_level'))
+                elif status == 'OUT_OF_STOCK':
+                    medications = medications.filter(stock__quantity=0)
+                elif status == 'IN_STOCK':
+                    # Fix: Change the repeated condition to use Q objects for complex queries
+                    medications = medications.filter(
+                        models.Q(stock__quantity__gt=0) &
+                        models.Q(stock__quantity__gt=F('stock__reorder_level'))
+                    )
 
-            # Calculate revenue growth percentage
-            if previous_revenue > 0:
-                revenue_growth = ((monthly_revenue - previous_revenue) / previous_revenue) * 100
-            else:
-                revenue_growth = 0
+            if supplier_id:
+                medications = medications.filter(manufacturer=supplier_id)
+
+            # Calculate statistics
+            total_stock_value = sum(
+                medication.price * medication.stock.quantity 
+                for medication in medications 
+                if medication.stock
+            )
 
             context = {
-                'medications': medications,
+                'medications': medications.order_by('name', 'id'),
                 'suppliers': Supplier.objects.all(),
-                'purchase_orders': purchase_orders,
-                'low_stock_count': MedicationStock.objects.filter(
-                    quantity__lte=F('reorder_level')
-                ).count(),
-                'monthly_revenue': monthly_revenue,
-                'revenue_growth': revenue_growth,
+                'purchase_orders': PurchaseOrder.objects.filter(status='PENDING'),
+                'low_stock_count': medications.filter(stock__quantity__lte=F('stock__reorder_level')).count(),
+                'total_stock_value': total_stock_value,
                 'total_medications': medications.count(),
-                'pending_orders': purchase_orders.count(),
-                'recent_transactions': PurchaseOrder.objects.select_related(
-                    'supplier'
-                ).order_by('-order_date')[:5],
+                'pending_orders': PurchaseOrder.objects.filter(status='PENDING').count(),
                 'stock_alerts': self.get_stock_alerts(),
+                'filters': {
+                    'search': search_query,
+                    'type': medication_type,
+                    'status': status,
+                    'supplier': supplier_id,
+                }
             }
-
             return context
         except Exception as e:
             logger.error(f"Error getting pharmacy context data: {str(e)}")
