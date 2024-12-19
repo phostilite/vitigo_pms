@@ -11,4 +11,5 @@ urlpatterns = [
     path('<int:user_id>/deactivate/', views.DeactivatePatientView.as_view(), name='deactivate_patient'),
     path('<int:user_id>/activate/', views.ActivatePatientView.as_view(), name='activate_patient'),
     path('<int:user_id>/export/', export_views.PatientDataExportView.as_view(), name='export_patient_data'),
+    path('export/', export_views.PatientListExportView.as_view(), name='export_patient_list'),
 ]

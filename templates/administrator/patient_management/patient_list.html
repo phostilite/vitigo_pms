@@ -16,10 +16,29 @@
                 <i class="fas fa-user-plus mr-2"></i>
                 Add New Patient
             </a>
-            <a href="#" class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
-                <i class="fas fa-file-export mr-2"></i>
-                Export Data
-            </a>
+            <!-- Replace the Export Data button with this dropdown -->
+            <div class="relative">
+                <button id="exportDropdownButton" 
+                        data-dropdown-toggle="exportDropdownMenu" 
+                        class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                    <i class="fas fa-file-export mr-2"></i>
+                    Export Data
+                </button>
+                <div id="exportDropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
+                    <div class="py-1">
+                        <a href="{% url 'export_patient_list' %}?format=excel{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-file-excel mr-2 text-green-600"></i>
+                            Excel Format
+                        </a>
+                        <a href="{% url 'export_patient_list' %}?format=pdf{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-file-pdf mr-2 text-red-600"></i>
+                            PDF Format
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
