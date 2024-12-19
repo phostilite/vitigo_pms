@@ -281,3 +281,59 @@ class CreatePatientProfileView(LoginRequiredMixin, View):
             logger.error(f"Error in CreatePatientProfileView POST: {str(e)}", exc_info=True)
             messages.error(request, "An error occurred while creating the profile")
             return redirect('patient_detail', user_id=user_id)
+
+
+class EditPatientProfileView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'patient_management'):
+            messages.error(request, "You don't have permission to edit patient profiles")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('edit_patient_profile.html', self.request.user.role, 'patient_management')
+
+    def get(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = get_object_or_404(Patient, user=user)
+            
+            profile_form = PatientProfileForm(instance=patient)
+            medical_history_form = MedicalHistoryForm(instance=patient.medical_history)
+            
+            return render(request, self.get_template_name(), {
+                'user': user,
+                'profile_form': profile_form,
+                'medical_history_form': medical_history_form
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in EditPatientProfileView GET: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while loading the profile")
+            return redirect('patient_detail', user_id=user_id)
+
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            patient = get_object_or_404(Patient, user=user)
+            
+            profile_form = PatientProfileForm(request.POST, instance=patient)
+            medical_history_form = MedicalHistoryForm(request.POST, instance=patient.medical_history)
+            
+            if profile_form.is_valid() and medical_history_form.is_valid():
+                profile_form.save()
+                medical_history_form.save()
+                
+                messages.success(request, "Patient profile updated successfully")
+                return redirect('patient_detail', user_id=user_id)
+                
+            return render(request, self.get_template_name(), {
+                'user': user,
+                'profile_form': profile_form,
+                'medical_history_form': medical_history_form
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in EditPatientProfileView POST: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while updating the profile")
+            return redirect('patient_detail', user_id=user_id)
