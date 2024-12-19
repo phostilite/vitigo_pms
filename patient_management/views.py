@@ -337,3 +337,35 @@ class EditPatientProfileView(LoginRequiredMixin, View):
             logger.error(f"Error in EditPatientProfileView POST: {str(e)}", exc_info=True)
             messages.error(request, "An error occurred while updating the profile")
             return redirect('patient_detail', user_id=user_id)
+
+
+class DeactivatePatientView(LoginRequiredMixin, View):
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            user.is_active = False
+            user.save()
+            
+            messages.success(request, f'Successfully deactivated patient: {user.get_full_name()}')
+            return redirect('patient_list')
+            
+        except Exception as e:
+            logger.error(f"Error deactivating patient: {str(e)}")
+            messages.error(request, 'Failed to deactivate patient')
+            return redirect('patient_list')
+
+
+class ActivatePatientView(LoginRequiredMixin, View):
+    def post(self, request, user_id):
+        try:
+            user = get_object_or_404(User, id=user_id)
+            user.is_active = True
+            user.save()
+            
+            messages.success(request, f'Successfully activated patient: {user.get_full_name()}')
+            return redirect('patient_list')
+            
+        except Exception as e:
+            logger.error(f"Error activating patient: {str(e)}")
+            messages.error(request, 'Failed to activate patient')
+            return redirect('patient_list')
