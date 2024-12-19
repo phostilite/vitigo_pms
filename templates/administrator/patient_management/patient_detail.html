@@ -119,29 +119,85 @@
                             <p class="text-sm text-gray-400 mt-2">Patient profile needs to be created first</p>
                         </div>
                     {% else %}
-                        <dl class="grid grid-cols-1 gap-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vitiligo Onset Date</dt>
-                                <dd class="mt-1 text-sm text-gray-900">
-                                    {{ patient_profile.vitiligo_onset_date|default:"Not recorded" }}
-                                </dd>
+                        <dl class="grid grid-cols-1 gap-6">
+                            <!-- Personal & Contact Details -->
+                            <div class="border-b pb-4">
+                                <h3 class="text-md font-medium text-gray-900 mb-3">Personal Details</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Date of Birth</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">{{ patient_profile.date_of_birth|date:"M d, Y" }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Blood Group</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">{{ patient_profile.blood_group|default:"Not specified" }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Address</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">{{ patient_profile.address }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Emergency Contact</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">
+                                            {{ patient_profile.emergency_contact_name }}<br>
+                                            <span class="text-gray-600">{{ patient_profile.emergency_contact_number }}</span>
+                                        </dd>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vitiligo Information -->
+                            <div class="border-b pb-4">
+                                <h3 class="text-md font-medium text-gray-900 mb-3">Vitiligo Details</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Onset Date</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">
+                                            {{ patient_profile.vitiligo_onset_date|date:"M d, Y"|default:"Not recorded" }}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Vitiligo Type</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">
+                                            {{ patient_profile.vitiligo_type|default:"Not specified" }}
+                                        </dd>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <dt class="text-sm font-medium text-gray-500">Affected Body Areas</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">
+                                            {{ patient_profile.affected_body_areas|default:"Not specified"|linebreaksbr }}
+                                        </dd>
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Medical History Section -->
                             {% if medical_history %}
-                            <div class="border-t pt-4 mt-4">
+                            <div class="space-y-4">
                                 <h3 class="text-md font-medium text-gray-900 mb-3">Medical History</h3>
-                                <div class="space-y-4">
+                                <div class="grid grid-cols-1 gap-4">
                                     <div>
                                         <dt class="text-sm font-medium text-gray-500">Allergies</dt>
-                                        <dd class="mt-1 text-sm text-gray-900">
-                                            {{ medical_history.allergies|default:"None reported" }}
+                                        <dd class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded">
+                                            {{ medical_history.allergies|default:"None reported"|linebreaksbr }}
                                         </dd>
                                     </div>
                                     <div>
                                         <dt class="text-sm font-medium text-gray-500">Chronic Conditions</dt>
-                                        <dd class="mt-1 text-sm text-gray-900">
-                                            {{ medical_history.chronic_conditions|default:"None reported" }}
+                                        <dd class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded">
+                                            {{ medical_history.chronic_conditions|default:"None reported"|linebreaksbr }}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Past Surgeries</dt>
+                                        <dd class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded">
+                                            {{ medical_history.past_surgeries|default:"None reported"|linebreaksbr }}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Family History</dt>
+                                        <dd class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded">
+                                            {{ medical_history.family_history|default:"None reported"|linebreaksbr }}
                                         </dd>
                                     </div>
                                 </div>
@@ -151,6 +207,39 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if has_profile and current_medications %}
+            <!-- Current Medications Card -->
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Current Medications</h2>
+                    <div class="space-y-4">
+                        {% for medication in current_medications %}
+                        <div class="border-b pb-4 last:border-b-0">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Medication</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ medication.name }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Dosage</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ medication.dosage }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Frequency</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ medication.frequency }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Started On</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ medication.start_date|date:"M d, Y" }}</dd>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Sidebar Information -->
