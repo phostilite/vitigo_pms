@@ -26,6 +26,7 @@ from clinic_management.models import (
     ChecklistItem,
     ClinicVisit,
     VisitChecklist,
+    VisitChecklistItem,
     VisitStatus,
     VisitStatusLog,
 )
@@ -1175,4 +1176,104 @@ class ChecklistItemsView(LoginRequiredMixin, ListView):
         except Exception as e:
             logger.error(f"Error in checklist items dispatch: {str(e)}")
             messages.error(request, "An error occurred while accessing checklist items")
+            return handler500(request, exception=str(e))
+
+
+class ChecklistReportsView(LoginRequiredMixin, TemplateView):
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'checklists/reports.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/checklists/reports.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            # Date range filters
+            end_date = timezone.now().date()
+            start_date = self.request.GET.get('start_date', end_date - timedelta(days=30))
+            if isinstance(start_date, str):
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+
+            # Get visits within date range
+            visit_checklists = VisitChecklist.objects.filter(
+                visit__visit_date__range=[start_date, end_date]
+            ).select_related('checklist', 'visit')
+
+            # Completion statistics
+            completion_stats = visit_checklists.values('checklist__name').annotate(
+                total=Count('id'),
+                completed=Count('id', filter=Q(completed_at__isnull=False)),
+                avg_completion_time=Avg(
+                    F('completed_at') - F('visit__registration_time'),
+                    filter=Q(completed_at__isnull=False)
+                )
+            ).order_by('checklist__name')
+
+            # Daily completion trends
+            daily_stats = visit_checklists.values('visit__visit_date').annotate(
+                total=Count('id'),
+                completed=Count('id', filter=Q(completed_at__isnull=False))
+            ).order_by('visit__visit_date')
+
+            # Most common incomplete items
+            incomplete_items = VisitChecklistItem.objects.filter(
+                visit_checklist__in=visit_checklists,
+                is_completed=False
+            ).values(
+                'checklist_item__description',
+                'checklist_item__checklist__name'
+            ).annotate(
+                count=Count('id')
+            ).order_by('-count')[:10]
+
+            context.update({
+                'date_range': {
+                    'start': start_date.isoformat(),
+                    'end': end_date.isoformat()
+                },
+                'summary': {
+                    'total_checklists': visit_checklists.count(),
+                    'completion_rate': round(
+                        visit_checklists.filter(completed_at__isnull=False).count() /
+                        max(visit_checklists.count(), 1) * 100,
+                        1
+                    )
+                },
+                'charts_data': json.dumps({
+                    'completion_stats': list(completion_stats),
+                    'daily_stats': list(daily_stats),
+                    'incomplete_items': list(incomplete_items)
+                }, cls=DjangoJSONEncoder)
+            })
+
+        except Exception as e:
+            logger.error(f"Error getting reports data: {str(e)}")
+            messages.error(self.request, "Error loading reports data")
+            context.update({
+                'date_range': {'start': '', 'end': ''},
+                'summary': {'total_checklists': 0, 'completion_rate': 0},
+                'charts_data': json.dumps({
+                    'completion_stats': [],
+                    'daily_stats': [],
+                    'incomplete_items': []
+                })
+            })
+            
+        return context
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to access Checklist Reports")
+                return handler403(request, exception="Access denied to checklist reports")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in checklist reports dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing checklist reports")
             return handler500(request, exception=str(e))

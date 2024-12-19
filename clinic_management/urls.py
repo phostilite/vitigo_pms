@@ -24,4 +24,5 @@ urlpatterns = [
     path('checklist/new/', views.NewChecklistView.as_view(), name='new_checklist'),
     path('checklist/manage/', views.ManageChecklistsView.as_view(), name='manage_checklists'),
     path('checklist/items/', views.ChecklistItemsView.as_view(), name='checklist_items'),
+    path('checklist/reports/', views.ChecklistReportsView.as_view(), name='checklist_reports'),
 ]
