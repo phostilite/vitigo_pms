@@ -22,4 +22,5 @@ urlpatterns = [
     path('visit_logs/', views.VisitLogsView.as_view(), name='visit_logs'),
     path('analytics/', views.VisitAnalyticsView.as_view(), name='visit_analytics'),
     path('checklist/new/', views.NewChecklistView.as_view(), name='new_checklist'),
+    path('checklist/manage/', views.ManageChecklistsView.as_view(), name='manage_checklists'),
 ]

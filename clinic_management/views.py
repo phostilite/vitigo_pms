@@ -1,5 +1,6 @@
 # Python standard library imports
 import logging
+import json
 from datetime import datetime, timedelta
 
 # Django core imports
@@ -10,6 +11,8 @@ from django.utils import timezone
 from django.views.generic import ListView, TemplateView, CreateView
 from django.urls import reverse_lazy
 from django.http import JsonResponse
+from django.contrib.messages.views import SuccessMessageMixin
+from django.core.serializers.json import DjangoJSONEncoder
 
 # Django database imports
 from django.db import models
@@ -20,6 +23,7 @@ from django.db.models.functions import ExtractHour, Cast
 from access_control.utils import PermissionManager
 from clinic_management.models import (
     ClinicChecklist,
+    ChecklistItem,
     ClinicVisit,
     VisitChecklist,
     VisitStatus,
@@ -27,7 +31,7 @@ from clinic_management.models import (
 )
 from error_handling.views import handler403, handler500
 from .utils import get_template_path
-from .forms import NewVisitForm
+from .forms import NewVisitForm, NewChecklistForm
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -892,9 +896,6 @@ class VisitLogsView(LoginRequiredMixin, ListView):
             return handler500(request, exception=str(e))
 
 
-from django.core.serializers.json import DjangoJSONEncoder
-import json
-
 class VisitAnalyticsView(LoginRequiredMixin, TemplateView):
     def get_template_names(self):
         try:
@@ -996,18 +997,33 @@ class VisitAnalyticsView(LoginRequiredMixin, TemplateView):
             return handler500(request, exception=str(e))
 
 
-from django.contrib.messages.views import SuccessMessageMixin
-from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView
-from .forms import NewChecklistForm
-from .models import ClinicChecklist
-
 class NewChecklistView(SuccessMessageMixin, CreateView):
     model = ClinicChecklist
     form_class = NewChecklistForm
-    template_name = 'administrator/clinic_management/checklists/new_checklist.html'
     success_url = reverse_lazy('clinic_management:clinic_dashboard')
     success_message = "Checklist '%(name)s' was created successfully"
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'checklists/new_checklist.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/checklists/new_checklist.html']
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to create checklists")
+                return handler403(request, exception="Access denied to create checklists")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in new checklist dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing new checklist form")
+            return handler500(request, exception=str(e))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1016,4 +1032,69 @@ class NewChecklistView(SuccessMessageMixin, CreateView):
             {'label': 'Dashboard', 'url': reverse_lazy('clinic_management:clinic_dashboard')},
             {'label': 'New Checklist', 'url': '#'},
         ]
+        return context
+
+
+class ManageChecklistsView(LoginRequiredMixin, ListView):
+    model = ClinicChecklist
+    context_object_name = 'checklists'
+    paginate_by = 10
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'checklists/manage_checklists.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/checklists/manage_checklists.html']
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to manage checklists")
+                return handler403(request, exception="Access denied to manage checklists")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in manage checklists dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing checklist management")
+            return handler500(request, exception=str(e))
+
+    def get_queryset(self):
+        queryset = ClinicChecklist.objects.annotate(
+            items_count=Count('items'),
+            active_visits_count=Count(
+                'visitchecklist',
+                filter=Q(visitchecklist__completed_at__isnull=True)
+            )
+        ).order_by('order', 'name')
+
+        # Apply search filter if provided
+        search_query = self.request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(description__icontains=search_query)
+            )
+
+        # Apply status filter
+        status_filter = self.request.GET.get('status')
+        if status_filter == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(is_active=False)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'search_query': self.request.GET.get('search', ''),
+            'status_filter': self.request.GET.get('status', 'all'),
+            'total_checklists': ClinicChecklist.objects.count(),
+            'active_checklists': ClinicChecklist.objects.filter(is_active=True).count(),
+            'total_items': ChecklistItem.objects.count()
+        })
         return context
