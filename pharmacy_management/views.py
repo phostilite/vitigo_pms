@@ -327,3 +327,59 @@ class StockAdjustmentView(LoginRequiredMixin, CreateView):
             'medication', 'adjusted_by'
         ).order_by('-adjusted_at')[:5]
         return context
+
+class LowStockItemsView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to view low stock items")
+                return handler403(request, exception="Access denied to low stock items")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in low stock items dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing low stock items")
+            return handler500(request, exception=str(e))
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('low_stock_items.html', request.user.role, 'pharmacy_management')
+            context = self.get_context_data()
+
+            try:
+                page = request.GET.get('page', 1)
+                paginator = Paginator(context['medications'], 10)
+                context['medications'] = paginator.page(page)
+                context['paginator'] = paginator
+            except (PageNotAnInteger, EmptyPage) as e:
+                logger.error(f"Pagination error: {str(e)}")
+                messages.warning(request, "Error loading page data")
+                context['medications'] = []
+
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in low stock items view: {str(e)}")
+            messages.error(request, "An error occurred while loading low stock items")
+            return handler500(request, exception=str(e))
+
+    def get_context_data(self):
+        try:
+            medications = MedicationStock.objects.select_related(
+                'medication'
+            ).filter(
+                quantity__lte=F('reorder_level')
+            ).order_by(
+                'quantity'
+            )
+
+            return {
+                'medications': medications,
+                'total_low_stock': medications.count(),
+                'critical_items': medications.filter(quantity=0).count(),
+                'total_value': sum(
+                    med.medication.price * med.quantity 
+                    for med in medications
+                ),
+            }
+        except Exception as e:
+            logger.error(f"Error getting low stock context data: {str(e)}")
+            return {}
