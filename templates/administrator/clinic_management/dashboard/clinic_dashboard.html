@@ -300,18 +300,65 @@
             </h2>
         </div>
         <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button class="flex items-center justify-center space-x-2 p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
-                <i class="fas fa-file-excel"></i>
-                <span>Export Visit Data</span>
-            </button>
-            <button class="flex items-center justify-center space-x-2 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
-                <i class="fas fa-file-pdf"></i>
-                <span>Export Checklist Report</span>
-            </button>
-            <button class="flex items-center justify-center space-x-2 p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors">
-                <i class="fas fa-chart-pie"></i>
-                <span>Analytics Report</span>
-            </button>
+            <div class="dropdown relative">
+                <button id="visitExportDropdown" 
+                        data-dropdown-toggle="visitExportOptions" 
+                        class="w-full flex items-center justify-center space-x-2 p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
+                    <i class="fas fa-file-excel"></i>
+                    <span>Export Visit Data</span>
+                    <i class="fas fa-chevron-down ml-2"></i>
+                </button>
+                <div id="visitExportOptions" class="dropdown-menu hidden absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10">
+                    <form action="{% url 'clinic_management:visit_data_export' %}" method="get" class="space-y-4">
+                        <a href="{% url 'clinic_management:visit_data_export' %}?format=excel" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-file-excel mr-3 text-green-600"></i>
+                            <span class="text-sm text-gray-700">Excel Format</span>
+                        </a>
+                        <a href="{% url 'clinic_management:visit_data_export' %}?format=pdf" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-file-pdf mr-3 text-red-600"></i>
+                            <span class="text-sm text-gray-700">PDF Format</span>
+                        </a>
+                    </form>
+                </div>
+            </div>
+            <div class="dropdown relative">
+                <button id="checklistExportDropdown" 
+                        data-dropdown-toggle="checklistExportOptions" 
+                        class="w-full flex items-center justify-center space-x-2 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Export Checklist Report</span>
+                    <i class="fas fa-chevron-down ml-2"></i>
+                </button>
+                <div id="checklistExportOptions" class="dropdown-menu hidden absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10">
+                    <a href="{% url 'clinic_management:checklist_data_export' %}?format=excel" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-excel mr-3 text-green-600"></i>
+                        <span class="text-sm text-gray-700">Excel Format</span>
+                    </a>
+                    <a href="{% url 'clinic_management:checklist_data_export' %}?format=pdf" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-pdf mr-3 text-red-600"></i>
+                        <span class="text-sm text-gray-700">PDF Format</span>
+                    </a>
+                </div>
+            </div>
+            <div class="dropdown relative">
+                <button id="analyticsExportDropdown" 
+                        data-dropdown-toggle="analyticsExportOptions" 
+                        class="w-full flex items-center justify-center space-x-2 p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Analytics Report</span>
+                    <i class="fas fa-chevron-down ml-2"></i>
+                </button>
+                <div id="analyticsExportOptions" class="dropdown-menu hidden absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10">
+                    <a href="{% url 'clinic_management:analytics_export' %}?format=excel" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-excel mr-3 text-green-600"></i>
+                        <span class="text-sm text-gray-700">Excel Format</span>
+                    </a>
+                    <a href="{% url 'clinic_management:analytics_export' %}?format=pdf" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-pdf mr-3 text-red-600"></i>
+                        <span class="text-sm text-gray-700">PDF Format</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>

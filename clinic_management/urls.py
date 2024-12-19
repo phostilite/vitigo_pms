@@ -34,4 +34,7 @@ urlpatterns = [
     path('activities/', views.AllActivitiesView.as_view(), name='all_activities'),
     
     path('export/', export_views.ClinicDashboardExportView.as_view(), name='dashboard_export'),
+    path('export/visits/', export_views.VisitDataExportView.as_view(), name='visit_data_export'),
+    path('export/checklists/', export_views.ChecklistDataExportView.as_view(), name='checklist_data_export'),
+    path('export/analytics/', export_views.AnalyticsExportView.as_view(), name='analytics_export'),
 ]
