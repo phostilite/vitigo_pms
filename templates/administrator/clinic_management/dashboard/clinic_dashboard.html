@@ -208,7 +208,11 @@
                                 </td>
                                 <td class="px-4 py-3 text-center">
                                     <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" class="sr-only peer" {% if status.is_active %}checked{% endif %}>
+                                        <input type="checkbox" 
+                                               class="sr-only peer" 
+                                               {% if status.is_active %}checked{% endif %}
+                                               data-modal-target="statusToggleModal{{ status.id }}"
+                                               data-modal-toggle="statusToggleModal{{ status.id }}">
                                         <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                                     </label>
                                 </td>
@@ -223,6 +227,7 @@
                                     </div>
                                 </td>
                             </tr>
+                            {% include '../modals/status_toggle_modal.html' %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -287,4 +292,5 @@
         </div>
     </div>
 </div>
+
 {% endblock %}

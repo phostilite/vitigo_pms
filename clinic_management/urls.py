@@ -21,9 +21,12 @@ urlpatterns = [
 
     path('visit_logs/', views.VisitLogsView.as_view(), name='visit_logs'),
     path('analytics/', views.VisitAnalyticsView.as_view(), name='visit_analytics'),
+    
     path('checklist/new/', views.NewChecklistView.as_view(), name='new_checklist'),
     path('checklist/manage/', views.ManageChecklistsView.as_view(), name='manage_checklists'),
     path('checklist/items/', views.ChecklistItemsView.as_view(), name='checklist_items'),
     path('checklist/reports/', views.ChecklistReportsView.as_view(), name='checklist_reports'),
+    
     path('visit-status/new/', views.NewVisitStatusView.as_view(), name='new_visit_status'),
+    path('visit-status/<int:pk>/toggle/', views.ToggleVisitStatusView.as_view(), name='toggle_visit_status'),
 ]

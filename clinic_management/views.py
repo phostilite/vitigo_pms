@@ -8,11 +8,12 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.views.generic import ListView, TemplateView, CreateView
+from django.views.generic import ListView, TemplateView, CreateView, View
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.serializers.json import DjangoJSONEncoder
+from django.shortcuts import redirect
 
 # Django database imports
 from django.db import models
@@ -74,10 +75,8 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
                 current_status__name='COMPLETED'
             ).count()
 
-            # Status Management
-            visit_statuses = VisitStatus.objects.filter(
-                is_active=True
-            ).order_by('order')
+            # Status Management - Modified to include ID
+            visit_statuses = VisitStatus.objects.all().order_by('order')
             
             status_list = []
             for status in visit_statuses:
@@ -87,6 +86,7 @@ class ClinicManagementDashboardView(LoginRequiredMixin, TemplateView):
                 ).count()
                 
                 status_list.append({
+                    'id': status.id,  # Add this line
                     'display_name': status.display_name,
                     'color_code': status.color_code,
                     'active_visits': active_visits,
@@ -1320,3 +1320,29 @@ class NewVisitStatusView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
             logger.error(f"Error in new status dispatch: {str(e)}")
             messages.error(request, "An error occurred while accessing new status form")
             return handler500(request, exception=str(e))
+
+
+class ToggleVisitStatusView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            status = VisitStatus.objects.get(id=pk)
+            # Check if status has active visits before deactivating
+            if status.is_active and status.visits.filter(visit_date=timezone.now().date()).exists():
+                messages.error(request, f"Cannot deactivate status '{status.display_name}' while it has active visits")
+                return redirect('clinic_management:clinic_dashboard')
+            
+            status.is_active = not status.is_active
+            status.save()
+            
+            action = "activated" if status.is_active else "deactivated"
+            messages.success(request, f"Status '{status.display_name}' has been {action}")
+            
+        except VisitStatus.DoesNotExist:
+            messages.error(request, "Status not found")
+        except Exception as e:
+            logger.error(f"Error toggling visit status: {str(e)}")
+            messages.error(request, "An error occurred while updating the status")
+            
+        return redirect('clinic_management:clinic_dashboard')
+
+
