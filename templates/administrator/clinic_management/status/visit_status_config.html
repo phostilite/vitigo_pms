@@ -20,7 +20,7 @@
                 <p class="mt-1 text-sm text-gray-600">Configure and manage visit status types</p>
             </div>
             <div class="flex space-x-3">
-                <button onclick="openCreateModal()" class="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
+                <button onclick="window.location='{% url 'clinic_management:new_visit_status' %}'" class="flex items-center px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
                     <i class="fas fa-plus mr-2"></i>
                     New Status
                 </button>

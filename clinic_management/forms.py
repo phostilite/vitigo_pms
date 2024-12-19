@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from .models import ClinicVisit, VisitStatus, ClinicChecklist
+import re
 
 class NewVisitForm(forms.ModelForm):
     # Override the patient field to use Select2
@@ -66,3 +67,48 @@ class NewChecklistForm(forms.ModelForm):
                 'class': 'block w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500'
             })
         }
+
+class NewVisitStatusForm(forms.ModelForm):
+    class Meta:
+        model = VisitStatus
+        fields = ['name', 'display_name', 'description', 'color_code', 'is_active', 'is_terminal_state', 'order']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500',
+                'placeholder': 'Enter status name (e.g., IN_PROGRESS)'
+            }),
+            'display_name': forms.TextInput(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500',
+                'placeholder': 'Enter display name (e.g., In Progress)'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500',
+                'rows': 3,
+                'placeholder': 'Enter status description'
+            }),
+            'color_code': forms.TextInput(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500',
+                'type': 'color'
+            }),
+            'order': forms.NumberInput(attrs={
+                'class': 'block w-full rounded-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'rounded border-gray-300 text-emerald-600 focus:ring-emerald-500'
+            }),
+            'is_terminal_state': forms.CheckboxInput(attrs={
+                'class': 'rounded border-gray-300 text-emerald-600 focus:ring-emerald-500'
+            })
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data['name'].upper()
+        if VisitStatus.objects.filter(name=name).exists():
+            raise forms.ValidationError('A status with this name already exists')
+        return name
+
+    def clean_color_code(self):
+        color = self.cleaned_data['color_code']
+        if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color):
+            raise forms.ValidationError('Invalid color code format')
+        return color

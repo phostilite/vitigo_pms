@@ -32,7 +32,7 @@ from clinic_management.models import (
 )
 from error_handling.views import handler403, handler500
 from .utils import get_template_path
-from .forms import NewVisitForm, NewChecklistForm
+from .forms import NewVisitForm, NewChecklistForm, NewVisitStatusForm
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -1276,4 +1276,47 @@ class ChecklistReportsView(LoginRequiredMixin, TemplateView):
         except Exception as e:
             logger.error(f"Error in checklist reports dispatch: {str(e)}")
             messages.error(request, "An error occurred while accessing checklist reports")
+            return handler500(request, exception=str(e))
+
+
+class NewVisitStatusView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
+    model = VisitStatus
+    form_class = NewVisitStatusForm
+    success_url = reverse_lazy('clinic_management:visit_status_config')
+    success_message = "Visit status '%(display_name)s' was created successfully"
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'status/new_status.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/status/new_status.html']
+
+    def form_valid(self, form):
+        try:
+            # Get the highest existing order and add 1
+            highest_order = VisitStatus.objects.aggregate(
+                max_order=models.Max('order')
+            )['max_order'] or 0
+            form.instance.order = highest_order + 1
+            
+            return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Error creating visit status: {str(e)}")
+            messages.error(self.request, "An error occurred while creating the status")
+            return super().form_invalid(form)
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to create visit statuses")
+                return handler403(request, exception="Access denied to create statuses")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in new status dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing new status form")
             return handler500(request, exception=str(e))
