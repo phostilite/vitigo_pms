@@ -594,3 +594,87 @@ class SuppliersManagementView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error getting suppliers context data: {str(e)}")
             return {}
+
+class StockHistoryView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to view stock history")
+                return handler403(request, exception="Access denied to stock history")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in stock history dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing stock history")
+            return handler500(request, exception=str(e))
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('stock_history.html', request.user.role, 'pharmacy_management')
+            context = self.get_context_data(request)
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in stock history view: {str(e)}")
+            messages.error(request, "An error occurred while loading stock history")
+            return handler500(request, exception=str(e))
+
+    def get_context_data(self, request):
+        try:
+            # Get filter parameters
+            search_query = request.GET.get('search', '')
+            adjustment_type = request.GET.get('type', '')
+            date_from = request.GET.get('date_from', '')
+            date_to = request.GET.get('date_to', '')
+
+            # Base queryset
+            adjustments = StockAdjustment.objects.select_related(
+                'medication', 'adjusted_by'
+            ).order_by('-adjusted_at')
+
+            # Apply filters
+            if search_query:
+                adjustments = adjustments.filter(
+                    models.Q(medication__name__icontains=search_query) |
+                    models.Q(reason__icontains=search_query) |
+                    models.Q(reference_number__icontains=search_query)
+                )
+
+            if adjustment_type:
+                adjustments = adjustments.filter(adjustment_type=adjustment_type)
+
+            if date_from:
+                adjustments = adjustments.filter(adjusted_at__date__gte=date_from)
+            if date_to:
+                adjustments = adjustments.filter(adjusted_at__date__lte=date_to)
+
+            # Pagination
+            page = request.GET.get('page', 1)
+            paginator = Paginator(adjustments, 20)
+            try:
+                adjustments = paginator.page(page)
+            except PageNotAnInteger:
+                adjustments = paginator.page(1)
+            except EmptyPage:
+                adjustments = paginator.page(paginator.num_pages)
+
+            return {
+                'adjustments': adjustments,
+                'adjustment_types': StockAdjustment.ADJUSTMENT_TYPE_CHOICES,
+                'filters': {
+                    'search': search_query,
+                    'type': adjustment_type,
+                    'date_from': date_from,
+                    'date_to': date_to,
+                },
+                'statistics': {
+                    'total_adjustments': StockAdjustment.objects.count(),
+                    'recent_additions': StockAdjustment.objects.filter(
+                        adjustment_type='ADD'
+                    ).count(),
+                    'recent_removals': StockAdjustment.objects.filter(
+                        adjustment_type='REMOVE'
+                    ).count(),
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting stock history context data: {str(e)}")
+            return {}

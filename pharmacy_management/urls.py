@@ -10,6 +10,7 @@ urlpatterns = [
     path('medications/', views.AllMedicationsView.as_view(), name='all_medications'),
 
     path('stock/adjust/', views.StockAdjustmentView.as_view(), name='stock_adjustment'),
+    path('stock/history/', views.StockHistoryView.as_view(), name='stock_history'),
     path('low-stock/', views.LowStockItemsView.as_view(), name='low_stock_items'),
     
     path('orders/pending/', views.PendingOrdersView.as_view(), name='pending_orders'),
