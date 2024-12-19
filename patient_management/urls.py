@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import export_views
 
 urlpatterns = [
     path('', views.PatientListView.as_view(), name='patient_list'),
@@ -9,4 +10,5 @@ urlpatterns = [
     path('<int:user_id>/edit-profile/', views.EditPatientProfileView.as_view(), name='edit_patient_profile'),
     path('<int:user_id>/deactivate/', views.DeactivatePatientView.as_view(), name='deactivate_patient'),
     path('<int:user_id>/activate/', views.ActivatePatientView.as_view(), name='activate_patient'),
+    path('<int:user_id>/export/', export_views.PatientDataExportView.as_view(), name='export_patient_data'),
 ]
