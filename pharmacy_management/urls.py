@@ -16,4 +16,5 @@ urlpatterns = [
     path('orders/pending/', views.PendingOrdersView.as_view(), name='pending_orders'),
     
     path('suppliers/', views.SuppliersManagementView.as_view(), name='suppliers_management'),
+    path('stock/add/', views.AddStockView.as_view(), name='add_stock'),
 ]

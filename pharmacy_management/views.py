@@ -678,3 +678,66 @@ class StockHistoryView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error getting stock history context data: {str(e)}")
             return {}
+
+class AddStockView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to add stock")
+                return handler403(request, exception="Access denied to add stock")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in add stock dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing add stock")
+            return handler500(request, exception=str(e))
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('add_stock.html', request.user.role, 'pharmacy_management')
+            context = {
+                'medications': Medication.objects.select_related('stock').filter(is_active=True),
+                'suppliers': Supplier.objects.filter(is_active=True),
+                'recent_additions': StockAdjustment.objects.filter(
+                    adjustment_type='ADD'
+                ).select_related('medication', 'adjusted_by').order_by('-adjusted_at')[:5]
+            }
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in add stock view: {str(e)}")
+            messages.error(request, "An error occurred while loading add stock form")
+            return handler500(request, exception=str(e))
+
+    def post(self, request):
+        try:
+            medication_id = request.POST.get('medication')
+            quantity = int(request.POST.get('quantity', 0))
+            supplier_id = request.POST.get('supplier')
+            batch_number = request.POST.get('batch_number')
+            expiry_date = request.POST.get('expiry_date')
+            purchase_price = request.POST.get('purchase_price')
+            reference_number = request.POST.get('reference_number')
+
+            if not all([medication_id, quantity, supplier_id, batch_number, expiry_date]):
+                messages.error(request, "All fields are required")
+                return redirect('add_stock')
+
+            medication = Medication.objects.get(id=medication_id)
+            supplier = Supplier.objects.get(id=supplier_id)
+
+            # Create stock adjustment record
+            adjustment = StockAdjustment.objects.create(
+                medication=medication,
+                adjustment_type='ADD',
+                quantity=quantity,
+                reason=f"Stock addition from supplier {supplier.name}",
+                adjusted_by=request.user,
+                reference_number=reference_number
+            )
+
+            messages.success(request, f"Successfully added {quantity} units of {medication.name}")
+            return redirect('pharmacy_management')
+
+        except Exception as e:
+            logger.error(f"Error adding stock: {str(e)}")
+            messages.error(request, "An error occurred while adding stock")
+            return redirect('add_stock')
