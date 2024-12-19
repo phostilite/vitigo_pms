@@ -31,4 +31,5 @@ urlpatterns = [
     path('visit-status/<int:pk>/toggle/', views.ToggleVisitStatusView.as_view(), name='toggle_visit_status'),
     path('visit-status/<int:pk>/delete/', views.DeleteVisitStatusView.as_view(), name='delete_visit_status'),
     path('visit-status/<int:pk>/edit/', views.EditVisitStatusView.as_view(), name='edit_visit_status'),
+    path('activities/', views.AllActivitiesView.as_view(), name='all_activities'),
 ]

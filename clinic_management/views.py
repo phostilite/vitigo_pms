@@ -1396,3 +1396,87 @@ class EditVisitStatusView(LoginRequiredMixin, UpdateView):
         return super().form_invalid(form)
 
 
+class AllActivitiesView(LoginRequiredMixin, ListView):
+    model = VisitStatusLog
+    context_object_name = 'activities'
+    paginate_by = 20
+    
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'activities/all_activities.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/activities/all_activities.html']
+
+    def get_queryset(self):
+        try:
+            # Get filter parameters
+            date_from = self.request.GET.get('date_from')
+            date_to = self.request.GET.get('date_to')
+            search = self.request.GET.get('search')
+            status = self.request.GET.get('status')
+
+            # Base queryset with related data
+            queryset = VisitStatusLog.objects.select_related(
+                'visit', 
+                'status', 
+                'changed_by',
+                'visit__patient'
+            ).order_by('-timestamp')
+
+            # Apply filters
+            if date_from:
+                try:
+                    date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                    queryset = queryset.filter(timestamp__date__gte=date_from)
+                except ValueError:
+                    logger.error(f"Invalid date_from format: {date_from}")
+
+            if date_to:
+                try:
+                    date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+                    queryset = queryset.filter(timestamp__date__lte=date_to)
+                except ValueError:
+                    logger.error(f"Invalid date_to format: {date_to}")
+
+            if search:
+                queryset = queryset.filter(
+                    Q(visit__visit_number__icontains=search) |
+                    Q(visit__patient__first_name__icontains=search) |
+                    Q(visit__patient__last_name__icontains=search)
+                )
+
+            if status:
+                queryset = queryset.filter(status__name=status)
+
+            return queryset
+
+        except Exception as e:
+            logger.error(f"Error in get_queryset: {str(e)}")
+            return VisitStatusLog.objects.none()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context.update({
+                'date_from': self.request.GET.get('date_from', ''),
+                'date_to': self.request.GET.get('date_to', ''),
+                'search_query': self.request.GET.get('search', ''),
+                'selected_status': self.request.GET.get('status', ''),
+                'all_statuses': VisitStatus.objects.filter(is_active=True),
+                'total_activities': self.get_queryset().count(),
+                'today_activities': self.get_queryset().filter(
+                    timestamp__date=timezone.now().date()
+                ).count(),
+            })
+        except Exception as e:
+            logger.error(f"Error getting context data: {str(e)}")
+            messages.error(self.request, "Error loading some data")
+            
+        return context
+
+
