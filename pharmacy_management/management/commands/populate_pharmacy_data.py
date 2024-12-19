@@ -139,11 +139,16 @@ class Command(BaseCommand):
 
     def create_admin_user(self):
         try:
-            admin_user = User.objects.create_superuser(
+            admin_user, created = User.objects.get_or_create(
                 email='admin@example.com',
-                password='admin123'
+                defaults={'password': 'admin123', 'is_superuser': True, 'is_staff': True}
             )
-            self.stdout.write(self.style.SUCCESS('Successfully created admin user'))
+            if created:
+                admin_user.set_password('admin123')
+                admin_user.save()
+                self.stdout.write(self.style.SUCCESS('Successfully created admin user'))
+            else:
+                self.stdout.write(self.style.SUCCESS('Admin user already exists'))
             return admin_user
         except Exception as e:
             logger.error(f'Error creating admin user: {str(e)}')

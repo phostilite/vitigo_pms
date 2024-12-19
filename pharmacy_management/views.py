@@ -7,9 +7,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Sum, F
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
+from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView
 
 # Local application imports
 from access_control.models import Role
@@ -19,8 +21,11 @@ from .models import (
     Medication,
     MedicationStock,
     PurchaseOrder,
-    Supplier
+    Supplier,
+    PurchaseOrderItem
 )
+from django.forms import formset_factory
+from .forms import MedicationForm
 
 # Configure logging and user model
 User = get_user_model()
@@ -93,30 +98,57 @@ class PharmacyManagementView(LoginRequiredMixin, View):
                 'items__medication'
             ).filter(status='PENDING')
 
+            now = timezone.now()
+            month_start = now.replace(day=1)
+
+            # Enhanced analytics
+            monthly_revenue = PurchaseOrder.objects.filter(
+                status='RECEIVED',
+                order_date__gte=month_start,
+                order_date__lte=now
+            ).aggregate(total=Sum('total_amount'))['total'] or 0
+
+            previous_month = (month_start - timezone.timedelta(days=1)).replace(day=1)
+            previous_revenue = PurchaseOrder.objects.filter(
+                status='RECEIVED',
+                order_date__gte=previous_month,
+                order_date__lte=month_start
+            ).aggregate(total=Sum('total_amount'))['total'] or 0
+
+            # Calculate revenue growth percentage
+            if previous_revenue > 0:
+                revenue_growth = ((monthly_revenue - previous_revenue) / previous_revenue) * 100
+            else:
+                revenue_growth = 0
+
             context = {
                 'medications': medications,
                 'suppliers': Supplier.objects.all(),
                 'purchase_orders': purchase_orders,
-            }
-
-            # Calculate statistics
-            now = timezone.now()
-            context.update({
                 'low_stock_count': MedicationStock.objects.filter(
                     quantity__lte=F('reorder_level')
                 ).count(),
-                'monthly_revenue': purchase_orders.filter(
-                    status='RECEIVED',
-                    order_date__month=now.month,
-                    order_date__year=now.year
-                ).aggregate(total=Sum('total_amount'))['total'] or 0,
+                'monthly_revenue': monthly_revenue,
+                'revenue_growth': revenue_growth,
+                'total_medications': medications.count(),
                 'pending_orders': purchase_orders.count(),
-            })
+                'recent_transactions': PurchaseOrder.objects.select_related(
+                    'supplier'
+                ).order_by('-order_date')[:5],
+                'stock_alerts': self.get_stock_alerts(),
+            }
 
             return context
         except Exception as e:
             logger.error(f"Error getting pharmacy context data: {str(e)}")
             return {}
+
+    def get_stock_alerts(self):
+        return MedicationStock.objects.select_related('medication').filter(
+            quantity__lte=F('reorder_level')
+        ).order_by(
+            'quantity'
+        )[:5]
 
 class MedicationDetailView(LoginRequiredMixin, View):
     def dispatch(self, request, *args, **kwargs):
@@ -197,3 +229,58 @@ class MedicationDetailView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error calculating usage statistics: {str(e)}")
             return {}
+
+class PurchaseOrderCreateView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+            messages.error(request, "You don't have permission to create purchase orders")
+            return handler403(request, exception="Access denied to purchase order creation")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        try:
+            template_path = get_template_path('purchase_order_form.html', request.user.role, 'pharmacy_management')
+            context = {
+            }
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error loading purchase order form: {str(e)}")
+            messages.error(request, "Error loading purchase order form")
+            return handler500(request, exception=str(e))
+
+class MedicationCreateView(LoginRequiredMixin, CreateView):
+    form_class = MedicationForm
+    success_url = reverse_lazy('pharmacy_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'pharmacy_management'):
+                messages.error(request, "You don't have permission to add medications")
+                return handler403(request, exception="Access denied to medication creation")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in medication creation dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing medication creation")
+            return handler500(request, exception=str(e))
+
+    def get_template_names(self):
+        return [get_template_path('add_medication.html', self.request.user.role, 'pharmacy_management')]
+
+    def form_valid(self, form):
+        try:
+            medication = form.save(commit=False)
+            medication.save()
+            
+            # Create initial stock record
+            MedicationStock.objects.create(
+                medication=medication,
+                quantity=form.cleaned_data['initial_stock'],
+                reorder_level=form.cleaned_data['reorder_level']
+            )
+            
+            messages.success(self.request, f"Medication '{medication.name}' added successfully")
+            return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Error saving medication: {str(e)}")
+            messages.error(self.request, "Error saving medication")
+            return self.form_invalid(form)
