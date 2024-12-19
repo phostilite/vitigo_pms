@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.views.generic import ListView, TemplateView, CreateView, View
+from django.views.generic import ListView, TemplateView, CreateView, View, DeleteView, UpdateView
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.contrib.messages.views import SuccessMessageMixin
@@ -33,7 +33,7 @@ from clinic_management.models import (
 )
 from error_handling.views import handler403, handler500
 from .utils import get_template_path
-from .forms import NewVisitForm, NewChecklistForm, NewVisitStatusForm
+from .forms import NewVisitForm, NewChecklistForm, NewVisitStatusForm, EditVisitStatusForm
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -1344,5 +1344,55 @@ class ToggleVisitStatusView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while updating the status")
             
         return redirect('clinic_management:clinic_dashboard')
+
+
+class DeleteVisitStatusView(LoginRequiredMixin, DeleteView):
+    model = VisitStatus
+    success_url = reverse_lazy('clinic_management:clinic_dashboard')
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            status = self.get_object()
+            # Check if status has any visits before deletion
+            if status.visits.exists():
+                messages.error(request, f"Cannot delete status '{status.display_name}' as it has associated visits")
+                return redirect('clinic_management:clinic_dashboard')
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in delete status dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('clinic_management:clinic_dashboard')
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            status = self.get_object()
+            status_name = status.display_name
+            response = super().post(request, *args, **kwargs)
+            messages.success(request, f'Successfully deleted status: {status_name}')
+            return response
+        except Exception as e:
+            logger.error(f"Error deleting status: {str(e)}")
+            messages.error(request, 'Failed to delete status')
+            return redirect('clinic_management:clinic_dashboard')
+
+
+class EditVisitStatusView(LoginRequiredMixin, UpdateView):
+    model = VisitStatus
+    form_class = EditVisitStatusForm
+    success_url = reverse_lazy('clinic_management:clinic_dashboard')
+    
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, f"Status '{form.instance.display_name}' updated successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error updating visit status: {str(e)}")
+            messages.error(self.request, "An error occurred while updating the status")
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below")
+        return super().form_invalid(form)
 
 

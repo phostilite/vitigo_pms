@@ -112,3 +112,19 @@ class NewVisitStatusForm(forms.ModelForm):
         if not re.match(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color):
             raise forms.ValidationError('Invalid color code format')
         return color
+
+class EditVisitStatusForm(forms.ModelForm):
+    class Meta:
+        model = VisitStatus
+        fields = ['display_name', 'description', 'color_code', 'is_active', 'is_terminal_state']
+        widgets = {
+            'color_code': forms.TextInput(attrs={'type': 'color'}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['display_name'].widget.attrs.update({'class': 'form-input'})
+        self.fields['description'].widget.attrs.update({'class': 'form-textarea'})
+        self.fields['is_active'].widget.attrs.update({'class': 'form-checkbox'})
+        self.fields['is_terminal_state'].widget.attrs.update({'class': 'form-checkbox'})
