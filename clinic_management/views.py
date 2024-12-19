@@ -890,3 +890,107 @@ class VisitLogsView(LoginRequiredMixin, ListView):
             logger.error(f"Error in visit logs dispatch: {str(e)}")
             messages.error(request, "An error occurred while accessing visit logs")
             return handler500(request, exception=str(e))
+
+
+from django.core.serializers.json import DjangoJSONEncoder
+import json
+
+class VisitAnalyticsView(LoginRequiredMixin, TemplateView):
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'visits/analytics.html',
+                self.request.user.role,
+                'clinic_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['administrator/clinic_management/visits/analytics.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            # Date range filters
+            end_date = timezone.now().date()
+            start_date = end_date - timedelta(days=30)  # Default to last 30 days
+            
+            # Get visits within date range
+            visits = ClinicVisit.objects.filter(
+                visit_date__range=[start_date, end_date]
+            )
+
+            # Daily visit counts
+            daily_visits = visits.values('visit_date').annotate(
+                total=Count('id'),
+                completed=Count('id', filter=Q(current_status__name='COMPLETED'))
+            ).order_by('visit_date')
+
+            # Status distribution
+            status_distribution = visits.values(
+                'current_status__name',
+                'current_status__display_name',
+                'current_status__color_code'
+            ).annotate(
+                count=Count('id')
+            ).order_by('-count')
+
+            # Average completion time by priority
+            completion_times = visits.filter(
+                completion_time__isnull=False
+            ).values('priority').annotate(
+                avg_duration=Avg(F('completion_time') - F('registration_time'))
+            )
+
+            # Hourly distribution
+            hourly_distribution = visits.annotate(
+                hour=ExtractHour('registration_time')
+            ).values('hour').annotate(
+                count=Count('id')
+            ).order_by('hour')
+
+            context.update({
+                'date_range': {
+                    'start': start_date.isoformat(),  # Convert to string
+                    'end': end_date.isoformat()       # Convert to string
+                },
+                'summary': {
+                    'total_visits': visits.count(),
+                    'completed_visits': visits.filter(current_status__name='COMPLETED').count(),
+                    'avg_daily_visits': round(visits.count() / 30, 1)  # Round for display
+                },
+                'charts_data': json.dumps({          # Properly serialize the data
+                    'daily_visits': list(daily_visits),
+                    'status_distribution': list(status_distribution),
+                    'completion_times': list(completion_times),
+                    'hourly_distribution': list(hourly_distribution)
+                }, cls=DjangoJSONEncoder)            # Use Django's JSON encoder
+            })
+            print(f"Context data: {context}")
+
+        except Exception as e:
+            logger.error(f"Error getting analytics data: {str(e)}")
+            messages.error(self.request, "Error loading analytics data")
+            # Provide empty defaults
+            context.update({
+                'date_range': {'start': '', 'end': ''},
+                'summary': {'total_visits': 0, 'completed_visits': 0, 'avg_daily_visits': 0},
+                'charts_data': json.dumps({
+                    'daily_visits': [],
+                    'status_distribution': [],
+                    'completion_times': [],
+                    'hourly_distribution': []
+                })
+            })
+            
+        return context
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'clinic_management'):
+                messages.error(request, "You don't have permission to access Visit Analytics")
+                return handler403(request, exception="Access denied to visit analytics")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in visit analytics dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing visit analytics")
+            return handler500(request, exception=str(e))

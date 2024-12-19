@@ -20,4 +20,5 @@ urlpatterns = [
     path('all_visits/', views.AllVisitsView.as_view(), name='all_visits'),
 
     path('visit_logs/', views.VisitLogsView.as_view(), name='visit_logs'),
+    path('analytics/', views.VisitAnalyticsView.as_view(), name='visit_analytics'),
 ]
