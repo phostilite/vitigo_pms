@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q
 from django.http import Http404
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView
@@ -25,6 +25,7 @@ from .models import (
     TreatmentPlan,
     Medication
 )
+from .forms import PatientRegistrationForm
 
 # Configure logging and user model
 User = get_user_model()
@@ -65,7 +66,7 @@ class PatientListView(LoginRequiredMixin, View):
                 return handler403(request, exception="Access Denied")
 
             # Get all patients using the foreign key relationship
-            patients = User.objects.filter(role=patient_role)
+            patients = User.objects.filter(role=patient_role).order_by('-date_joined')
             
             # Apply filters
             status = request.GET.get('status')
@@ -78,12 +79,15 @@ class PatientListView(LoginRequiredMixin, View):
                 patients = patients.filter(
                     Q(first_name__icontains=search_query) |
                     Q(last_name__icontains=search_query) |
-                    Q(email__icontains=search_query)
+                    Q(email__icontains=search_query) |
+                    Q(patient_profile__phone_number__icontains=search_query)
                 )
 
             # Pagination
-            paginator = Paginator(patients, 10)  # Show 10 patients per page
+            page_size = int(request.GET.get('page_size', 10))  # Default 10 items per page
+            paginator = Paginator(patients, page_size)
             page = request.GET.get('page')
+
             try:
                 patients = paginator.page(page)
             except PageNotAnInteger:
@@ -96,10 +100,10 @@ class PatientListView(LoginRequiredMixin, View):
             active_patients = User.objects.filter(role=patient_role, is_active=True).count()
             inactive_patients = User.objects.filter(role=patient_role, is_active=False).count()
             
-            # Monthly metrics (you might want to adjust this based on your needs)
             new_patients_this_month = User.objects.filter(
                 role=patient_role,
-                date_joined__month=timezone.now().month
+                date_joined__month=timezone.now().month,
+                date_joined__year=timezone.now().year
             ).count()
 
             context = {
@@ -109,16 +113,16 @@ class PatientListView(LoginRequiredMixin, View):
                 'inactive_patients': inactive_patients,
                 'new_patients_this_month': new_patients_this_month,
                 'paginator': paginator,
+                'is_paginated': True if paginator.num_pages > 1 else False,
                 'page_obj': patients,
-                'user_role': request.user.role,  # Add user role to context
+                'user_role': request.user.role,
+                'current_status': status,
+                'search_query': search_query,
+                'page_size': page_size,
             }
 
             return render(request, self.get_template_name(), context)
             
-        except Role.DoesNotExist:
-            logger.error("Patient role not found in the system")
-            messages.error(request, "System configuration error")
-            return handler500(request, exception="Patient role not found")
         except Exception as e:
             logger.error(f"Error in PatientListView: {str(e)}", exc_info=True)
             messages.error(request, "An unexpected error occurred while loading patients")
@@ -225,3 +229,37 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
             logger.error(f"Error in get_context_data: {str(e)}", exc_info=True)
             messages.error(self.request, "An unexpected error occurred while loading patient data")
             return super().get_context_data(**kwargs)
+
+
+class PatientRegistrationView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'patient_management'):
+            messages.error(request, "You don't have permission to register patients")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('patient_registration.html', self.request.user.role, 'patient_management')
+
+    def get(self, request):
+        form = PatientRegistrationForm()
+        return render(request, self.get_template_name(), {'form': form})
+
+    def post(self, request):
+        form = PatientRegistrationForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                patient_role = Role.objects.get(name='PATIENT')
+                user = form.save(commit=False)
+                user.role = patient_role
+                user.save()
+                form.save()  # This will create the patient profile and medical history
+                
+                messages.success(request, "Patient registered successfully")
+                return redirect('patient_list')
+            except Exception as e:
+                logger.error(f"Error in patient registration: {str(e)}", exc_info=True)
+                messages.error(request, "An error occurred during registration")
+                return render(request, self.get_template_name(), {'form': form})
+        
+        return render(request, self.get_template_name(), {'form': form})
