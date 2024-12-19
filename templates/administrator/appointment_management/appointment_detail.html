@@ -11,6 +11,23 @@
         </ol>
     </nav>
 
+    {% if error_messages %}
+    <div class="mb-6">
+        {% for message in error_messages %}
+        <div class="p-4 mb-4 text-yellow-800 border-l-4 border-yellow-300 bg-yellow-50">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm">{{ message }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Status Banner -->
     <div class="mb-6 p-4 rounded-lg {% if appointment.status == 'CONFIRMED' %}bg-green-50 border-green-200{% elif appointment.status == 'PENDING' %}bg-yellow-50 border-yellow-200{% elif appointment.status == 'CANCELLED' %}bg-red-50 border-red-200{% else %}bg-gray-50 border-gray-200{% endif %} border">
         <div class="flex items-center justify-between">
@@ -81,11 +98,17 @@
                 <div class="grid grid-cols-2 gap-6">
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Date</label>
-                        <p class="font-medium text-gray-800">{{ appointment.date|date:"l, F d, Y" }}</p>
+                        <p class="font-medium text-gray-800">{{ appointment.date|date:"l, F d, Y"|default:"No date specified" }}</p>
                     </div>
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Time</label>
-                        <p class="font-medium text-gray-800">{{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}</p>
+                        <p class="font-medium text-gray-800">
+                            {% if appointment.time_slot %}
+                                {{ appointment.time_slot.start_time|time:"g:i A" }} - {{ appointment.time_slot.end_time|time:"g:i A" }}
+                            {% else %}
+                                No time slot assigned
+                            {% endif %}
+                        </p>
                     </div>
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Type</label>
@@ -120,44 +143,81 @@
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-user text-blue-500 mr-2"></i>
                     Patient Information
+                    {% if not has_patient_profile %}
+                    <span class="ml-2 text-sm text-red-600">
+                        <i class="fas fa-exclamation-circle"></i> Profile Incomplete
+                    </span>
+                    {% endif %}
                 </h3>
                 <div class="grid grid-cols-2 gap-6">
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Name</label>
-                        <p class="font-medium text-gray-800">{{ appointment.patient.get_full_name }}</p>
+                        <p class="font-medium text-gray-800">{{ appointment.patient.get_full_name|default:"Name not provided" }}</p>
                     </div>
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Email</label>
-                        <p class="font-medium text-gray-800">{{ appointment.patient.email }}</p>
+                        <p class="font-medium text-gray-800">{{ appointment.patient.email|default:"No email provided" }}</p>
                     </div>
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Gender</label>
-                        <p class="font-medium text-gray-800">{{ appointment.patient.get_gender_display }}</p>
+                        <p class="font-medium text-gray-800">
+                            {% if appointment.patient.gender %}
+                                {{ appointment.patient.get_gender_display }}
+                            {% else %}
+                                Not specified
+                            {% endif %}
+                        </p>
                     </div>
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Phone</label>
-                        <p class="font-medium text-gray-800">{{ appointment.patient.patient_profile.phone_number }}</p>
+                        <p class="font-medium text-gray-800">
+                            {% if has_patient_profile and appointment.patient.patient_profile.phone_number %}
+                                {{ appointment.patient.patient_profile.phone_number }}
+                            {% else %}
+                                No phone number provided
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
 
-                {% if medical_history %}
-                <div class="mt-6 border-t border-gray-200 pt-6">
-                    <h4 class="font-medium text-gray-800 mb-4">Medical History</h4>
-                    <div class="space-y-4">
-                        {% if medical_history.allergies %}
-                        <div>
-                            <label class="text-sm text-gray-600 block mb-1">Allergies</label>
-                            <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.allergies }}</p>
+                {% if has_patient_profile %}
+                    {% if medical_history %}
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <h4 class="font-medium text-gray-800 mb-4">Medical History</h4>
+                        <div class="space-y-4">
+                            {% if medical_history.allergies %}
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">Allergies</label>
+                                <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.allergies }}</p>
+                            </div>
+                            {% endif %}
+                            {% if medical_history.chronic_conditions %}
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">Chronic Conditions</label>
+                                <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.chronic_conditions }}</p>
+                            </div>
+                            {% endif %}
+                            {% if not medical_history.allergies and not medical_history.chronic_conditions %}
+                            <p class="text-gray-500 italic">No medical history information available</p>
+                            {% endif %}
                         </div>
-                        {% endif %}
-                        {% if medical_history.chronic_conditions %}
-                        <div>
-                            <label class="text-sm text-gray-600 block mb-1">Chronic Conditions</label>
-                            <p class="text-gray-800 bg-gray-50 p-3 rounded-lg">{{ medical_history.chronic_conditions }}</p>
-                        </div>
-                        {% endif %}
                     </div>
-                </div>
+                    {% endif %}
+                {% else %}
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-yellow-700">
+                                        Patient profile is incomplete. Medical history information is not available.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -169,6 +229,11 @@
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-user-md text-blue-500 mr-2"></i>
                     Doctor Information
+                    {% if not has_doctor_profile %}
+                    <span class="ml-2 text-sm text-red-600">
+                        <i class="fas fa-exclamation-circle"></i> Profile Incomplete
+                    </span>
+                    {% endif %}
                 </h3>
                 <div class="flex items-center space-x-4 mb-4">
                     {% if appointment.doctor.profile_picture %}
@@ -179,21 +244,21 @@
                         </div>
                     {% endif %}
                     <div>
-                        <h4 class="font-medium text-gray-800">Dr. {{ appointment.doctor.get_full_name }}</h4>
-                        <p class="text-sm text-gray-600">{{ appointment.doctor.email }}</p>
+                        <h4 class="font-medium text-gray-800">Dr. {{ appointment.doctor.get_full_name|default:"Name not provided" }}</h4>
+                        <p class="text-sm text-gray-600">{{ appointment.doctor.email|default:"No email provided" }}</p>
                     </div>
                 </div>
 
-                {% if doctor_profile %}
+                {% if has_doctor_profile and doctor_profile %}
                     <div class="space-y-4">
                         <!-- Qualification & Experience -->
                         <div>
                             <label class="text-sm text-gray-600 block mb-1">Qualification</label>
-                            <p class="font-medium text-gray-800">{{ doctor_profile.qualification }}</p>
+                            <p class="font-medium text-gray-800">{{ doctor_profile.qualification|default:"Not specified" }}</p>
                         </div>
                         <div>
                             <label class="text-sm text-gray-600 block mb-1">Experience</label>
-                            <p class="font-medium text-gray-800">{{ doctor_profile.get_experience_display }}</p>
+                            <p class="font-medium text-gray-800">{{ doctor_profile.get_experience_display|default:"Not specified" }}</p>
                         </div>
 
                         <!-- Specializations -->
@@ -208,13 +273,37 @@
                                 {% endfor %}
                             </div>
                         </div>
+                        {% else %}
+                        <div>
+                            <label class="text-sm text-gray-600 block mb-1">Specializations</label>
+                            <p class="text-gray-500 italic">No specializations listed</p>
+                        </div>
                         {% endif %}
 
                         <!-- Contact Info -->
+                        {% if doctor_profile.address or doctor_profile.city or doctor_profile.state %}
                         <div class="pt-4 border-t border-gray-200">
                             <label class="text-sm text-gray-600 block mb-1">Contact Information</label>
-                            <p class="text-sm text-gray-800">{{ doctor_profile.address }}</p>
-                            <p class="text-sm text-gray-800">{{ doctor_profile.city }}, {{ doctor_profile.state }}</p>
+                            <p class="text-sm text-gray-800">{{ doctor_profile.address|default:"" }}</p>
+                            <p class="text-sm text-gray-800">
+                                {% if doctor_profile.city or doctor_profile.state %}
+                                    {{ doctor_profile.city|default:"" }}{% if doctor_profile.city and doctor_profile.state %}, {% endif %}{{ doctor_profile.state|default:"" }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    Doctor profile is incomplete. Additional information is not available.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 {% endif %}
@@ -227,27 +316,31 @@
                     Previous Appointments
                 </h3>
                 <div class="space-y-4">
-                    {% for prev_appt in previous_appointments %}
-                    <div class="p-4 {% if not forloop.last %}border-b border-gray-100{% endif %}">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="font-medium text-gray-800">{{ prev_appt.date|date:"M d, Y" }}</p>
-                                <p class="text-sm text-gray-600">{{ prev_appt.get_appointment_type_display }}</p>
+                    {% if previous_appointments %}
+                        {% for prev_appt in previous_appointments %}
+                        <div class="p-4 {% if not forloop.last %}border-b border-gray-100{% endif %}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-medium text-gray-800">{{ prev_appt.date|date:"M d, Y" }}</p>
+                                    <p class="text-sm text-gray-600">{{ prev_appt.get_appointment_type_display }}</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                    {% if prev_appt.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                    {% elif prev_appt.status == 'CANCELLED' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ prev_appt.get_status_display }}
+                                </span>
                             </div>
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full
-                                {% if prev_appt.status == 'COMPLETED' %}bg-green-100 text-green-800
-                                {% elif prev_appt.status == 'CANCELLED' %}bg-red-100 text-red-800
-                                {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                {{ prev_appt.get_status_display }}
-                            </span>
+                            {% if prev_appt.notes %}
+                            <p class="text-sm text-gray-600 mt-2">{{ prev_appt.notes|truncatechars:100 }}</p>
+                            {% endif %}
                         </div>
-                        {% if prev_appt.notes %}
-                        <p class="text-sm text-gray-600 mt-2">{{ prev_appt.notes|truncatechars:100 }}</p>
-                        {% endif %}
-                    </div>
-                    {% empty %}
-                    <p class="text-gray-500 text-center py-4">No previous appointments found</p>
-                    {% endfor %}
+                        {% empty %}
+                        <p class="text-gray-500 text-center py-4">No previous appointments found</p>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500 text-center py-4">No previous appointments found</p>
+                    {% endif %}
                 </div>
             </div>
         </div>

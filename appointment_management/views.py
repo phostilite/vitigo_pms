@@ -185,32 +185,70 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         appointment = self.object
         
-        # Get patient's medical history
+        # Initialize default context values
+        context.update({
+            'medical_history': None,
+            'cancellation': None,
+            'doctor_profile': None,
+            'previous_appointments': [],
+            'has_patient_profile': False,
+            'has_doctor_profile': False,
+            'error_messages': []
+        })
+        
+        # Get patient's medical history if patient profile exists
         try:
-            medical_history = MedicalHistory.objects.get(patient=appointment.patient.patient_profile)
+            if hasattr(appointment.patient, 'patient_profile'):
+                medical_history = MedicalHistory.objects.get(patient=appointment.patient.patient_profile)
+                context['medical_history'] = medical_history
+                context['has_patient_profile'] = True
+            else:
+                logger.warning(f"Patient {appointment.patient.id} has no patient profile")
+                context['error_messages'].append("Patient profile is incomplete")
         except MedicalHistory.DoesNotExist:
-            medical_history = None
+            logger.info(f"No medical history found for patient {appointment.patient.id}")
+        except Exception as e:
+            logger.error(f"Error fetching medical history: {str(e)}")
+            context['error_messages'].append("Error loading medical history")
 
         # Get cancellation reason if appointment is cancelled
-        try:
-            cancellation = CancellationReason.objects.get(appointment=appointment) if appointment.status == 'CANCELLED' else None
-        except CancellationReason.DoesNotExist:
-            cancellation = None
+        if appointment.status == 'CANCELLED':
+            try:
+                context['cancellation'] = CancellationReason.objects.get(appointment=appointment)
+            except CancellationReason.DoesNotExist:
+                logger.warning(f"No cancellation reason found for cancelled appointment {appointment.id}")
+            except Exception as e:
+                logger.error(f"Error fetching cancellation reason: {str(e)}")
+                context['error_messages'].append("Error loading cancellation details")
 
-        # Get doctor's profile and specializations
+        # Get doctor's profile if exists
         try:
-            doctor_profile = appointment.doctor.doctor_profile
-        except:
-            doctor_profile = None
+            if hasattr(appointment.doctor, 'doctor_profile'):
+                context['doctor_profile'] = appointment.doctor.doctor_profile
+                context['has_doctor_profile'] = True
+            else:
+                logger.warning(f"Doctor {appointment.doctor.id} has no doctor profile")
+                context['error_messages'].append("Doctor profile is incomplete")
+        except Exception as e:
+            logger.error(f"Error fetching doctor profile: {str(e)}")
+            context['error_messages'].append("Error loading doctor details")
 
-        context.update({
-            'medical_history': medical_history,
-            'cancellation': cancellation,
-            'doctor_profile': doctor_profile,
-            'previous_appointments': Appointment.objects.filter(
+        # Get previous appointments safely
+        try:
+            context['previous_appointments'] = Appointment.objects.filter(
                 patient=appointment.patient,
                 date__lt=appointment.date
             ).order_by('-date')[:5]
+        except Exception as e:
+            logger.error(f"Error fetching previous appointments: {str(e)}")
+            context['error_messages'].append("Error loading previous appointments")
+
+        # Add appointment status information
+        context.update({
+            'can_edit': appointment.status in ['PENDING', 'CONFIRMED'],
+            'can_cancel': appointment.status not in ['COMPLETED', 'CANCELLED', 'NO_SHOW'],
+            'status_display': appointment.get_status_display(),
+            'is_upcoming': appointment.date >= timezone.now().date()
         })
         
         return context
