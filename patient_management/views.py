@@ -23,7 +23,8 @@ from .models import (
     Patient,
     VitiligoAssessment, 
     TreatmentPlan,
-    Medication
+    Medication,
+    MedicalHistory
 )
 from .forms import PatientRegistrationForm
 
@@ -130,12 +131,6 @@ class PatientListView(LoginRequiredMixin, View):
 
 
 class PatientDetailView(LoginRequiredMixin, DetailView):
-    def dispatch(self, request, *args, **kwargs):
-        if not PermissionManager.check_module_access(request.user, 'patient_management'):
-            messages.error(request, "You don't have permission to view patient details")
-            return handler403(request, exception="Access Denied")
-        return super().dispatch(request, *args, **kwargs)
-
     def get_template_name(self):
         return get_template_path('patient_detail.html', self.request.user.role, 'patient_management')
 
@@ -144,91 +139,48 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
 
     def get_object(self):
         try:
-            user = get_object_or_404(User, id=self.kwargs.get('user_id'))
-            patient_role = Role.objects.get(name='PATIENT')
-            
-            # Check using the foreign key relationship
-            if user.role.name != patient_role:
-                messages.error(self.request, "Selected user is not a patient")
-                raise PermissionDenied("This user is not a patient")
-
-            try:
-                return Patient.objects.get(user=user)
-            except Patient.DoesNotExist:
-                logger.warning(f"No patient profile found for user {user.id}")
-                return None
-
+            return get_object_or_404(User, id=self.kwargs.get('user_id'))
         except Http404:
-            logger.error(f"Patient with user_id {self.kwargs.get('user_id')} not found")
-            messages.error(self.request, "Patient not found")
+            logger.error(f"User with id {self.kwargs.get('user_id')} not found")
+            messages.error(self.request, "User not found")
             raise
-        except Role.DoesNotExist:
-            logger.error("Patient role not found in the system")
-            messages.error(self.request, "System configuration error")
-            raise Http404("Patient role not found")
-        except Exception as e:
-            logger.error(f"Error in PatientDetailView: {str(e)}", exc_info=True)
-            messages.error(self.request, "An unexpected error occurred")
-            raise Http404(str(e))
 
     def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.object
+        
         try:
-            context = super().get_context_data(**kwargs)
-            context['user_role'] = self.request.user.role
-            patient = self.object
-
-            if patient is None:
-                context.update({
-                    'user': get_object_or_404(User, id=self.kwargs.get('user_id')),
-                    'profile_exists': False
-                })
-                messages.warning(self.request, "Patient profile not found")
-                return context
-
-            context['profile_exists'] = True
-
-            # Load related data with error handling
+            context['patient_profile'] = Patient.objects.get(user=user)
+            context['has_profile'] = True
+            
+            # Try to get related data
             try:
-                context['latest_assessment'] = VitiligoAssessment.objects.filter(
-                    patient=patient
-                ).order_by('-assessment_date').first()
-            except Exception as e:
-                logger.error(f"Error loading assessment: {str(e)}")
-                messages.warning(self.request, "Could not load latest assessment")
-                context['latest_assessment'] = None
-
-            try:
-                context['active_treatment_plan'] = TreatmentPlan.objects.filter(
-                    patient=patient
-                ).order_by('-created_date').first()
-            except Exception as e:
-                logger.error(f"Error loading treatment plan: {str(e)}")
-                messages.warning(self.request, "Could not load active treatment plan")
-                context['active_treatment_plan'] = None
-
-            try:
-                context['current_medications'] = Medication.objects.filter(
-                    patient=patient,
-                    end_date__isnull=True
-                ).order_by('-start_date')
-            except Exception as e:
-                logger.error(f"Error loading medications: {str(e)}")
-                messages.warning(self.request, "Could not load current medications")
-                context['current_medications'] = []
-
-            try:
-                context['medical_history'] = patient.medical_history
-            except Exception as e:
-                logger.error(f"Error loading medical history: {str(e)}")
-                messages.warning(self.request, "Could not load medical history")
+                context['medical_history'] = context['patient_profile'].medical_history
+            except MedicalHistory.DoesNotExist:
                 context['medical_history'] = None
-
-            return context
-
-        except Exception as e:
-            logger.error(f"Error in get_context_data: {str(e)}", exc_info=True)
-            messages.error(self.request, "An unexpected error occurred while loading patient data")
-            return super().get_context_data(**kwargs)
+                
+            context['latest_assessment'] = VitiligoAssessment.objects.filter(
+                patient=context['patient_profile']
+            ).order_by('-assessment_date').first()
+            
+            context['active_treatment'] = TreatmentPlan.objects.filter(
+                patient=context['patient_profile']
+            ).order_by('-created_date').first()
+            
+            context['current_medications'] = Medication.objects.filter(
+                patient=context['patient_profile'],
+                end_date__isnull=True
+            ).order_by('-start_date')
+            
+        except Patient.DoesNotExist:
+            context['has_profile'] = False
+            context['patient_profile'] = None
+            context['medical_history'] = None
+            context['latest_assessment'] = None
+            context['active_treatment'] = None
+            context['current_medications'] = []
+            
+        return context
 
 
 class PatientRegistrationView(LoginRequiredMixin, View):
