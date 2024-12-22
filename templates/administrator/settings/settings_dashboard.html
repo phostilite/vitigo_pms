@@ -1,0 +1,405 @@
+{% extends '../base.html' %}
+
+{% block title %}Settings Dashboard - VitiGo{% endblock %}
+
+{% block extra_head %}
+<style>
+    .settings-card {
+        transition: all 0.3s ease-in-out;
+    }
+    
+    .settings-card:hover {
+        transform: translateY(-4px);
+    }
+    
+    .icon-bounce {
+        animation: bounce 1s infinite;
+    }
+    
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+    
+    .gradient-bg {
+        background: linear-gradient(135deg, #f6f8fd 0%, #ffffff 100%);
+    }
+    
+    .breadcrumb-item {
+        transition: color 0.3s ease;
+    }
+    
+    .quick-action-btn {
+        transition: all 0.3s ease;
+    }
+    
+    .quick-action-btn:hover {
+        transform: scale(1.05);
+    }
+    
+    .status-card {
+        transition: all 0.3s ease;
+    }
+    
+    .status-card:hover {
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-white p-4 mt-14 sm:ml-64">
+    <!-- Enhanced Page Header with Gradient -->
+    <div class="mb-8 bg-white rounded-2xl shadow-sm p-6 gradient-bg">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+                    Settings Dashboard
+                </h1>
+                <p class="mt-2 text-gray-600">Manage your system configurations and preferences with ease</p>
+            </div>
+            
+            <!-- Enhanced Breadcrumbs -->
+            <nav class="flex bg-white px-4 py-2 rounded-lg shadow-sm" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-2">
+                    <li>
+                        <a href="{% url 'dashboard' %}" 
+                           class="breadcrumb-item text-gray-600 hover:text-blue-600 flex items-center">
+                            <i class="fas fa-home text-blue-500"></i>
+                            <span class="ml-2">Home</span>
+                        </a>
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                        <span class="text-blue-600 font-medium">Settings</span>
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Enhanced Settings Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- Core Settings Card -->
+        <a href="#core-settings" class="settings-card block p-6 bg-white border-2 border-blue-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                        <i class="fas fa-cog text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Core Settings</h3>
+                </div>
+                <i class="fas fa-chevron-right text-blue-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Configure your system's fundamental settings</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                        System Configuration
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                        General Settings
+                    </li>
+                </ul>
+            </div>
+        </a>
+
+        <!-- Infrastructure Settings Card -->
+        <a href="#infrastructure" class="settings-card block p-6 bg-white border-2 border-emerald-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white">
+                        <i class="fas fa-server text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Infrastructure</h3>
+                </div>
+                <i class="fas fa-chevron-right text-emerald-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Manage your infrastructure settings</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full mr-2"></span>
+                        Server Management
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full mr-2"></span>
+                        Network Configuration
+                    </li>
+                </ul>
+            </div>
+        </a>
+
+        <!-- Storage Settings -->
+        <a href="#storage" class="settings-card block p-6 bg-white border-2 border-purple-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white">
+                        <i class="fas fa-hdd text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Storage</h3>
+                </div>
+                <i class="fas fa-chevron-right text-purple-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Manage file storage and cloud providers</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
+                        Cloud Storage
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
+                        File Management
+                    </li>
+                </ul>
+            </div>
+        </a>
+
+        <!-- Communication Settings -->
+        <a href="#communication" class="settings-card block p-6 bg-white border-2 border-red-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-red-400 to-red-600 text-white">
+                        <i class="fas fa-envelope text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Communication</h3>
+                </div>
+                <i class="fas fa-chevron-right text-red-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Configure email, SMS, and notifications</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        Email Settings
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        SMS Configuration
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        Push Notifications
+                    </li>
+                </ul>
+            </div>
+        </a>
+
+        <!-- Payment Settings -->
+        <a href="#payment" class="settings-card block p-6 bg-white border-2 border-yellow-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 text-white">
+                        <i class="fas fa-credit-card text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Payment</h3>
+                </div>
+                <i class="fas fa-chevron-right text-yellow-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Manage payment methods and transactions</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
+                        Payment Methods
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
+                        Transaction History
+                    </li>
+                </ul>
+            </div>
+        </a>
+
+        <!-- Integration Settings -->
+        <a href="#integration" class="settings-card block p-6 bg-white border-2 border-indigo-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white">
+                        <i class="fas fa-plug text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Integration</h3>
+                </div>
+                <i class="fas fa-chevron-right text-indigo-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Manage third-party integrations and APIs</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-indigo-400 rounded-full mr-2"></span>
+                        API Management
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-indigo-400 rounded-full mr-2"></span>
+                        Webhooks
+                    </li>
+                </ul>
+            </div>
+        </a>
+
+        <!-- Security Settings -->
+        <a href="#security" class="settings-card block p-6 bg-white border-2 border-orange-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white">
+                        <i class="fas fa-shield-alt text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Security</h3>
+                </div>
+                <i class="fas fa-chevron-right text-orange-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Manage security settings and access control</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                        User Authentication
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                        Access Control
+                    </li>
+                </ul>
+            </div>
+        </a>
+
+        <!-- Monitoring Settings -->
+        <a href="#monitoring" class="settings-card block p-6 bg-white border-2 border-teal-100 rounded-2xl shadow-sm hover:shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 text-white">
+                        <i class="fas fa-chart-bar text-2xl icon-bounce"></i>
+                    </div>
+                    <h3 class="ml-4 text-lg font-bold text-gray-800">Monitoring</h3>
+                </div>
+                <i class="fas fa-chevron-right text-teal-400"></i>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Monitor system performance and logs</p>
+            <div class="border-t border-gray-100 pt-4">
+                <ul class="space-y-3">
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-teal-400 rounded-full mr-2"></span>
+                        Performance Metrics
+                    </li>
+                    <li class="text-sm text-gray-600 flex items-center">
+                        <span class="w-2 h-2 bg-teal-400 rounded-full mr-2"></span>
+                        Log Management
+                    </li>
+                </ul>
+            </div>
+        </a>
+    </div>
+
+    <!-- Quick Actions Section with Enhanced Design -->
+    <div class="mt-12 bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-bolt text-yellow-500 mr-3"></i>
+            Quick Actions
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700">
+                <i class="fas fa-sync-alt mr-2"></i>
+                Sync Settings
+            </button>
+            <button class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700">
+                <i class="fas fa-download mr-2"></i>
+                Backup Settings
+            </button>
+            <button class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700">
+                <i class="fas fa-history mr-2"></i>
+                View History
+            </button>
+            <button class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700">
+                <i class="fas fa-file-export mr-2"></i>
+                Export Config
+            </button>
+        </div>
+    </div>
+
+    <!-- System Status Section with Enhanced Design -->
+    <div class="mt-8 bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-chart-line text-purple-500 mr-3"></i>
+            System Status
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="status-card bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-green-400 to-green-600 text-white">
+                        <i class="fas fa-check text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">System Health</p>
+                        <p class="font-bold text-gray-800">Healthy</p>
+                    </div>
+                </div>
+            </div>
+            <div class="status-card bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                        <i class="fas fa-clock text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Last Updated</p>
+                        <p class="font-bold text-gray-800">2 hours ago</p>
+                    </div>
+                </div>
+            </div>
+            <div class="status-card bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl border border-purple-100">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white">
+                        <i class="fas fa-cogs text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Active Settings</p>
+                        <p class="font-bold text-gray-800">28 Configurations</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced card hover effects
+    const cards = document.querySelectorAll('.settings-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            const icon = this.querySelector('i');
+            icon.classList.add('icon-bounce');
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            const icon = this.querySelector('i');
+            icon.classList.remove('icon-bounce');
+        });
+    });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const section = this.getAttribute('href').substring(1);
+            const target = document.getElementById(section);
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Initialize any Flowbite components
+    if (typeof flowbite !== 'undefined') {
+        flowbite.initComponents();
+    }
+});
+</script>
+{% endblock %}
