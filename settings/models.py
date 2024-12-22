@@ -1,12 +1,22 @@
+# Standard library imports
+from decimal import Decimal
+
+# Django imports
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator, URLValidator
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
-from django.core.validators import URLValidator
-import json
+
+# Third-party imports
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
 
+# Initialize User model
 User = get_user_model()
+
+#------------------------------------------------------------------------------
+# Core Settings Models
+#------------------------------------------------------------------------------
 
 class SettingCategory(models.Model):
     """Categories for organizing different types of settings"""
@@ -33,6 +43,7 @@ class SettingCategory(models.Model):
     def __str__(self):
         return self.name
 
+
 class SettingDefinition(models.Model):
     """Defines the structure and validation rules for settings"""
     SETTING_TYPES = [
@@ -50,32 +61,17 @@ class SettingDefinition(models.Model):
         ('ENCRYPTED', 'Encrypted Value'),
     ]
 
-    category = models.ForeignKey(
-        SettingCategory,
-        on_delete=models.CASCADE,
-        related_name='setting_definitions'
-    )
+    category = models.ForeignKey(SettingCategory, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     key = models.SlugField(max_length=100, unique=True)
     setting_type = models.CharField(max_length=20, choices=SETTING_TYPES)
     description = models.TextField(blank=True)
     default_value = models.TextField(blank=True, null=True)
     is_required = models.BooleanField(default=False)
-    is_sensitive = models.BooleanField(
-        default=False,
-        help_text="Whether this setting contains sensitive information"
-    )
-    validation_regex = models.CharField(
-        max_length=500,
-        blank=True,
-        help_text="Regular expression for validation"
-    )
+    is_sensitive = models.BooleanField(default=False)
+    validation_regex = models.CharField(max_length=500, blank=True)
     validation_message = models.CharField(max_length=200, blank=True)
-    possible_values = models.JSONField(
-        null=True,
-        blank=True,
-        help_text="List of possible values for LIST type settings"
-    )
+    possible_values = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -85,8 +81,6 @@ class SettingDefinition(models.Model):
         ordering = ['category', 'order', 'name']
         unique_together = ['category', 'key']
 
-    def __str__(self):
-        return f"{self.category.name} - {self.name}"
 
 class Setting(models.Model):
     """Stores the actual setting values"""
@@ -96,11 +90,7 @@ class Setting(models.Model):
         related_name='settings'
     )
     value = models.TextField(blank=True, null=True)
-    encrypted_value = EncryptedTextField(
-        blank=True,
-        null=True,
-        help_text="Encrypted storage for sensitive values"
-    )
+    encrypted_value = EncryptedTextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(
         User,
@@ -120,102 +110,96 @@ class Setting(models.Model):
     class Meta:
         unique_together = ['definition']
 
-    def __str__(self):
-        return f"{self.definition.name}: {self.get_masked_value()}"
 
-    def clean(self):
-        self.validate_value()
+class SystemConfiguration(models.Model):
+    """Global system configuration settings"""
+    site_name = models.CharField(max_length=100)
+    site_url = models.URLField()
+    admin_email = models.EmailField()
+    session_timeout_minutes = models.PositiveIntegerField(default=30)
+    password_expiry_days = models.PositiveIntegerField(default=90)
+    max_login_attempts = models.PositiveIntegerField(default=5)
+    require_2fa = models.BooleanField(default=False)
+    max_upload_size_mb = models.PositiveIntegerField(default=5)
+    allowed_file_extensions = models.JSONField(default=list)
+    default_timezone = models.CharField(max_length=50, default='UTC')
+    default_language = models.CharField(max_length=10, default='en-us')
+    date_format = models.CharField(max_length=50, default='YYYY-MM-DD')
+    time_format = models.CharField(max_length=50, default='HH:mm:ss')
+    business_hours = models.JSONField(default=dict)
+    holiday_calendar = models.JSONField(default=list)
+    appointment_duration_minutes = models.PositiveIntegerField(default=30)
 
-    def validate_value(self):
-        """Validate the setting value based on its type and rules"""
-        if not self.value and self.definition.is_required:
-            raise ValidationError(f"{self.definition.name} is required")
+    class Meta:
+        verbose_name = "System Configuration"
+        verbose_name_plural = "System Configurations"
 
-        if self.value:
-            setting_type = self.definition.setting_type
-            try:
-                if setting_type == 'NUMBER':
-                    float(self.value)
-                elif setting_type == 'BOOLEAN':
-                    if self.value.lower() not in ['true', 'false', '1', '0']:
-                        raise ValueError
-                elif setting_type == 'JSON':
-                    json.loads(self.value)
-                elif setting_type == 'EMAIL':
-                    if '@' not in self.value:
-                        raise ValueError("Invalid email format")
-                elif setting_type == 'URL':
-                    URLValidator()(self.value)
-                elif setting_type == 'LIST':
-                    if self.definition.possible_values:
-                        if self.value not in self.definition.possible_values:
-                            raise ValueError("Value not in allowed list")
-            except ValueError as e:
-                raise ValidationError(f"Invalid value for {self.definition.name}: {str(e)}")
+#------------------------------------------------------------------------------
+# Infrastructure Settings Models
+#------------------------------------------------------------------------------
 
-    def get_masked_value(self):
-        """Return masked value for sensitive settings"""
-        if self.definition.is_sensitive and self.value:
-            return '*' * 8
-        return self.value
+class LoggingConfiguration(models.Model):
+    """Configuration for system logging"""
+    name = models.CharField(max_length=100)
+    log_level = models.CharField(max_length=20)
+    log_file_path = models.CharField(max_length=255)
+    rotation_policy = models.JSONField()
+    retention_days = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
 
-class CredentialStore(models.Model):
-    """Secure storage for various API credentials and secrets"""
-    CREDENTIAL_TYPES = [
-        ('API_KEY', 'API Key'),
-        ('ACCESS_TOKEN', 'Access Token'),
-        ('SECRET_KEY', 'Secret Key'),
-        ('USERNAME', 'Username'),
-        ('PASSWORD', 'Password'),
-        ('CERTIFICATE', 'Certificate'),
-        ('JWT', 'JWT Token'),
-        ('OAUTH', 'OAuth Credentials'),
+
+class CacheConfiguration(models.Model):
+    """Configuration for caching system"""
+    name = models.CharField(max_length=100)
+    cache_type = models.CharField(max_length=20)
+    host = models.CharField(max_length=200)
+    port = models.PositiveIntegerField()
+    password = EncryptedCharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+
+
+class BackupConfiguration(models.Model):
+    """Configuration for system backups"""
+    name = models.CharField(max_length=100)
+    backup_provider = models.CharField(max_length=50)
+    schedule = models.JSONField()
+    retention_policy = models.JSONField()
+    encryption_key = EncryptedCharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+
+#------------------------------------------------------------------------------
+# Storage and File Management Models
+#------------------------------------------------------------------------------
+
+class CloudStorageProvider(models.Model):
+    """Configuration for cloud storage providers"""
+    PROVIDER_TYPES = [
+        ('AWS_S3', 'Amazon S3'),
+        ('GCS', 'Google Cloud Storage'),
+        ('AZURE_BLOB', 'Azure Blob Storage'),
+        ('DIGITAL_OCEAN', 'Digital Ocean Spaces'),
+        ('CLOUDINARY', 'Cloudinary'),
+        ('LOCAL', 'Local Storage'),
     ]
 
     name = models.CharField(max_length=100)
-    credential_type = models.CharField(max_length=20, choices=CREDENTIAL_TYPES)
-    service = models.CharField(max_length=100, help_text="Service these credentials are for")
-    environment = models.CharField(
-        max_length=20,
-        choices=[
-            ('development', 'Development'),
-            ('staging', 'Staging'),
-            ('production', 'Production'),
-        ],
-        default='development'
-    )
-    key = models.CharField(max_length=100, help_text="Credential identifier")
-    value = EncryptedTextField()
-    expires_at = models.DateTimeField(null=True, blank=True)
+    provider_type = models.CharField(max_length=20, choices=PROVIDER_TYPES)
     is_active = models.BooleanField(default=True)
-    metadata = models.JSONField(
-        null=True,
-        blank=True,
-        help_text="Additional configuration or metadata"
-    )
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='created_credentials'
-    )
-    updated_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='updated_credentials'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    is_default = models.BooleanField(default=False)
+    access_key = EncryptedCharField(max_length=200)
+    secret_key = EncryptedCharField(max_length=200)
+    bucket_name = models.CharField(max_length=100)
+    region = models.CharField(max_length=50, blank=True)
+    endpoint_url = models.URLField(blank=True)
+    base_url = models.URLField()
+    max_file_size = models.PositiveIntegerField()
+    allowed_file_types = models.JSONField(default=list)
+    custom_headers = models.JSONField(default=dict, blank=True)
+    cors_configuration = models.JSONField(default=dict, blank=True)
 
-    class Meta:
-        unique_together = ['service', 'environment', 'key']
-        indexes = [
-            models.Index(fields=['service', 'environment', 'is_active']),
-        ]
-
-    def __str__(self):
-        return f"{self.service} - {self.name} ({self.environment})"
+#------------------------------------------------------------------------------
+# Communication Settings Models
+#------------------------------------------------------------------------------
 
 class EmailConfiguration(models.Model):
     """Email service provider configurations"""
@@ -241,34 +225,121 @@ class EmailConfiguration(models.Model):
     from_name = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
     is_default = models.BooleanField(default=False)
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='created_email_configs'
+
+
+class SMSProvider(models.Model):
+    """Configuration for SMS service providers"""
+    PROVIDER_TYPES = [
+        ('TWILIO', 'Twilio'),
+        ('MSG91', 'MSG91'),
+        ('AWS_SNS', 'Amazon SNS'),
+        ('KALEYRA', 'Kaleyra'),
+        ('CUSTOM', 'Custom Provider'),
+    ]
+
+    name = models.CharField(max_length=100)
+    provider_type = models.CharField(max_length=20, choices=PROVIDER_TYPES)
+    is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
+    account_sid = EncryptedCharField(max_length=200, blank=True)
+    auth_token = EncryptedCharField(max_length=200)
+    sender_id = models.CharField(max_length=20)
+    api_endpoint = models.URLField(blank=True)
+    webhook_url = models.URLField(blank=True)
+    supports_unicode = models.BooleanField(default=True)
+    supports_delivery_reports = models.BooleanField(default=True)
+    max_message_length = models.PositiveIntegerField(default=160)
+    rate_limit = models.PositiveIntegerField(null=True, blank=True)
+
+
+class NotificationProvider(models.Model):
+    """Configuration for push notification services"""
+    PROVIDER_TYPES = [
+        ('FCM', 'Firebase Cloud Messaging'),
+        ('APNS', 'Apple Push Notification Service'),
+        ('ONESIGNAL', 'OneSignal'),
+        ('CUSTOM', 'Custom Provider'),
+    ]
+
+    name = models.CharField(max_length=100)
+    provider_type = models.CharField(max_length=20, choices=PROVIDER_TYPES)
+    is_active = models.BooleanField(default=True)
+    api_key = EncryptedCharField(max_length=200)
+    app_id = models.CharField(max_length=200, blank=True)
+    team_id = models.CharField(max_length=200, blank=True)
+    environment = models.CharField(
+        max_length=20,
+        choices=[('development', 'Development'), ('production', 'Production')],
+        default='development'
     )
-    updated_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='updated_email_configs'
+    certificate_path = models.CharField(max_length=255, blank=True)
+    supports_rich_media = models.BooleanField(default=False)
+    max_payload_size = models.PositiveIntegerField(default=4096)
+
+#------------------------------------------------------------------------------
+# Payment and Financial Settings Models
+#------------------------------------------------------------------------------
+
+class PaymentGateway(models.Model):
+    """Configuration for payment gateways"""
+    GATEWAY_TYPES = [
+        ('RAZORPAY', 'Razorpay'),
+        ('STRIPE', 'Stripe'),
+        ('PAYPAL', 'PayPal'),
+        ('PAYTM', 'Paytm'),
+        ('PHONEPE', 'PhonePe'),
+        ('UPI', 'UPI'),
+    ]
+
+    name = models.CharField(max_length=100)
+    gateway_type = models.CharField(max_length=20, choices=GATEWAY_TYPES)
+    is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
+    api_key = EncryptedCharField(max_length=200)
+    api_secret = EncryptedCharField(max_length=200)
+    merchant_id = EncryptedCharField(max_length=200, blank=True)
+    environment = models.CharField(
+        max_length=20,
+        choices=[('sandbox', 'Sandbox'), ('production', 'Production')],
+        default='sandbox'
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    webhook_secret = EncryptedCharField(max_length=200, blank=True)
+    webhook_url = models.URLField(blank=True)
+    supported_currencies = models.JSONField(default=list)
+    transaction_fee_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    settlement_period_days = models.PositiveIntegerField(default=3)
 
-    class Meta:
-        ordering = ['-is_default', 'name']
+#------------------------------------------------------------------------------
+# Integration and API Settings Models
+#------------------------------------------------------------------------------
 
-    def __str__(self):
-        return f"{self.name} ({self.provider})"
+class APIConfiguration(models.Model):
+    """Configuration for external API integrations"""
+    name = models.CharField(max_length=100)
+    api_url = models.URLField()
+    version = models.CharField(max_length=20)
+    is_active = models.BooleanField(default=True)
+    auth_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('API_KEY', 'API Key'),
+            ('OAUTH2', 'OAuth 2.0'),
+            ('JWT', 'JWT'),
+            ('BASIC', 'Basic Auth'),
+        ]
+    )
+    api_key = EncryptedCharField(max_length=200, blank=True)
+    client_id = EncryptedCharField(max_length=200, blank=True)
+    client_secret = EncryptedCharField(max_length=200, blank=True)
+    timeout_seconds = models.PositiveIntegerField(default=30)
+    retry_attempts = models.PositiveIntegerField(default=3)
+    rate_limit = models.JSONField(default=dict, blank=True)
+    custom_headers = models.JSONField(default=dict, blank=True)
 
-    def save(self, *args, **kwargs):
-        if self.is_default:
-            # Ensure only one default configuration exists
-            EmailConfiguration.objects.filter(
-                is_default=True
-            ).update(is_default=False)
-        super().save(*args, **kwargs)
 
 class SocialMediaCredential(models.Model):
     """Credentials for various social media platforms"""
@@ -325,3 +396,117 @@ class SocialMediaCredential(models.Model):
 
     def __str__(self):
         return f"{self.platform} Credentials ({self.environment})"
+
+
+#------------------------------------------------------------------------------
+# Security and Authentication Settings Models
+#------------------------------------------------------------------------------
+
+class SecurityConfiguration(models.Model):
+    """Global security settings and policies"""
+    password_policy = models.JSONField(
+        default=dict,
+        help_text="Password requirements and restrictions"
+    )
+    ip_whitelist = models.JSONField(
+        default=list,
+        help_text="List of allowed IP addresses"
+    )
+    max_session_duration = models.PositiveIntegerField(
+        default=3600,
+        help_text="Maximum session duration in seconds"
+    )
+    jwt_secret_key = EncryptedCharField(max_length=200)
+    jwt_expiry_hours = models.PositiveIntegerField(default=24)
+    enable_rate_limiting = models.BooleanField(default=True)
+    rate_limit_config = models.JSONField(default=dict)
+    cors_allowed_origins = models.JSONField(default=list)
+    enable_audit_trail = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Security Configuration"
+        verbose_name_plural = "Security Configurations"
+
+
+class AuthenticationProvider(models.Model):
+    """Configuration for external authentication providers"""
+    PROVIDER_TYPES = [
+        ('OAUTH2', 'OAuth 2.0'),
+        ('SAML', 'SAML'),
+        ('LDAP', 'LDAP'),
+        ('ACTIVE_DIRECTORY', 'Active Directory'),
+        ('CUSTOM', 'Custom Provider'),
+    ]
+
+    name = models.CharField(max_length=100)
+    provider_type = models.CharField(max_length=20, choices=PROVIDER_TYPES)
+    is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
+    client_id = EncryptedCharField(max_length=200, blank=True)
+    client_secret = EncryptedCharField(max_length=200, blank=True)
+    authorization_url = models.URLField(blank=True)
+    token_url = models.URLField(blank=True)
+    userinfo_url = models.URLField(blank=True)
+    scope = models.CharField(max_length=200, blank=True)
+    additional_settings = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Authentication Provider"
+        verbose_name_plural = "Authentication Providers"
+
+
+#------------------------------------------------------------------------------
+# Monitoring and Analytics Settings Models
+#------------------------------------------------------------------------------
+
+class MonitoringConfiguration(models.Model):
+    """Configuration for system monitoring and analytics"""
+    name = models.CharField(max_length=100)
+    provider = models.CharField(
+        max_length=50,
+        choices=[
+            ('PROMETHEUS', 'Prometheus'),
+            ('GRAFANA', 'Grafana'),
+            ('DATADOG', 'Datadog'),
+            ('NEW_RELIC', 'New Relic'),
+            ('CUSTOM', 'Custom Solution'),
+        ]
+    )
+    api_key = EncryptedCharField(max_length=200, blank=True)
+    endpoint_url = models.URLField(blank=True)
+    metrics_config = models.JSONField(default=dict)
+    alert_config = models.JSONField(default=dict)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Monitoring Configuration"
+        verbose_name_plural = "Monitoring Configurations"
+
+
+class AnalyticsConfiguration(models.Model):
+    """Configuration for analytics and tracking"""
+    name = models.CharField(max_length=100)
+    provider = models.CharField(
+        max_length=50,
+        choices=[
+            ('GOOGLE_ANALYTICS', 'Google Analytics'),
+            ('MIXPANEL', 'Mixpanel'),
+            ('CUSTOM', 'Custom Analytics'),
+        ]
+    )
+    tracking_id = models.CharField(max_length=100)
+    api_key = EncryptedCharField(max_length=200, blank=True)
+    additional_settings = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Analytics Configuration"
+        verbose_name_plural = "Analytics Configurations"
