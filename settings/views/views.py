@@ -3,7 +3,7 @@ from django.views import View
 from django.contrib import messages
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403
-from .models import (
+from settings.models import (
     SettingCategory,
     SystemConfiguration,
     SecurityConfiguration

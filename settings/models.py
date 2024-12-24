@@ -121,13 +121,28 @@ class SystemConfiguration(models.Model):
     max_login_attempts = models.PositiveIntegerField(default=5)
     require_2fa = models.BooleanField(default=False)
     max_upload_size_mb = models.PositiveIntegerField(default=5)
-    allowed_file_extensions = models.JSONField(default=list)
+    allowed_file_extensions = models.JSONField(
+        default=list,
+        help_text="Allowed file extensions for uploads",
+        null=True,
+        blank=True
+    )
     default_timezone = models.CharField(max_length=50, default='UTC')
     default_language = models.CharField(max_length=10, default='en-us')
     date_format = models.CharField(max_length=50, default='YYYY-MM-DD')
     time_format = models.CharField(max_length=50, default='HH:mm:ss')
-    business_hours = models.JSONField(default=dict)
-    holiday_calendar = models.JSONField(default=list)
+    business_hours = models.JSONField(
+        default=dict,
+        help_text="Business hours configuration",
+        null=True,
+        blank=True
+    )
+    holiday_calendar = models.JSONField(
+        default=list,
+        help_text="Holiday calendar configuration",
+        null=True,
+        blank=True
+    )
     appointment_duration_minutes = models.PositiveIntegerField(default=30)
 
     class Meta:

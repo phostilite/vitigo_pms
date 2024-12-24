@@ -218,33 +218,110 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'user_management.exceptions.custom_exception_handler',
 }
 
-# Enhanced Logging configuration
+# Logging Configuration
+# Create logs directory if it doesn't exist
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Maximum size for each log file
+LOG_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+LOG_FILE_BACKUP_COUNT = 5  # Number of backup files to keep
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '{asctime} [{levelname}] {name}: {message}',
             'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S'
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{'
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
         },
     },
     'handlers': {
-        'file': {
+        'console': {
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'file_debug': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGS_DIR, 'debug.log'),
+            'maxBytes': LOG_FILE_SIZE,
+            'backupCount': LOG_FILE_BACKUP_COUNT,
             'formatter': 'verbose',
         },
-        'console': {
-            'class': 'logging.StreamHandler',
+        'file_info': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGS_DIR, 'info.log'),
+            'maxBytes': LOG_FILE_SIZE,
+            'backupCount': LOG_FILE_BACKUP_COUNT,
+            'formatter': 'verbose',
+        },
+        'file_error': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGS_DIR, 'error.log'),
+            'maxBytes': LOG_FILE_SIZE,
+            'backupCount': LOG_FILE_BACKUP_COUNT,
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'verbose',
         },
     },
     'loggers': {
-        'query_management': {
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',
-            'propagate': True,
+        # Root logger
+        '': {
+            'handlers': ['console', 'file_info', 'file_error'],
+            'level': 'INFO',
+        },
+        # Django logger
+        'django': {
+            'handlers': ['console', 'file_info', 'file_error'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Django request logger
+        'django.request': {
+            'handlers': ['mail_admins', 'file_error'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # Database logger
+        'django.db.backends': {
+            'handlers': ['file_debug'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        # Security logger
+        'django.security': {
+            'handlers': ['file_error', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # Your project logger (will capture all your custom apps)
+        'vitigo_pms': {
+            'handlers': ['console', 'file_debug', 'file_info', 'file_error'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
         },
     },
 }

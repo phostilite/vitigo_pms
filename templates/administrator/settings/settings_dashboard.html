@@ -49,39 +49,28 @@
 
 {% block content %}
 <div class="min-h-screen bg-gradient-to-br from-gray-50 to-white p-4 mt-14 sm:ml-64">
-    <!-- Enhanced Page Header with Gradient -->
-    <div class="mb-8 bg-white rounded-2xl shadow-sm p-6 gradient-bg">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="flex-1">
-                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-                    Settings Dashboard
-                </h1>
-                <p class="mt-2 text-gray-600">Manage your system configurations and preferences with ease</p>
-            </div>
-            
-            <!-- Enhanced Breadcrumbs -->
-            <nav class="flex bg-white px-4 py-2 rounded-lg shadow-sm" aria-label="Breadcrumb">
-                <ol class="inline-flex items-center space-x-2">
-                    <li>
-                        <a href="{% url 'dashboard' %}" 
-                           class="breadcrumb-item text-gray-600 hover:text-blue-600 flex items-center">
-                            <i class="fas fa-home text-blue-500"></i>
-                            <span class="ml-2">Home</span>
-                        </a>
-                    </li>
-                    <li class="flex items-center">
-                        <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
-                        <span class="text-blue-600 font-medium">Settings</span>
-                    </li>
-                </ol>
-            </nav>
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Settings Dashboard</h1>
+            <p class="mt-1 text-sm text-gray-600">Manage your system configurations and preferences with ease</p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="{% url 'settings:core_settings' %}" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                <i class="fas fa-cog mr-2"></i>
+                Core Settings
+            </a>
+            <a href="#" class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                <i class="fas fa-file-export mr-2"></i>
+                Export Settings
+            </a>
         </div>
     </div>
 
     <!-- Enhanced Settings Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <!-- Core Settings Card -->
-        <a href="#core-settings" class="settings-card block p-6 bg-white border-2 border-blue-100 rounded-2xl shadow-sm hover:shadow-xl">
+        <a href="{% url 'settings:core_settings' %}" class="settings-card block p-6 bg-white border-2 border-blue-100 rounded-2xl shadow-sm hover:shadow-xl">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center">
                     <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 text-white">
