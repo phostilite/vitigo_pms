@@ -155,8 +155,16 @@ class SystemConfiguration(models.Model):
 
 class LoggingConfiguration(models.Model):
     """Configuration for system logging"""
+    LOG_LEVELS = [
+        ('DEBUG', 'Debug'),
+        ('INFO', 'Information'),
+        ('WARNING', 'Warning'),
+        ('ERROR', 'Error'),
+        ('CRITICAL', 'Critical'),
+    ]
+
     name = models.CharField(max_length=100)
-    log_level = models.CharField(max_length=20)
+    log_level = models.CharField(max_length=10, choices=LOG_LEVELS, default='INFO')
     log_file_path = models.CharField(max_length=255)
     rotation_policy = models.JSONField()
     retention_days = models.PositiveIntegerField()
@@ -165,8 +173,16 @@ class LoggingConfiguration(models.Model):
 
 class CacheConfiguration(models.Model):
     """Configuration for caching system"""
+    CACHE_TYPES = [
+        ('REDIS', 'Redis'),
+        ('MEMCACHED', 'Memcached'),
+        ('FILESYSTEM', 'File System Cache'),
+        ('DATABASE', 'Database Cache'),
+        ('DUMMY', 'Dummy Cache (Development)'),
+    ]
+
     name = models.CharField(max_length=100)
-    cache_type = models.CharField(max_length=20)
+    cache_type = models.CharField(max_length=20, choices=CACHE_TYPES, default='REDIS')
     host = models.CharField(max_length=200)
     port = models.PositiveIntegerField()
     password = EncryptedCharField(max_length=200)
@@ -175,8 +191,19 @@ class CacheConfiguration(models.Model):
 
 class BackupConfiguration(models.Model):
     """Configuration for system backups"""
+    BACKUP_PROVIDERS = [
+        ('LOCAL', 'Local Storage'),
+        ('AWS_S3', 'Amazon S3'),
+        ('GCS', 'Google Cloud Storage'),
+        ('AZURE', 'Azure Blob Storage'),
+        ('FTP', 'FTP Server'),
+        ('SFTP', 'SFTP Server'),
+        ('DROPBOX', 'Dropbox'),
+        ('GDRIVE', 'Google Drive'),
+    ]
+
     name = models.CharField(max_length=100)
-    backup_provider = models.CharField(max_length=50)
+    backup_provider = models.CharField(max_length=20, choices=BACKUP_PROVIDERS, default='LOCAL')
     schedule = models.JSONField()
     retention_policy = models.JSONField()
     encryption_key = EncryptedCharField(max_length=200)

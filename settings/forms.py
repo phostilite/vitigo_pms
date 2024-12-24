@@ -3,7 +3,7 @@
 from django import forms
 import json
 import pytz
-from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration
+from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration
 
 class SettingCategoryForm(forms.ModelForm):
     name = forms.CharField(
@@ -241,3 +241,165 @@ class SettingValueForm(forms.ModelForm):
                 self.fields['value'] = forms.EmailField()
             elif self.instance.definition.setting_type == 'URL':
                 self.fields['value'] = forms.URLField()
+
+
+class LoggingConfigurationForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='Identifier for this logging configuration'
+    )
+    log_level = forms.ChoiceField(
+        choices=LoggingConfiguration.LOG_LEVELS,
+        help_text='Severity level of logs to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)'
+    )
+    log_file_path = forms.CharField(
+        help_text='Absolute path where log files will be stored'
+    )
+    rotation_policy = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': '''{
+                "max_bytes": 10485760,
+                "backup_count": 5,
+                "compress": true,
+                "when": "midnight",
+                "interval": 1
+            }''',
+            'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'
+        }),
+        help_text='JSON policy for log rotation. Example: max_bytes (bytes before rotation), backup_count (number of backups), compress (true/false), when (rotation timing), interval (rotation frequency)'
+    )
+    retention_days = forms.IntegerField(
+        help_text='Number of days to keep log files before deletion'
+    )
+    is_active = forms.BooleanField(
+        required=False,
+        help_text='Whether this logging configuration is currently active'
+    )
+
+    class Meta:
+        model = LoggingConfiguration
+        fields = ['name', 'log_level', 'log_file_path', 'rotation_policy', 'retention_days', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'log_level': forms.Select(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'log_file_path': forms.TextInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'rotation_policy': forms.Textarea(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5', 'rows': 3}),
+            'retention_days': forms.NumberInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500'}),
+        }
+
+    def clean_rotation_policy(self):
+        rotation_policy = self.cleaned_data.get('rotation_policy')
+        if rotation_policy:
+            try:
+                policy = json.loads(rotation_policy)
+                # Validate required fields
+                required_fields = ['max_bytes', 'backup_count']
+                for field in required_fields:
+                    if field not in policy:
+                        raise forms.ValidationError(f"Missing required field: {field}")
+                
+                # Validate field types
+                if not isinstance(policy.get('max_bytes'), int):
+                    raise forms.ValidationError("max_bytes must be an integer")
+                if not isinstance(policy.get('backup_count'), int):
+                    raise forms.ValidationError("backup_count must be an integer")
+                if 'compress' in policy and not isinstance(policy['compress'], bool):
+                    raise forms.ValidationError("compress must be a boolean")
+                
+                return policy
+            except json.JSONDecodeError as e:
+                raise forms.ValidationError(f"Invalid JSON format: {str(e)}")
+        return None
+
+class CacheConfigurationForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='Identifier for this cache configuration'
+    )
+    cache_type = forms.ChoiceField(
+        choices=CacheConfiguration.CACHE_TYPES,
+        help_text='Type of cache backend to use for the application'
+    )
+    host = forms.CharField(
+        help_text='Hostname or IP address of the cache server'
+    )
+    port = forms.IntegerField(
+        help_text='Port number on which the cache server is running'
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput,
+        help_text='Authentication password for the cache server (if required)',
+        required=False
+    )
+    is_active = forms.BooleanField(
+        required=False,
+        help_text='Whether this cache configuration is currently active'
+    )
+
+    class Meta:
+        model = CacheConfiguration
+        fields = ['name', 'cache_type', 'host', 'port', 'password', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'cache_type': forms.Select(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'host': forms.TextInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'port': forms.NumberInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'password': forms.PasswordInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500'}),
+        }
+
+class BackupConfigurationForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='Identifier for this backup configuration'
+    )
+    backup_provider = forms.ChoiceField(
+        choices=BackupConfiguration.BACKUP_PROVIDERS,
+        help_text='Service provider where backups will be stored'
+    )
+    schedule = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3}),
+        help_text='JSON schedule for backup runs (e.g., {"frequency": "daily", "time": "02:00"}, or cron expression)'
+    )
+    retention_policy = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3}),
+        help_text='JSON policy for backup retention (e.g., {"daily": 7, "weekly": 4, "monthly": 3})'
+    )
+    encryption_key = forms.CharField(
+        widget=forms.PasswordInput,
+        help_text='Encryption key for securing backup data (stored securely)',
+        required=False
+    )
+    is_active = forms.BooleanField(
+        required=False,
+        help_text='Whether this backup configuration is currently active'
+    )
+
+    class Meta:
+        model = BackupConfiguration
+        fields = ['name', 'backup_provider', 'schedule', 'retention_policy', 'encryption_key', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'backup_provider': forms.Select(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'schedule': forms.Textarea(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5', 'rows': 3}),
+            'retention_policy': forms.Textarea(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5', 'rows': 3}),
+            'encryption_key': forms.PasswordInput(attrs={'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500'}),
+        }
+
+    def clean_schedule(self):
+        schedule = self.cleaned_data.get('schedule')
+        if schedule:
+            try:
+                return json.loads(schedule)
+            except json.JSONDecodeError:
+                raise forms.ValidationError("Invalid JSON format for schedule")
+        return None
+
+    def clean_retention_policy(self):
+        retention_policy = self.cleaned_data.get('retention_policy')
+        if retention_policy:
+            try:
+                return json.loads(retention_policy)
+            except json.JSONDecodeError:
+                raise forms.ValidationError("Invalid JSON format for retention policy")
+        return None
