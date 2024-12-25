@@ -3,7 +3,7 @@
 from django import forms
 import json
 import pytz
-from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider
+from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider
 
 class SettingCategoryForm(forms.ModelForm):
     name = forms.CharField(
@@ -514,3 +514,138 @@ class CloudStorageProviderForm(forms.ModelForm):
                  'bucket_name', 'region', 'endpoint_url', 'base_url',
                  'max_file_size', 'allowed_file_types', 'custom_headers',
                  'cors_configuration', 'is_active', 'is_default']
+
+class EmailConfigurationForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this email configuration',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Company Gmail'})
+    )
+    provider = forms.ChoiceField(
+        choices=EmailConfiguration.provider.field.choices,
+        help_text='Select your email service provider'
+    )
+    host = forms.CharField(
+        help_text='SMTP server hostname',
+        widget=forms.TextInput(attrs={'placeholder': 'smtp.gmail.com'})
+    )
+    port = forms.IntegerField(
+        help_text='SMTP server port (usually 587 for TLS, 465 for SSL)',
+        widget=forms.NumberInput(attrs={'placeholder': '587'})
+    )
+    username = forms.CharField(
+        help_text='Email account username or address',
+        widget=forms.TextInput(attrs={'placeholder': 'your@email.com'})
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Email account password or app-specific password'
+    )
+    from_email = forms.EmailField(
+        help_text='Default sender email address',
+        widget=forms.EmailInput(attrs={'placeholder': 'noreply@yourcompany.com'})
+    )
+    from_name = forms.CharField(
+        help_text='Default sender name',
+        widget=forms.TextInput(attrs={'placeholder': 'Your Company Name'})
+    )
+
+    class Meta:
+        model = EmailConfiguration
+        fields = ['name', 'provider', 'host', 'port', 'username', 'password',
+                 'use_tls', 'use_ssl', 'from_email', 'from_name', 'is_active',
+                 'is_default']
+        help_texts = {
+            'use_tls': 'Use TLS encryption for secure connection',
+            'use_ssl': 'Use SSL encryption for secure connection',
+            'is_active': 'Enable/disable this email configuration',
+            'is_default': 'Set as the default email provider'
+        }
+
+class SMSProviderForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this SMS provider',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Twilio Main'})
+    )
+    provider_type = forms.ChoiceField(
+        choices=SMSProvider.PROVIDER_TYPES,
+        help_text='Select your SMS service provider'
+    )
+    account_sid = forms.CharField(
+        help_text='Your provider account identifier',
+        widget=forms.TextInput(attrs={'placeholder': 'Enter account SID/ID'})
+    )
+    auth_token = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Authentication token from your provider'
+    )
+    sender_id = forms.CharField(
+        help_text='Default sender ID or phone number',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., COMPANYNAME or +1234567890'})
+    )
+    max_message_length = forms.IntegerField(
+        help_text='Maximum characters per message',
+        initial=160,
+        widget=forms.NumberInput(attrs={'placeholder': '160'})
+    )
+
+    class Meta:
+        model = SMSProvider
+        fields = ['name', 'provider_type', 'account_sid', 'auth_token',
+                 'sender_id', 'api_endpoint', 'webhook_url', 'supports_unicode',
+                 'supports_delivery_reports', 'max_message_length', 'rate_limit',
+                 'is_active', 'is_default']
+        help_texts = {
+            'api_endpoint': 'Custom API endpoint URL (if required)',
+            'webhook_url': 'URL for delivery status notifications',
+            'supports_unicode': 'Enable support for special characters',
+            'supports_delivery_reports': 'Enable delivery status tracking',
+            'rate_limit': 'Maximum messages per second (if applicable)',
+            'is_active': 'Enable/disable this SMS provider',
+            'is_default': 'Set as the default SMS provider'
+        }
+        widgets = {
+            'api_endpoint': forms.URLInput(attrs={'placeholder': 'https://api.provider.com'}),
+            'webhook_url': forms.URLInput(attrs={'placeholder': 'https://your-domain.com/webhook'}),
+            'rate_limit': forms.NumberInput(attrs={'placeholder': '10'})
+        }
+
+class NotificationProviderForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this notification service',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Firebase Push'})
+    )
+    provider_type = forms.ChoiceField(
+        choices=NotificationProvider.PROVIDER_TYPES,
+        help_text='Select your push notification service'
+    )
+    api_key = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='API key from your notification provider'
+    )
+    app_id = forms.CharField(
+        help_text='Application identifier',
+        widget=forms.TextInput(attrs={'placeholder': 'Your app ID'}),
+        required=False
+    )
+    max_payload_size = forms.IntegerField(
+        help_text='Maximum notification payload size in bytes',
+        initial=4096,
+        widget=forms.NumberInput(attrs={'placeholder': '4096'})
+    )
+
+    class Meta:
+        model = NotificationProvider
+        fields = ['name', 'provider_type', 'api_key', 'app_id', 'team_id',
+                 'environment', 'certificate_path', 'supports_rich_media',
+                 'max_payload_size', 'is_active']
+        help_texts = {
+            'team_id': 'Team identifier (required for some providers)',
+            'environment': 'Select deployment environment',
+            'certificate_path': 'Path to certificate file (if required)',
+            'supports_rich_media': 'Enable rich media notifications',
+            'is_active': 'Enable/disable this notification provider'
+        }
+        widgets = {
+            'team_id': forms.TextInput(attrs={'placeholder': 'Your team ID'}),
+            'certificate_path': forms.TextInput(attrs={'placeholder': '/path/to/certificate.pem'})
+        }

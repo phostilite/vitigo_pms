@@ -3,7 +3,8 @@ from .views import (
     views as v,
     core as c,
     infrastructure as i,
-    storage as s
+    storage as s,
+    communication as com  # Add this import
 )
 
 app_name = 'settings'
@@ -15,5 +16,7 @@ urlpatterns = [
 
     path('infrastructure/', i.InfrastructureSettingsView.as_view(), name='infrastructure_settings'),
 
-    path('storage/', s.StorageSettingsView.as_view(), name='storage_settings')
+    path('storage/', s.StorageSettingsView.as_view(), name='storage_settings'),
+
+    path('communication/', com.CommunicationSettingsView.as_view(), name='communication_settings')
 ]
