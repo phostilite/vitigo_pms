@@ -3,7 +3,7 @@
 from django import forms
 import json
 import pytz
-from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration
+from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider
 
 class SettingCategoryForm(forms.ModelForm):
     name = forms.CharField(
@@ -403,3 +403,114 @@ class BackupConfigurationForm(forms.ModelForm):
             except json.JSONDecodeError:
                 raise forms.ValidationError("Invalid JSON format for retention policy")
         return None
+
+class CloudStorageProviderForm(forms.ModelForm):
+    name = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'placeholder': 'e.g., AWS Production Storage',
+            'class': 'form-control'
+        }),
+        help_text='Enter a name for this storage configuration'
+    )
+    provider_type = forms.ChoiceField(
+        choices=CloudStorageProvider.PROVIDER_TYPES,
+        help_text='Select your cloud storage provider'
+    )
+    access_key = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Enter your access key',
+            'class': 'form-control'
+        }),
+        help_text='Enter the access key provided by your storage provider'
+    )
+    secret_key = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Enter your secret key',
+            'class': 'form-control'
+        }),
+        help_text='Enter the secret key provided by your storage provider'
+    )
+    bucket_name = forms.CharField(
+        widget=forms.TextInput(attrs={
+            'placeholder': 'e.g., my-app-storage',
+            'class': 'form-control'
+        }),
+        help_text='Enter your storage bucket or container name'
+    )
+    region = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'e.g., us-east-1',
+            'class': 'form-control'
+        }),
+        help_text='Enter the region (e.g., us-east-1) - optional'
+    )
+    endpoint_url = forms.URLField(
+        required=False,
+        widget=forms.URLInput(attrs={
+            'placeholder': 'https://custom-endpoint.com',
+            'class': 'form-control'
+        }),
+        help_text='Custom endpoint URL - optional'
+    )
+    base_url = forms.URLField(
+        widget=forms.URLInput(attrs={
+            'placeholder': 'https://your-storage.com/files',
+            'class': 'form-control'
+        }),
+        help_text='Base URL for accessing your stored files'
+    )
+    max_file_size = forms.IntegerField(
+        widget=forms.NumberInput(attrs={
+            'placeholder': '5242880',
+            'class': 'form-control'
+        }),
+        help_text='Maximum file size in bytes (e.g., 5242880 for 5MB)'
+    )
+    allowed_file_types = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': '[".jpg", ".png", ".pdf", ".doc"]',
+            'class': 'form-control'
+        }),
+        help_text='List of allowed file types in JSON array format'
+    )
+    custom_headers = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': '{\n  "Cache-Control": "max-age=86400",\n  "x-custom-header": "value"\n}',
+            'class': 'form-control'
+        }),
+        required=False,
+        help_text='Custom headers in JSON format - optional'
+    )
+    cors_configuration = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': '{\n  "allowed_origins": ["*"],\n  "allowed_methods": ["GET", "POST"],\n  "max_age_seconds": 3600\n}',
+            'class': 'form-control'
+        }),
+        required=False,
+        help_text='CORS settings in JSON format - optional'
+    )
+    is_active = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        }),
+        help_text='Check to activate this storage provider'
+    )
+    is_default = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        }),
+        help_text='Set as the default storage provider'
+    )
+
+    class Meta:
+        model = CloudStorageProvider
+        fields = ['name', 'provider_type', 'access_key', 'secret_key', 
+                 'bucket_name', 'region', 'endpoint_url', 'base_url',
+                 'max_file_size', 'allowed_file_types', 'custom_headers',
+                 'cors_configuration', 'is_active', 'is_default']
