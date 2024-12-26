@@ -3,7 +3,7 @@
 from django import forms
 import json
 import pytz
-from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider, PaymentGateway, APIConfiguration, SocialMediaCredential, SecurityConfiguration, AuthenticationProvider
+from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider, PaymentGateway, APIConfiguration, SocialMediaCredential, SecurityConfiguration, AuthenticationProvider, AnalyticsConfiguration, MonitoringConfiguration
 
 class SettingCategoryForm(forms.ModelForm):
     name = forms.CharField(
@@ -875,3 +875,71 @@ class AuthenticationProviderForm(forms.ModelForm):
             'is_active': 'Enable/disable this provider',
             'is_default': 'Set as the default provider'
         }
+
+class MonitoringConfigurationForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this monitoring configuration',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Production Metrics'})
+    )
+    provider = forms.ChoiceField(
+        choices=MonitoringConfiguration.provider.field.choices,
+        help_text='Select your monitoring service provider'
+    )
+    api_key = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='API key from your monitoring provider'
+    )
+    endpoint_url = forms.URLField(
+        required=False,
+        widget=forms.URLInput(attrs={'placeholder': 'https://monitoring.provider.com'}),
+        help_text='Monitoring service endpoint URL'
+    )
+    metrics_config = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': '{\n  "collect_interval": 60,\n  "metrics": ["cpu", "memory", "disk"]\n}'
+        }),
+        help_text='JSON configuration for metrics collection'
+    )
+    alert_config = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': '{\n  "thresholds": {"cpu": 80, "memory": 90},\n  "notify": ["email", "slack"]\n}'
+        }),
+        help_text='JSON configuration for alerts'
+    )
+
+    class Meta:
+        model = MonitoringConfiguration
+        fields = ['name', 'provider', 'api_key', 'endpoint_url',
+                 'metrics_config', 'alert_config', 'is_active']
+
+class AnalyticsConfigurationForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this analytics configuration',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Google Analytics Web'})
+    )
+    provider = forms.ChoiceField(
+        choices=AnalyticsConfiguration.provider.field.choices,
+        help_text='Select your analytics provider'
+    )
+    tracking_id = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'UA-XXXXX-Y or G-XXXXXXX'}),
+        help_text='Tracking ID/Measurement ID from your analytics provider'
+    )
+    api_key = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='API key for accessing analytics data'
+    )
+    additional_settings = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': '{\n  "anonymize_ip": true,\n  "demographic_data": false\n}'
+        }),
+        help_text='Additional provider-specific settings (JSON)'
+    )
+
+    class Meta:
+        model = AnalyticsConfiguration
+        fields = ['name', 'provider', 'tracking_id', 'api_key',
+                 'additional_settings', 'is_active']
