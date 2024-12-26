@@ -5,6 +5,7 @@ from .models import (
     SettingDefinition,
     Setting,
     SystemConfiguration,
+    SettingHistory,
     # Infrastructure Settings
     LoggingConfiguration,
     CacheConfiguration,
@@ -50,6 +51,12 @@ class SettingAdmin(admin.ModelAdmin):
 @admin.register(SystemConfiguration)
 class SystemConfigurationAdmin(admin.ModelAdmin):
     list_display = ('site_name', 'site_url', 'admin_email', 'default_timezone')
+
+@admin.register(SettingHistory)
+class SettingHistoryAdmin(admin.ModelAdmin):
+    list_display = ('setting', 'change_type', 'changed_by', 'created_at')
+    list_filter = ('change_type', 'changed_by', 'created_at')
+    search_fields = ('setting__definition__name', 'changed_by__username')
 
 # Infrastructure Settings
 @admin.register(LoggingConfiguration)

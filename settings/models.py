@@ -111,6 +111,31 @@ class Setting(models.Model):
         unique_together = ['definition']
 
 
+class SettingHistory(models.Model):
+    """Track changes to settings over time"""
+    setting = models.ForeignKey(Setting, on_delete=models.CASCADE, related_name='history')
+    old_value = models.TextField(blank=True, null=True)
+    new_value = models.TextField(blank=True, null=True)
+    changed_by = models.ForeignKey('user_management.CustomUser', on_delete=models.SET_NULL, null=True)
+    change_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('CREATE', 'Created'),
+            ('UPDATE', 'Updated'),
+            ('DELETE', 'Deleted'),
+            ('SYNC', 'Synchronized'),
+            ('BACKUP', 'Backed Up'),
+        ]
+    )
+    change_reason = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = 'Setting Histories'
+
+
 class SystemConfiguration(models.Model):
     """Global system configuration settings"""
     site_name = models.CharField(max_length=100)

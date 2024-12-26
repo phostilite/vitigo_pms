@@ -10,7 +10,8 @@ from .views import (
     security as sec,
     monitoring as mon,
     sync,
-    backup
+    backup,
+    history
 )
 
 app_name = 'settings'
@@ -37,4 +38,6 @@ urlpatterns = [
     path('sync/', sync.sync_settings, name='sync_settings'),
 
     path('backup/', backup.backup_settings, name='backup_settings'),
+
+    path('history/', history.SettingHistoryView.as_view(), name='settings_history'),
 ]
