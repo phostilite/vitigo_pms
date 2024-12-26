@@ -3,7 +3,7 @@
 from django import forms
 import json
 import pytz
-from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider
+from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider, PaymentGateway
 
 class SettingCategoryForm(forms.ModelForm):
     name = forms.CharField(
@@ -649,3 +649,66 @@ class NotificationProviderForm(forms.ModelForm):
             'team_id': forms.TextInput(attrs={'placeholder': 'Your team ID'}),
             'certificate_path': forms.TextInput(attrs={'placeholder': '/path/to/certificate.pem'})
         }
+
+class PaymentGatewayForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this payment gateway',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Razorpay Production'})
+    )
+    gateway_type = forms.ChoiceField(
+        choices=PaymentGateway.GATEWAY_TYPES,
+        help_text='Select your payment gateway provider'
+    )
+    api_key = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='API key from your payment provider'
+    )
+    api_secret = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='API secret from your payment provider'
+    )
+    merchant_id = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Your merchant ID'}),
+        help_text='Merchant ID (if required by provider)'
+    )
+    webhook_secret = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Webhook signing secret for verifying callbacks'
+    )
+    webhook_url = forms.URLField(
+        required=False,
+        widget=forms.URLInput(attrs={'placeholder': 'https://your-domain.com/webhooks/payment'}),
+        help_text='URL where provider will send payment notifications'
+    )
+    transaction_fee_percentage = forms.DecimalField(
+        help_text='Transaction fee charged by the provider (%)',
+        widget=forms.NumberInput(attrs={'placeholder': '2.5'})
+    )
+    settlement_period_days = forms.IntegerField(
+        help_text='Number of days for settlement',
+        widget=forms.NumberInput(attrs={'placeholder': '3'})
+    )
+
+    class Meta:
+        model = PaymentGateway
+        fields = ['name', 'gateway_type', 'api_key', 'api_secret', 'merchant_id',
+                 'environment', 'webhook_secret', 'webhook_url', 
+                 'supported_currencies', 'transaction_fee_percentage',
+                 'settlement_period_days', 'is_active', 'is_default']
+        help_texts = {
+            'environment': 'Select deployment environment (sandbox/production)',
+            'supported_currencies': 'List of supported currency codes',
+            'is_active': 'Enable/disable this payment gateway',
+            'is_default': 'Set as the default payment gateway'
+        }
+
+    def clean_supported_currencies(self):
+        currencies = self.cleaned_data.get('supported_currencies')
+        if isinstance(currencies, str):
+            try:
+                return json.loads(currencies)
+            except json.JSONDecodeError:
+                raise forms.ValidationError("Invalid JSON format for supported currencies")
+        return currencies
