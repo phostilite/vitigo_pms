@@ -9,7 +9,8 @@ from .views import (
     integration as itn,
     security as sec,
     monitoring as mon,
-    sync
+    sync,
+    backup
 )
 
 app_name = 'settings'
@@ -34,4 +35,6 @@ urlpatterns = [
     path('monitoring/', mon.MonitoringSettingsView.as_view(), name='monitoring_settings'),
 
     path('sync/', sync.sync_settings, name='sync_settings'),
+
+    path('backup/', backup.backup_settings, name='backup_settings'),
 ]
