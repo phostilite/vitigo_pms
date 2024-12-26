@@ -3,7 +3,7 @@
 from django import forms
 import json
 import pytz
-from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider, PaymentGateway
+from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider, PaymentGateway, APIConfiguration, SocialMediaCredential
 
 class SettingCategoryForm(forms.ModelForm):
     name = forms.CharField(
@@ -712,3 +712,89 @@ class PaymentGatewayForm(forms.ModelForm):
             except json.JSONDecodeError:
                 raise forms.ValidationError("Invalid JSON format for supported currencies")
         return currencies
+
+class APIConfigurationForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this API integration',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Payment API'})
+    )
+    api_url = forms.URLField(
+        help_text='Base URL of the API',
+        widget=forms.URLInput(attrs={'placeholder': 'https://api.example.com/v1'})
+    )
+    version = forms.CharField(
+        help_text='API version (e.g., v1, v2)',
+        widget=forms.TextInput(attrs={'placeholder': 'v1'})
+    )
+    auth_type = forms.ChoiceField(
+        choices=APIConfiguration.AUTH_TYPES,
+        help_text='Authentication method used by the API'
+    )
+    api_key = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='API key (if using API key authentication)'
+    )
+    client_id = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Your client ID'}),
+        help_text='OAuth client ID'
+    )
+    client_secret = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='OAuth client secret'
+    )
+
+    class Meta:
+        model = APIConfiguration
+        fields = ['name', 'api_url', 'version', 'auth_type', 'api_key',
+                 'client_id', 'client_secret', 'timeout_seconds',
+                 'retry_attempts', 'rate_limit', 'custom_headers', 'is_active']
+        help_texts = {
+            'timeout_seconds': 'Request timeout in seconds',
+            'retry_attempts': 'Number of retry attempts for failed requests',
+            'rate_limit': 'Rate limiting configuration (JSON)',
+            'custom_headers': 'Custom headers to include in requests (JSON)',
+            'is_active': 'Enable/disable this API configuration'
+        }
+
+class SocialMediaCredentialForm(forms.ModelForm):
+    platform = forms.ChoiceField(
+        choices=SocialMediaCredential.PLATFORM_CHOICES,
+        help_text='Select social media platform'
+    )
+    app_id = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Application ID from the platform'
+    )
+    app_secret = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Application secret from the platform'
+    )
+    access_token = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        required=False,
+        help_text='OAuth access token'
+    )
+    refresh_token = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        required=False,
+        help_text='OAuth refresh token'
+    )
+
+    class Meta:
+        model = SocialMediaCredential
+        fields = ['platform', 'app_id', 'app_secret', 'access_token',
+                 'refresh_token', 'webhook_secret', 'verify_token',
+                 'business_account_id', 'phone_number_id',
+                 'additional_settings', 'environment', 'is_active']
+        help_texts = {
+            'webhook_secret': 'Webhook signing secret',
+            'verify_token': 'Webhook verification token',
+            'business_account_id': 'Business account ID (if applicable)',
+            'phone_number_id': 'Phone number ID (for WhatsApp)',
+            'additional_settings': 'Additional platform-specific settings (JSON)',
+            'environment': 'Select deployment environment',
+            'is_active': 'Enable/disable these credentials'
+        }

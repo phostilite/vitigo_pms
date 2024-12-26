@@ -361,18 +361,19 @@ class PaymentGateway(models.Model):
 
 class APIConfiguration(models.Model):
     """Configuration for external API integrations"""
+    AUTH_TYPES = [
+            ('API_KEY', 'API Key'),
+            ('OAUTH2', 'OAuth 2.0'),
+            ('JWT', 'JWT'),
+            ('BASIC', 'Basic Auth'),
+    ]
     name = models.CharField(max_length=100)
     api_url = models.URLField()
     version = models.CharField(max_length=20)
     is_active = models.BooleanField(default=True)
     auth_type = models.CharField(
         max_length=20,
-        choices=[
-            ('API_KEY', 'API Key'),
-            ('OAUTH2', 'OAuth 2.0'),
-            ('JWT', 'JWT'),
-            ('BASIC', 'Basic Auth'),
-        ]
+        choices=AUTH_TYPES
     )
     api_key = EncryptedCharField(max_length=200, blank=True)
     client_id = EncryptedCharField(max_length=200, blank=True)
