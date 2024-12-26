@@ -289,10 +289,12 @@
             Quick Actions
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700">
+            <!-- Sync Settings Button -->
+            <button data-modal-target="syncSettingsModal" data-modal-toggle="syncSettingsModal" class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700">
                 <i class="fas fa-sync-alt mr-2"></i>
                 Sync Settings
             </button>
+
             <button class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700">
                 <i class="fas fa-download mr-2"></i>
                 Backup Settings
@@ -305,6 +307,47 @@
                 <i class="fas fa-file-export mr-2"></i>
                 Export Config
             </button>
+        </div>
+    </div>
+
+    <!-- Sync Settings Modal -->
+    <div id="syncSettingsModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+        <div class="relative w-full max-w-md max-h-full">
+            <!-- Modal content -->
+            <div class="relative bg-white rounded-lg shadow">
+                <!-- Modal header -->
+                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        Sync Settings
+                    </h3>
+                    <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center" data-modal-hide="syncSettingsModal">
+                        <i class="fas fa-times"></i>
+                        <span class="sr-only">Close modal</span>
+                    </button>
+                </div>
+                <!-- Modal body -->
+                <form action="{% url 'settings:sync_settings' %}" method="POST" class="p-4 md:p-5">
+                    {% csrf_token %}
+                    <div class="mb-4 text-sm text-gray-600">
+                        <p>This will synchronize all settings across the system. This includes:</p>
+                        <ul class="list-disc ml-5 mt-2">
+                            <li>Validating all current settings</li>
+                            <li>Syncing settings to cache</li>
+                            <li>Ensuring database consistency</li>
+                        </ul>
+                    </div>
+                    <!-- Modal footer -->
+                    <div class="flex items-center space-x-3">
+                        <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center">
+                            <i class="fas fa-sync-alt mr-2"></i>
+                            Confirm Sync
+                        </button>
+                        <button type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10" data-modal-hide="syncSettingsModal">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -388,6 +431,66 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize any Flowbite components
     if (typeof flowbite !== 'undefined') {
         flowbite.initComponents();
+    }
+
+    // Add this to your existing script
+    const syncButton = document.querySelector('[data-action="sync-settings"]');
+    
+    if (syncButton) {
+        syncButton.addEventListener('click', function() {
+            // Show loading state
+            this.disabled = true;
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Syncing...';
+
+            // Make AJAX request
+            fetch('{% url "settings:sync_settings" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Show success message
+                if (data.status === 'success') {
+                    showNotification('success', 'Settings synchronized successfully');
+                } else {
+                    showNotification('error', data.message || 'Sync failed');
+                }
+            })
+            .catch(error => {
+                showNotification('error', 'Error syncing settings');
+            })
+            .finally(() => {
+                // Restore button state
+                this.disabled = false;
+                this.innerHTML = originalText;
+            });
+        });
+    }
+
+    function showNotification(type, message) {
+        const notificationClass = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 ${notificationClass} text-white px-6 py-4 rounded-lg shadow-lg transform transition-all duration-500 translate-y-[-100%]`;
+        notification.innerHTML = message;
+        
+        document.body.appendChild(notification);
+        
+        // Show notification
+        setTimeout(() => {
+            notification.style.transform = 'translateY(0)';
+        }, 100);
+        
+        // Hide and remove after 3 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateY(-100%)';
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 500);
+        }, 3000);
     }
 });
 </script>
