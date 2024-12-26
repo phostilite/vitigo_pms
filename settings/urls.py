@@ -11,7 +11,8 @@ from .views import (
     monitoring as mon,
     sync,
     backup,
-    history
+    history,
+    export
 )
 
 app_name = 'settings'
@@ -40,4 +41,6 @@ urlpatterns = [
     path('backup/', backup.backup_settings, name='backup_settings'),
 
     path('history/', history.SettingHistoryView.as_view(), name='settings_history'),
+
+    path('export/', export.export_settings, name='export_settings'),
 ]

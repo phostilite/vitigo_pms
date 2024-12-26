@@ -55,16 +55,6 @@
             <h1 class="text-2xl font-semibold text-gray-800">Settings Dashboard</h1>
             <p class="mt-1 text-sm text-gray-600">Manage your system configurations and preferences with ease</p>
         </div>
-        <div class="flex space-x-2">
-            <a href="{% url 'settings:core_settings' %}" class="flex items-center bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
-                <i class="fas fa-cog mr-2"></i>
-                Core Settings
-            </a>
-            <a href="#" class="flex items-center bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
-                <i class="fas fa-file-export mr-2"></i>
-                Export Settings
-            </a>
-        </div>
     </div>
 
     <!-- Enhanced Settings Grid -->
@@ -305,7 +295,8 @@
                 <i class="fas fa-history mr-2"></i>
                 View History
             </a>
-            <button class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700">
+            <button data-modal-target="exportSettingsModal" data-modal-toggle="exportSettingsModal" 
+                    class="quick-action-btn flex items-center justify-center p-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700">
                 <i class="fas fa-file-export mr-2"></i>
                 Export Config
             </button>
@@ -390,6 +381,59 @@
                         </button>
                         <button type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10" 
                                 data-modal-hide="backupSettingsModal">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Settings Modal -->
+    <div id="exportSettingsModal" tabindex="-1" aria-hidden="true" 
+         class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+        <div class="relative w-full max-w-md max-h-full">
+            <div class="relative bg-white rounded-lg shadow">
+                <!-- Modal header -->
+                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        Export Settings
+                    </h3>
+                    <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center" 
+                            data-modal-hide="exportSettingsModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <!-- Modal body -->
+                <form action="{% url 'settings:export_settings' %}" method="POST" class="p-4 md:p-5">
+                    {% csrf_token %}
+                    <div class="mb-4 text-sm text-gray-600">
+                        <p>Choose the export format for your settings:</p>
+                        <div class="mt-4 space-y-4">
+                            <div class="flex items-center">
+                                <input id="format-json" type="radio" name="format" value="json" checked
+                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500">
+                                <label for="format-json" class="ml-2 text-sm font-medium text-gray-900">
+                                    JSON (Complete configuration)
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="format-csv" type="radio" name="format" value="csv"
+                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500">
+                                <label for="format-csv" class="ml-2 text-sm font-medium text-gray-900">
+                                    CSV (Settings overview)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Modal footer -->
+                    <div class="flex items-center space-x-3">
+                        <button type="submit" class="text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center">
+                            <i class="fas fa-file-export mr-2"></i>
+                            Export Settings
+                        </button>
+                        <button type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10" 
+                                data-modal-hide="exportSettingsModal">
                             Cancel
                         </button>
                     </div>
