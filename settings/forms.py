@@ -3,7 +3,7 @@
 from django import forms
 import json
 import pytz
-from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider, PaymentGateway, APIConfiguration, SocialMediaCredential
+from .models import SettingCategory, SettingDefinition, Setting, SystemConfiguration, LoggingConfiguration, CacheConfiguration, BackupConfiguration, CloudStorageProvider, EmailConfiguration, SMSProvider, NotificationProvider, PaymentGateway, APIConfiguration, SocialMediaCredential, SecurityConfiguration, AuthenticationProvider
 
 class SettingCategoryForm(forms.ModelForm):
     name = forms.CharField(
@@ -797,4 +797,81 @@ class SocialMediaCredentialForm(forms.ModelForm):
             'additional_settings': 'Additional platform-specific settings (JSON)',
             'environment': 'Select deployment environment',
             'is_active': 'Enable/disable these credentials'
+        }
+
+class SecurityConfigurationForm(forms.ModelForm):
+    password_policy = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': '{"min_length": 8, "require_special": true}'}),
+        help_text='JSON object defining password requirements'
+    )
+    ip_whitelist = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': '["192.168.1.1", "10.0.0.0/24"]'}),
+        help_text='JSON array of allowed IP addresses/ranges'
+    )
+    max_session_duration = forms.IntegerField(
+        help_text='Maximum session duration in seconds',
+        widget=forms.NumberInput(attrs={'placeholder': '3600'})
+    )
+    jwt_secret_key = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Secret key for JWT token signing'
+    )
+    jwt_expiry_hours = forms.IntegerField(
+        help_text='JWT token expiry time in hours',
+        widget=forms.NumberInput(attrs={'placeholder': '24'})
+    )
+    rate_limit_config = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': '{"requests": 100, "period": 60}'}),
+        help_text='JSON object defining rate limiting rules'
+    )
+    cors_allowed_origins = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': '["https://example.com"]'}),
+        help_text='JSON array of allowed CORS origins'
+    )
+
+    class Meta:
+        model = SecurityConfiguration
+        fields = ['password_policy', 'ip_whitelist', 'max_session_duration',
+                 'jwt_secret_key', 'jwt_expiry_hours', 'enable_rate_limiting',
+                 'rate_limit_config', 'cors_allowed_origins', 'enable_audit_trail']
+
+class AuthenticationProviderForm(forms.ModelForm):
+    name = forms.CharField(
+        help_text='A friendly name to identify this provider',
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Google OAuth'})
+    )
+    provider_type = forms.ChoiceField(
+        choices=AuthenticationProvider.PROVIDER_TYPES,
+        help_text='Select the authentication provider type'
+    )
+    client_id = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Client ID from your auth provider'
+    )
+    client_secret = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': '••••••••'}),
+        help_text='Client secret from your auth provider'
+    )
+    authorization_url = forms.URLField(
+        required=False,
+        widget=forms.URLInput(attrs={'placeholder': 'https://provider.com/auth'}),
+        help_text='Authorization endpoint URL'
+    )
+    token_url = forms.URLField(
+        required=False,
+        widget=forms.URLInput(attrs={'placeholder': 'https://provider.com/token'}),
+        help_text='Token endpoint URL'
+    )
+
+    class Meta:
+        model = AuthenticationProvider
+        fields = ['name', 'provider_type', 'client_id', 'client_secret',
+                 'authorization_url', 'token_url', 'userinfo_url', 'scope',
+                 'additional_settings', 'is_active', 'is_default']
+        help_texts = {
+            'userinfo_url': 'User info endpoint URL',
+            'scope': 'OAuth scopes (space-separated)',
+            'additional_settings': 'Additional provider-specific settings (JSON)',
+            'is_active': 'Enable/disable this provider',
+            'is_default': 'Set as the default provider'
         }

@@ -7,6 +7,7 @@ from .views import (
     communication as com,  
     payment as p,
     integration as itn,
+    security as sec,
 )
 
 app_name = 'settings'
@@ -25,4 +26,6 @@ urlpatterns = [
     path('payment/', p.PaymentSettingsView.as_view(), name='payment_settings'),
 
     path('integration/', itn.IntegrationSettingsView.as_view(), name='integration_settings'),
+
+    path('security/', sec.SecuritySettingsView.as_view(), name='security_settings'),
 ]
