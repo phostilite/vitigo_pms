@@ -302,7 +302,25 @@ class ScheduleSessionForm(forms.ModelForm):
             self.fields['scheduled_time'].help_text += ' Consider patient preference and clinic hours.'
             self.fields['device'].help_text += ' Ensure device maintenance status and availability.'
             self.fields['planned_dose'].help_text += f' Recommended range: {self.get_dose_range()}'
-            
+
+            # Customize administered_by field with expanded role filtering
+            excluded_roles = ['PATIENT', 'IT', 'RECEPTION', 'FINANCE']
+            self.fields['administered_by'] = forms.ModelChoiceField(
+                queryset=User.objects.filter(
+                    is_active=True
+                ).exclude(
+                    role__name__in=excluded_roles
+                ),
+                empty_label="Select staff member",
+                help_text="Select the medical staff member who will administer the session",
+                required=False
+            )
+
+            # Custom label_from_instance for administered_by to show role
+            self.fields['administered_by'].label_from_instance = lambda user: (
+                f"{user.get_full_name()} ({user.role.name})"
+            )
+
         except Exception as e:
             logger.error(f"Error initializing ScheduleSessionForm: {str(e)}")
 
