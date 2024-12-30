@@ -30,7 +30,14 @@ class Command(BaseCommand):
 
         # Create Phototherapy Types
         therapy_types = self._create_therapy_types()
-        self.stdout.write('Created phototherapy types')
+        if not therapy_types:
+            self.stdout.write('No therapy types created. Using existing ones...')
+            therapy_types = list(PhototherapyType.objects.all())
+            if not therapy_types:
+                self.stdout.write(self.style.ERROR('No therapy types available. Cannot continue.'))
+                return
+
+        self.stdout.write(f'Working with {len(therapy_types)} therapy types')
 
         # Create Devices
         devices = self._create_devices(therapy_types)
@@ -55,7 +62,7 @@ class Command(BaseCommand):
         # Create remaining related data
         self._create_home_logs(plans)
         self._create_problem_reports(sessions, users)
-        self._create_payments(plans, users)
+        self._create_payments(plans, users)  # Modified payment creation
         self._create_reminders(plans)
         self._create_progress_records(plans, users)
         self._create_maintenance_records(devices, users)
@@ -64,32 +71,54 @@ class Command(BaseCommand):
 
     def _create_therapy_types(self):
         types = []
+        existing_types = set(PhototherapyType.objects.values_list('name', flat=True))
+        
         for therapy_type in PhototherapyType.THERAPY_CHOICES:
-            type_obj = PhototherapyType.objects.create(
-                name=f"{therapy_type[1]} Treatment",
-                therapy_type=therapy_type[0],
-                description=fake.text(),
-                priority=random.choice(['A', 'B', 'C']),
-                requires_rfid=random.choice([True, False])
-            )
-            types.append(type_obj)
+            try:
+                name = f"{therapy_type[1]} Treatment"
+                # Skip if type already exists
+                if name in existing_types:
+                    self.stdout.write(self.style.WARNING(f'Skipping existing therapy type: {name}'))
+                    continue
+                    
+                type_obj = PhototherapyType.objects.create(
+                    name=name,
+                    therapy_type=therapy_type[0],
+                    description=fake.text(),
+                    priority=random.choice(['A', 'B', 'C']),
+                    requires_rfid=random.choice([True, False])
+                )
+                types.append(type_obj)
+                existing_types.add(name)
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'Error creating therapy type {therapy_type[1]}: {str(e)}'))
+                continue
         return types
 
     def _create_devices(self, therapy_types):
+        if not therapy_types:
+            self.stdout.write(self.style.ERROR('No therapy types available for device creation'))
+            return []
+            
         devices = []
         locations = ['Room A', 'Room B', 'Room C', 'Room D']
-        for i in range(10):
-            device = PhototherapyDevice.objects.create(
-                name=f"Device {i+1}",
-                model_number=fake.bothify(text='MOD-####'),
-                serial_number=fake.bothify(text='SER-####-####'),
-                phototherapy_type=random.choice(therapy_types),
-                location=random.choice(locations),
-                installation_date=fake.date_between(start_date='-2y'),
-                last_maintenance_date=fake.date_between(start_date='-6m'),
-                next_maintenance_date=fake.date_between(start_date='today')  # Changed from next_maintenance_due to next_maintenance_date
-            )
-            devices.append(device)
+        try:
+            for i in range(10):
+                device = PhototherapyDevice.objects.create(
+                    name=f"Device {i+1}",
+                    model_number=fake.bothify(text='MOD-####'),
+                    serial_number=fake.bothify(text='SER-####-####'),
+                    phototherapy_type=random.choice(therapy_types),
+                    location=random.choice(locations),
+                    installation_date=fake.date_between(start_date='-2y'),
+                    last_maintenance_date=fake.date_between(start_date='-6m'),
+                    next_maintenance_date=fake.date_between(start_date='today')
+                )
+                devices.append(device)
+                self.stdout.write(f'Created device: {device.name}')
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'Error creating device: {str(e)}'))
+        
         return devices
 
     def _create_protocols(self, therapy_types):
@@ -184,16 +213,24 @@ class Command(BaseCommand):
 
     def _create_payments(self, plans, users):
         for plan in plans:
-            PhototherapyPayment.objects.create(
-                plan=plan,
-                amount=Decimal(random.uniform(500, 2000)),
-                payment_date=timezone.now() - timedelta(days=random.randint(1, 90)),
-                payment_method=random.choice(['CASH', 'CARD', 'UPI']),
-                transaction_id=fake.bothify(text='TXN####'),
-                status='COMPLETED',
-                receipt_number=fake.bothify(text='RCP####'),
-                recorded_by=random.choice(users)
-            )
+            try:
+                # Generate unique receipt number with timestamp to avoid collisions
+                receipt_number = f"RCP-{int(timezone.now().timestamp())}-{random.randint(1000, 9999)}"
+                
+                PhototherapyPayment.objects.create(
+                    plan=plan,
+                    amount=Decimal(random.uniform(1000, 5000)),
+                    payment_date=timezone.now() - timedelta(days=random.randint(1, 90)),
+                    payment_method=random.choice(['CASH', 'CARD', 'UPI']),
+                    transaction_id=fake.bothify(text='TXN####'),
+                    status='COMPLETED',
+                    receipt_number=receipt_number,
+                    recorded_by=random.choice(users)
+                )
+            except Exception as e:
+                # Log error and continue with next payment
+                self.stdout.write(self.style.WARNING(f'Error creating payment for plan {plan.id}: {str(e)}'))
+                continue
 
     def _create_reminders(self, plans):
         for plan in plans:

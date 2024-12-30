@@ -547,6 +547,35 @@
                 </div>
             </div>
 
+            <!-- Administrator Information -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Session Administrator</h3>
+                {% if session.administered_by %}
+                <div class="flex items-center space-x-4 mb-4">
+                    <div class="w-16 h-16 rounded-full bg-gray-200 overflow-hidden">
+                        {% if session.administered_by.profile_picture %}
+                            <img src="{{ session.administered_by.profile_picture.url }}" alt="Admin" class="w-full h-full object-cover">
+                        {% else %}
+                            <div class="w-full h-full flex items-center justify-center">
+                                <i class="fas fa-user-md text-gray-400 text-2xl"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-800">{{ session.administered_by.get_full_name }}</h4>
+                        <p class="text-sm text-gray-600">{{ session.administered_by.email }}</p>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {{ session.administered_by.role.display_name }}
+                        </span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="flex items-center justify-center h-24 bg-gray-50 rounded-lg">
+                    <p class="text-gray-500 text-sm">No administrator assigned yet</p>
+                </div>
+                {% endif %}
+            </div>
+
             <!-- Protocol Information -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Protocol Details</h3>
