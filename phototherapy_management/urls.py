@@ -69,4 +69,8 @@ urlpatterns = [
     path('export/', ev.PhototherapyDashboardExportView.as_view(), name='phototherapy_export'),
 
     path('home-therapy/logs/', hv.HomeTherapyLogsView.as_view(), name='home_therapy_logs'),
+
+    path('treatment-plan/<int:plan_id>/details/', 
+         v.get_treatment_plan_details, 
+         name='treatment_plan_details'),
 ]

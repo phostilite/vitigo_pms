@@ -60,6 +60,29 @@
                 {% endif %}
             </div>
 
+            <!-- Protocol Details -->
+            <div id="protocol-details" class="hidden p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 class="text-sm font-medium text-blue-800 mb-2">Protocol Details</h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-600">Initial Dose:</p>
+                        <p class="font-medium" id="protocol-initial-dose">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Max Dose:</p>
+                        <p class="font-medium" id="protocol-max-dose">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Current Dose:</p>
+                        <p class="font-medium" id="protocol-current-dose">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Increment:</p>
+                        <p class="font-medium" id="protocol-increment">-</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Device -->
             <div>
                 {{ form.device|as_crispy_field }}
@@ -115,7 +138,7 @@
                 <p class="mt-2 text-sm text-gray-500">{{ form.planned_dose.help_text }}</p>
                 
                 <!-- Quick Select Doses -->
-                <div class="mt-2">
+                <div class="mt-2 dose-presets">
                     <label class="text-sm font-medium text-gray-700 mb-2">Quick Select Dose</label>
                     <div class="flex flex-wrap gap-2 mt-1">
                         <a href="javascript:void(0)" onclick="setDose('id_planned_dose', '0.280')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">0.280</a>
@@ -210,5 +233,57 @@
             }
         });
     });
+
+    // Add this to your existing JavaScript
+    document.getElementById('id_plan').addEventListener('change', function() {
+        const planId = this.value;
+        if (planId) {
+            fetch(`/phototherapy/treatment-plan/${planId}/details/`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('protocol-details').classList.remove('hidden');
+                    document.getElementById('protocol-initial-dose').textContent = `${data.protocol.initial_dose} joules/cm²`;
+                    document.getElementById('protocol-max-dose').textContent = `${data.protocol.max_dose} joules/cm²`;
+                    document.getElementById('protocol-current-dose').textContent = `${data.current_dose} joules/cm²`;
+                    document.getElementById('protocol-increment').textContent = `${data.protocol.increment_percentage}%`;
+                    
+                    // Automatically set planned dose to current dose
+                    document.getElementById('id_planned_dose').value = data.current_dose;
+                    
+                    // Update dose presets based on protocol
+                    updateDosePresets(data.protocol.initial_dose, data.protocol.max_dose);
+                })
+                .catch(error => {
+                    console.error('Error fetching protocol details:', error);
+                    document.getElementById('protocol-details').classList.add('hidden');
+                });
+        } else {
+            document.getElementById('protocol-details').classList.add('hidden');
+        }
+    });
+
+    function updateDosePresets(initialDose, maxDose) {
+        // Calculate intermediate doses
+        const range = maxDose - initialDose;
+        const step = range / 4;
+        
+        const doses = [
+            initialDose,
+            initialDose + step,
+            initialDose + (step * 2),
+            initialDose + (step * 3),
+            maxDose
+        ];
+
+        // Update dose preset buttons
+        const container = document.querySelector('.dose-presets');
+        container.innerHTML = doses.map(dose => 
+            `<a href="javascript:void(0)" 
+                onclick="setDose('id_planned_dose', '${dose.toFixed(3)}')" 
+                class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">
+                ${dose.toFixed(3)}
+            </a>`
+        ).join('');
+    }
 </script>
 {% endblock %}

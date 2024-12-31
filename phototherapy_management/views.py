@@ -17,6 +17,7 @@ from django.db.models import Q, Count
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
 
 
 # Local application imports
@@ -823,5 +824,22 @@ class DeletePhototherapyTypeView(LoginRequiredMixin, View):
             messages.error(request, "Error deleting phototherapy type")
             
         return redirect('therapy_types_dashboard')
+
+
+def get_treatment_plan_details(request, plan_id):
+    try:
+        plan = PhototherapyPlan.objects.select_related('protocol').get(id=plan_id)
+        return JsonResponse({
+            'protocol': {
+                'initial_dose': plan.protocol.initial_dose,
+                'max_dose': plan.protocol.max_dose,
+                'increment_percentage': plan.protocol.increment_percentage
+            },
+            'current_dose': plan.current_dose,
+            'sessions_completed': plan.sessions_completed,
+            'total_sessions': plan.total_sessions_planned
+        })
+    except PhototherapyPlan.DoesNotExist:
+        return JsonResponse({'error': 'Plan not found'}, status=404)
 
 
