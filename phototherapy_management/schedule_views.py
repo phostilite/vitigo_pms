@@ -376,11 +376,18 @@ class UpdateSessionStatusView(LoginRequiredMixin, View):
             # Update status and related fields
             session.status = status
             
-            # Handle actual dose and duration if completed
+            # Handle duration for any status update
+            duration = request.POST.get('duration_seconds')
+            if duration:
+                try:
+                    session.duration_seconds = int(duration)
+                except ValueError:
+                    messages.error(request, "Invalid duration value")
+                    return redirect('session_detail', session_id=session_id)
+            
+            # Set completion fields if status is COMPLETED
             if status == 'COMPLETED':
                 session.actual_date = timezone.now().date()
-                session.actual_dose = request.POST.get('actual_dose')
-                session.duration_seconds = request.POST.get('duration_seconds')
                 session.administered_by = request.user
             
             session.save()
