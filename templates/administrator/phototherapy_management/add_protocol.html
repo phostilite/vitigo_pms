@@ -22,27 +22,40 @@
             </a>
         </div>
 
-        {% if messages %}
-            <div class="mb-6">
-                {% for message in messages %}
-                <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
-                    {{ message }}
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% if form.non_field_errors %}
-            <div class="mb-6 p-4 rounded-lg bg-red-100 text-red-700">
-                {% for error in form.non_field_errors %}
-                    {{ error }}
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            <form method="POST" class="space-y-6">
+            <form method="POST" class="space-y-6" novalidate>
                 {% csrf_token %}
                 
+                <!-- Display form-wide errors -->
+                {% if form.non_field_errors or messages %}
+                <div class="p-4 mb-4 rounded-lg bg-red-100">
+                    <div class="font-medium text-red-800">Please correct the following errors:</div>
+                    <ul class="mt-2 list-disc list-inside text-sm text-red-700">
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        {% for message in messages %}
+                            {% if message.tags == 'error' %}
+                                <li>{{ message }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Display field-specific errors -->
+                {% for field in form %}
+                    {% if field.errors %}
+                    <div class="p-4 mb-4 rounded-lg bg-red-50 border border-red-200">
+                        <p class="font-medium text-red-700">{{ field.label }}:</p>
+                        <ul class="mt-1 list-disc list-inside text-sm text-red-600">
+                            {% for error in field.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+
                 <!-- Basic Information -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -60,24 +73,94 @@
                 </div>
 
                 <!-- Dose Information -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        {{ form.initial_dose|as_crispy_field }}
-                        {% if form.initial_dose.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.initial_dose.errors.0 }}</p>
-                        {% endif %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        <label for="id_initial_dose" class="block text-sm font-medium text-gray-700">Initial Dose (joules/cm²)*</label>
+                        <div class="mt-1">
+                            <input type="number" 
+                                name="initial_dose" 
+                                id="id_initial_dose"
+                                step="0.001"
+                                min="0"
+                                value="{{ form.initial_dose.value|default:'' }}"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                required>
+                            {% if form.initial_dose.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.initial_dose.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">{{ form.initial_dose.help_text }}</p>
+                        
+                        <div class="mt-2">
+                            <label class="text-sm font-medium text-gray-700 mb-2">Quick Select Initial Dose</label>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                <a href="javascript:void(0)" onclick="setDose('id_initial_dose', '0.280')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">0.280</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_initial_dose', '0.320')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">0.320</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_initial_dose', '0.360')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">0.360</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_initial_dose', '0.420')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">0.420</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_initial_dose', '0.500')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">0.500</a>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        {{ form.max_dose|as_crispy_field }}
-                        {% if form.max_dose.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.max_dose.errors.0 }}</p>
-                        {% endif %}
+                    
+                    <div class="form-group">
+                        <label for="id_max_dose" class="block text-sm font-medium text-gray-700">Maximum Dose (joules/cm²)*</label>
+                        <div class="mt-1">
+                            <input type="number" 
+                                name="max_dose" 
+                                id="id_max_dose"
+                                step="0.001"
+                                min="0"
+                                value="{{ form.max_dose.value|default:'' }}"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                required>
+                            {% if form.max_dose.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.max_dose.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">{{ form.max_dose.help_text }}</p>
+                        
+                        <div class="mt-2">
+                            <label class="text-sm font-medium text-gray-700 mb-2">Quick Select Max Dose</label>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                <a href="javascript:void(0)" onclick="setDose('id_max_dose', '1.000')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">1.000</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_max_dose', '1.500')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">1.500</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_max_dose', '2.000')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">2.000</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_max_dose', '2.500')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">2.500</a>
+                                <a href="javascript:void(0)" onclick="setDose('id_max_dose', '3.000')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">3.000</a>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        {{ form.increment_percentage|as_crispy_field }}
+                </div>
+
+                <!-- Add Increment Percentage -->
+                <div class="mt-4">
+                    <label for="id_increment_percentage" class="block text-sm font-medium text-gray-700">Increment Percentage (%)*</label>
+                    <div class="mt-1">
+                        <input type="number" 
+                            name="increment_percentage" 
+                            id="id_increment_percentage"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value="{{ form.increment_percentage.value|default:'10.0' }}"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            required>
                         {% if form.increment_percentage.errors %}
                         <p class="mt-1 text-sm text-red-600">{{ form.increment_percentage.errors.0 }}</p>
                         {% endif %}
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">{{ form.increment_percentage.help_text }}</p>
+                    
+                    <!-- Quick select for increment percentage -->
+                    <div class="mt-2">
+                        <label class="text-sm font-medium text-gray-700 mb-2">Quick Select Increment</label>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            <a href="javascript:void(0)" onclick="setDose('id_increment_percentage', '5')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">5%</a>
+                            <a href="javascript:void(0)" onclick="setDose('id_increment_percentage', '10')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">10%</a>
+                            <a href="javascript:void(0)" onclick="setDose('id_increment_percentage', '15')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">15%</a>
+                            <a href="javascript:void(0)" onclick="setDose('id_increment_percentage', '20')" class="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-600">20%</a>
+                        </div>
                     </div>
                 </div>
 
@@ -150,14 +233,32 @@
             </form>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-    // Client-side validation
+    // Simple function to set dose value
+    function setDose(fieldId, value) {
+        const field = document.getElementById(fieldId);
+        field.value = value;
+        console.log(`Setting ${fieldId} to ${value}`);
+        return false; // Prevent default anchor behavior
+    }
+
+    // Make sure function is defined in global scope
+    window.setDose = function(fieldId, value) {
+        console.log('setDose called with:', fieldId, value);
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.value = value;
+            console.log('Value set:', field.value);
+        } else {
+            console.error('Field not found:', fieldId);
+        }
+    };
+
+    // Basic validation
     document.querySelector('form').addEventListener('submit', function(e) {
-        const initialDose = parseFloat(document.querySelector('[name="initial_dose"]').value);
-        const maxDose = parseFloat(document.querySelector('[name="max_dose"]').value);
+        const initialDose = parseFloat(document.getElementById('id_initial_dose').value);
+        const maxDose = parseFloat(document.getElementById('id_max_dose').value);
         
         if (initialDose > maxDose) {
             e.preventDefault();

@@ -83,15 +83,7 @@ class AddProtocolView(LoginRequiredMixin, View):
     def get(self, request):
         try:
             form = ProtocolForm()
-            context = {
-                'form': form,
-            }
-            template_path = get_template_path(
-                'add_protocol.html',
-                request.user.role,
-                'phototherapy_management'
-            )
-            return render(request, template_path, context)
+            return self.render_protocol_form(request, form)
         except Exception as e:
             logger.error(f"Error in add protocol view GET: {str(e)}")
             messages.error(request, "An error occurred while loading the form")
@@ -101,25 +93,31 @@ class AddProtocolView(LoginRequiredMixin, View):
         try:
             form = ProtocolForm(request.POST)
             if form.is_valid():
+                # Log successful validation
+                logger.info("Protocol form validation successful")
                 protocol = form.save(commit=False)
                 protocol.created_by = request.user
                 protocol.save()
-                
                 messages.success(request, f"Protocol '{protocol.name}' created successfully")
                 return redirect('protocol_management')
             else:
-                context = {'form': form}
-                template_path = get_template_path(
-                    'add_protocol.html',
-                    request.user.role,
-                    'phototherapy_management'
-                )
-                return render(request, template_path, context)
-
+                # Log validation errors and add them to messages
+                logger.warning(f"Protocol form validation failed: {form.errors}")
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        if field == '__all__':
+                            messages.error(request, error)
+                        else:
+                            messages.error(request, f"{field.replace('_', ' ').title()}: {error}")
+                return self.render_protocol_form(request, form)
         except Exception as e:
             logger.error(f"Error in add protocol view POST: {str(e)}")
-            messages.error(request, "An error occurred while creating the protocol")
-            return self.get(request)
+            messages.error(request, f"An error occurred: {str(e)}")
+            return self.render_protocol_form(request, form)
+
+    def render_protocol_form(self, request, form):
+        template_path = get_template_path('add_protocol.html', request.user.role, 'phototherapy_management')
+        return render(request, template_path, {'form': form})
         
 
 class EditProtocolView(LoginRequiredMixin, View):

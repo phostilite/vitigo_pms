@@ -11,6 +11,13 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 class ProtocolForm(forms.ModelForm):
+    increment_percentage = forms.FloatField(
+        initial=10.0,  # Set a default value
+        min_value=0,
+        max_value=100,
+        help_text='Percentage to increase dose each session (0-100). Default is 10%'
+    )
+
     class Meta:
         model = PhototherapyProtocol
         fields = [
@@ -52,14 +59,42 @@ class ProtocolForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        initial_dose = cleaned_data.get('initial_dose')
-        max_dose = cleaned_data.get('max_dose')
+        try:
+            initial_dose = cleaned_data.get('initial_dose')
+            max_dose = cleaned_data.get('max_dose')
+            increment_percentage = cleaned_data.get('increment_percentage')
 
-        if initial_dose and max_dose:
-            if initial_dose > max_dose:
-                raise forms.ValidationError("Initial dose cannot exceed maximum dose")
+            # Log the validation process
+            logger.info(f"Validating protocol form - Initial dose: {initial_dose}, "
+                       f"Max dose: {max_dose}, Increment: {increment_percentage}")
 
-        return cleaned_data
+            if initial_dose and max_dose:
+                if initial_dose > max_dose:
+                    raise ValidationError({
+                        'initial_dose': 'Initial dose cannot exceed maximum dose',
+                        'max_dose': 'Maximum dose must be greater than initial dose'
+                    })
+
+            # Validate increment percentage
+            if increment_percentage is None:
+                increment_percentage = 10.0  # Default value if not provided
+                cleaned_data['increment_percentage'] = increment_percentage
+            elif increment_percentage < 0 or increment_percentage > 100:
+                raise ValidationError({
+                    'increment_percentage': 'Increment percentage must be between 0 and 100'
+                })
+
+            # Additional validations
+            if initial_dose is not None and initial_dose <= 0:
+                self.add_error('initial_dose', 'Initial dose must be greater than 0')
+            
+            if max_dose is not None and max_dose <= 0:
+                self.add_error('max_dose', 'Maximum dose must be greater than 0')
+
+            return cleaned_data
+        except Exception as e:
+            logger.error(f"Error in protocol form validation: {str(e)}")
+            raise ValidationError("An error occurred during form validation")
     
 
 class PhototherapyDeviceForm(forms.ModelForm):
