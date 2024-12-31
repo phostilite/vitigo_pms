@@ -326,12 +326,26 @@ class ScheduleSessionForm(forms.ModelForm):
             # Filter active plans only
             self.fields['plan'].queryset = PhototherapyPlan.objects.filter(is_active=True)
             
+            # Filter active devices and exclude those needing maintenance
+            from django.utils import timezone
+            self.fields['device'].queryset = PhototherapyDevice.objects.filter(
+                is_active=True
+            ).exclude(
+                next_maintenance_date__lte=timezone.now().date()
+            )
+            
             # Add Bootstrap classes and enhance help texts
             for field in self.fields:
                 self.fields[field].widget.attrs.update({
                     'class': 'form-control rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200'
                 })
             
+            # Update device field help text to explain filtering
+            self.fields['device'].help_text = (
+                'Select the phototherapy device to be used. Only active devices that are not due for maintenance are shown. ' 
+                'Some devices may not be available if they require maintenance.'
+            )
+
             # Add detailed help text for each field
             self.fields['plan'].help_text += ' The selected plan determines available devices and dose ranges.'
             self.fields['scheduled_date'].help_text += ' Sessions must be scheduled at least 24 hours in advance.'

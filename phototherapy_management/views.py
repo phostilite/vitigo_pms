@@ -842,4 +842,17 @@ def get_treatment_plan_details(request, plan_id):
     except PhototherapyPlan.DoesNotExist:
         return JsonResponse({'error': 'Plan not found'}, status=404)
 
+def get_device_details(request, device_id):
+    try:
+        device = PhototherapyDevice.objects.get(id=device_id)
+        return JsonResponse({
+            'location': device.location,
+            'last_maintenance_date': device.last_maintenance_date.strftime('%Y-%m-%d') if device.last_maintenance_date else 'Never',
+            'next_maintenance_date': device.next_maintenance_date.strftime('%Y-%m-%d') if device.next_maintenance_date else 'Not scheduled',
+            'is_active': device.is_active,
+            'needs_maintenance': device.needs_maintenance()
+        })
+    except PhototherapyDevice.DoesNotExist:
+        return JsonResponse({'error': 'Device not found'}, status=404)
+
 
