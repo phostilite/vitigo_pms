@@ -228,6 +228,10 @@ class ScheduleSessionView(LoginRequiredMixin, CreateView):
             # Set default status
             form.instance.status = 'SCHEDULED'
             
+            # Ensure administered_by is set
+            if not form.instance.administered_by:
+                form.instance.administered_by = self.request.user
+            
             messages.success(self.request, "Session scheduled successfully")
             return super().form_valid(form)
         except Exception as e:

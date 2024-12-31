@@ -295,7 +295,8 @@ class ScheduleSessionForm(forms.ModelForm):
             'scheduled_date', 
             'scheduled_time', 
             'device',
-            'planned_dose'
+            'planned_dose',
+            'administered_by'  # Add this field
         ]
         widgets = {
             'scheduled_date': forms.DateInput(
@@ -339,7 +340,7 @@ class ScheduleSessionForm(forms.ModelForm):
             self.fields['planned_dose'].help_text += f' Recommended range: {self.get_dose_range()}'
 
             # Customize administered_by field with expanded role filtering
-            excluded_roles = ['PATIENT', 'IT', 'RECEPTION', 'FINANCE']
+            excluded_roles = ['PATIENT', 'HR_STAFF', 'INVENTORY_MANAGER', 'BILLING_STAFF', 'LAB_TECHNICIAN', 'PHARMACIST', 'RECEPTIONIST', 'MANAGER']
             self.fields['administered_by'] = forms.ModelChoiceField(
                 queryset=User.objects.filter(
                     is_active=True

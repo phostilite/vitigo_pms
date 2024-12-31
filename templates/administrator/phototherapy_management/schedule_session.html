@@ -158,19 +158,20 @@
             </div>
 
             <!-- Administered By -->
-            <div>
+            <div class="form-group">
                 <label for="{{ form.administered_by.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                    Administered By
+                    Administered By*
                 </label>
                 <div class="relative">
                     <input type="text" 
                         id="staff-search" 
                         placeholder="Search staff..." 
                         class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
-                    <select name="{{ form.administered_by.html_name }}" 
+                    <select name="administered_by" 
                             id="{{ form.administered_by.auto_id }}"
                             size="5"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                            required>
                         {% for choice in form.administered_by %}
                             {{ choice }}
                         {% endfor %}
@@ -285,5 +286,14 @@
             </a>`
         ).join('');
     }
+
+    // Add validation for administered_by
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const administeredBy = document.getElementById('{{ form.administered_by.auto_id }}');
+        if (!administeredBy.value) {
+            e.preventDefault();
+            alert('Please select who will administer the session');
+        }
+    });
 </script>
 {% endblock %}
