@@ -108,7 +108,7 @@ class PhototherapyDevice(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.name} - {self.serial_number}"
+        return f"{self.name} - {self.model_number}"
 
     def needs_maintenance(self):
         if not self.next_maintenance_date:

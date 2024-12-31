@@ -371,6 +371,9 @@ class ScheduleSessionForm(forms.ModelForm):
                 f"{user.get_full_name()} ({user.role.name})"
             )
 
+            # Add this to customize device display
+            self.fields['device'].label_from_instance = lambda obj: f"{obj.name} - {obj.model_number}"
+
         except Exception as e:
             logger.error(f"Error initializing ScheduleSessionForm: {str(e)}")
 
