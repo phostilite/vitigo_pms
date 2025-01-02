@@ -1,4 +1,4 @@
-from django.core.mail import send_mail, get_connection
+from django.core.mail import send_mail, get_connection, EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings
 from notifications.models import UserNotification, EmailNotification, NotificationType
@@ -70,10 +70,16 @@ def send_query_notification(query, notification_type, recipient=None, **kwargs):
         # Log template selection
         logger.debug(f"Using email template: {email_template}")
 
+        # Get any new attachments from kwargs or query
+        attachments = kwargs.get('attachments', None)
+        if not attachments and hasattr(query, 'attachments'):
+            attachments = query.attachments.all()
+
         try:
             html_message = render_to_string(email_template, {
                 'query': query,
                 'recipient': recipient,
+                'attachments': attachments,
                 **kwargs
             })
             logger.debug("Email template rendered successfully")
@@ -90,14 +96,26 @@ def send_query_notification(query, notification_type, recipient=None, **kwargs):
                 fail_silently=False,
             )
             
-            email_sent = send_mail(
+            # Create email message
+            email = EmailMessage(
                 subject=subject,
-                message='',
-                html_message=html_message,
+                body=html_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient.email],
+                to=[recipient.email],
                 connection=connection
             )
+            email.content_subtype = "html"  # Main content is now text/html
+            
+            # Attach files if present
+            if attachments:
+                for attachment in attachments:
+                    try:
+                        email.attach_file(attachment.file.path)
+                    except Exception as e:
+                        logger.error(f"Failed to attach file {attachment.file.name}: {str(e)}")
+            
+            # Send email
+            email_sent = email.send(fail_silently=False)
             
             logger.info(f"Email sent successfully: {email_sent}")
             
