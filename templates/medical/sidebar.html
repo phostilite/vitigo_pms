@@ -27,7 +27,7 @@
        <!-- Patient Care Section -->
        <ul class="pt-4 mt-4 space-y-2 font-medium border-t border-gray-200">
         <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-2 mb-2">Patient Management</div>
-          {% if request.user|has_module_access:'patients' %}
+          {% if request.user|has_module_access:'patient_management' %}
           <li>
              <a href="{% url 'patient_list' %}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
                 <i class="fa-solid fa-hospital-user w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900"></i>
