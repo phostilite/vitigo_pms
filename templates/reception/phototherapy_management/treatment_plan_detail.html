@@ -1,0 +1,301 @@
+{% extends "../base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'phototherapy_management' %}" class="hover:text-blue-600">
+                <i class="fas fa-laptop-medical mr-2"></i>Phototherapy</a>
+            </li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li><a href="{% url 'treatment_plan_list' %}" class="hover:text-blue-600">Treatment Plans</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Plan Details</li>
+        </ol>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Treatment Plan Details</h1>
+            <p class="text-sm text-gray-600">Protocol: {{ plan.protocol.name }}</p>
+        </div>
+        <!-- Update the action buttons section -->
+        <div class="flex space-x-3">
+            <a href="{% url 'schedule_session' %}?plan={{ plan.id }}" 
+               class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center">
+                <i class="fas fa-calendar-plus mr-2"></i>
+                Schedule Session
+            </a>
+            {% if plan.is_active %}
+                <button data-modal-target="deactivatePlanModal{{ plan.id }}" data-modal-toggle="deactivatePlanModal{{ plan.id }}"
+                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center">
+                    <i class="fas fa-ban mr-2"></i>
+                    Deactivate Plan
+                </button>
+            {% else %}
+                <button data-modal-target="activatePlanModal{{ plan.id }}" data-modal-toggle="activatePlanModal{{ plan.id }}"
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Activate Plan
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-3 gap-6">
+        <!-- Left Column - Plan Info & Sessions -->
+        <div class="col-span-2 space-y-6">
+            <!-- Status Banner -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Plan Status</h3>
+                    <span class="px-3 py-1 rounded-full text-sm font-medium 
+                        {% if plan.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ plan.is_active|yesno:"Active,Inactive" }}
+                    </span>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Overall Progress</span>
+                        <span>{{ completion_percentage }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ completion_percentage }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Statistics Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <span class="text-sm text-gray-600 block">Sessions</span>
+                        <span class="text-xl font-semibold text-gray-800">{{ plan.sessions_completed }}/{{ plan.total_sessions_planned }}</span>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <span class="text-sm text-gray-600 block">Completed</span>
+                        <span class="text-xl font-semibold text-green-600">{{ completed_sessions_count }}</span>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <span class="text-sm text-gray-600 block">Missed</span>
+                        <span class="text-xl font-semibold text-red-600">{{ missed_sessions_count }}</span>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <span class="text-sm text-gray-600 block">Next Session</span>
+                        <span class="text-gray-800">
+                            {% if next_session %}
+                            {{ next_session.scheduled_date|date:"M d" }}
+                            {% else %}
+                            Not Scheduled
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sessions List -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Session History</h3>
+                {% if sessions %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dose</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% for session in sessions %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ session.scheduled_date|date:"M d, Y" }}</div>
+                                    <div class="text-xs text-gray-500">{{ session.scheduled_time|time:"g:i A" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                        {% if session.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                        {% elif session.status == 'SCHEDULED' %}bg-blue-100 text-blue-800
+                                        {% elif session.status == 'MISSED' %}bg-yellow-100 text-yellow-800
+                                        {% else %}bg-red-100 text-red-800{% endif %}">
+                                        {{ session.get_status_display }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ session.actual_dose|default:"-" }} mJ/cm²
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ session.duration_seconds|default:"-" }}s
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="{% url 'session_detail' session.id %}" class="text-blue-600 hover:text-blue-900">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-4">No sessions recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column - Patient & Financial Info -->
+        <div class="space-y-6">
+            <!-- Patient Information -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Patient Information</h3>
+                <div class="flex items-center space-x-4 mb-4">
+                    <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                        <i class="fas fa-user text-gray-400 text-2xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-800">{{ plan.patient.get_full_name }}</h4>
+                        <p class="text-sm text-gray-600">{{ plan.patient.email }}</p>
+                    </div>
+                </div>
+                {% if plan.rfid_card %}
+                <div class="mt-4 pt-4 border-t">
+                    <p class="text-sm text-gray-600">RFID Card Number:</p>
+                    <p class="text-gray-800 font-medium">{{ plan.rfid_card.card_number }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Financial Summary -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Financial Summary</h3>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-600">Total Cost</p>
+                        <p class="text-2xl font-semibold text-gray-800">₹{{ plan.total_cost }}</p>
+                    </div>
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Amount Paid</p>
+                            <p class="text-lg font-medium text-green-600">₹{{ total_paid }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Remaining Balance</p>
+                            <p class="text-lg font-medium text-red-600">₹{{ remaining_balance }}</p>
+                        </div>
+                    </div>
+                    <!-- Payment History -->
+                    <div class="mt-4 pt-4 border-t">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Payment History</h4>
+                        {% if payments %}
+                            <div class="space-y-2">
+                                {% for payment in payments %}
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-gray-600">{{ payment.payment_date|date:"M d, Y" }}</span>
+                                    <span class="text-gray-900">₹{{ payment.amount }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-sm text-gray-500">No payments recorded</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress History -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress History</h3>
+                {% if progress_records %}
+                    <div class="space-y-4">
+                        {% for record in progress_records %}
+                        <div class="border rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-sm text-gray-600">{{ record.assessment_date|date:"M d, Y" }}</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full
+                                    {% if record.response_level == 'EXCELLENT' %}bg-green-100 text-green-800
+                                    {% elif record.response_level == 'GOOD' %}bg-blue-100 text-blue-800
+                                    {% elif record.response_level == 'MODERATE' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ record.get_response_level_display }}
+                                </span>
+                            </div>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="flex-grow">
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-blue-600 h-2 rounded-full" 
+                                             style="width: {{ record.improvement_percentage }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">
+                                    {{ record.improvement_percentage }}% improvement
+                                </span>
+                            </div>
+                            {% if record.notes %}
+                            <p class="text-sm text-gray-600">{{ record.notes }}</p>
+                            {% endif %}
+                            {% if record.next_assessment_date %}
+                            <div class="mt-2 text-xs text-gray-500">
+                                Next Assessment: {{ record.next_assessment_date|date:"M d, Y" }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">No progress records available</p>
+                {% endif %}
+            </div>
+
+            <!-- Treatment Protocol Details -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Protocol Details</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">Frequency</p>
+                        <p class="text-gray-800 font-medium">{{ plan.protocol.frequency_per_week }} sessions/week</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Duration</p>
+                        <p class="text-gray-800 font-medium">{{ plan.protocol.duration_weeks }} weeks</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Initial Dose</p>
+                        <p class="text-gray-800 font-medium">{{ plan.protocol.initial_dose }} mJ/cm²</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Maximum Dose</p>
+                        <p class="text-gray-800 font-medium">{{ plan.protocol.max_dose }} mJ/cm²</p>
+                    </div>
+                </div>
+                {% if plan.special_instructions %}
+                <div class="mt-4 pt-4 border-t">
+                    <p class="text-sm text-gray-600 mb-2">Special Instructions</p>
+                    <p class="text-gray-800">{{ plan.special_instructions }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include './treatment_plan/activate_plan.html' %}
+{% include './treatment_plan/deactivate_plan.html' %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add any JavaScript functionality here
+        console.log('Treatment plan detail page loaded');
+    });
+</script>
+{% endblock %}
+
+{% endblock %}

@@ -121,6 +121,9 @@
                 <a href="javascript:history.back()" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i>Go Back
                 </a>
+                <a href="{% url 'logout' %}" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i>Logout
+                </a>
             </div>
             <div class="error-help">
                 {% block error_help %}
