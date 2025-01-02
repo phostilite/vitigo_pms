@@ -494,6 +494,9 @@ class QueryDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
             return HttpResponse(f"Error deleting query: {str(e)}", status=500)
 
 class QueryAssignView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'query_management')
+    
     def dispatch(self, request, *args, **kwargs):
         if not PermissionManager.check_module_modify(self.request.user, 'query_management'):
             messages.error(request, "You don't have permission to assign queries")
