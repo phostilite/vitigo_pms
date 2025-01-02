@@ -28,14 +28,16 @@ def send_query_notification(query, notification_type, recipient=None, **kwargs):
             'resolved': 'QUERY_RESOLVED',
         }
 
-        # Get the NotificationType instance
-        try:
-            notification_type_obj = NotificationType.objects.get(
-                name=notification_type_mapping.get(notification_type, 'QUERY_STATUS_UPDATED')
-            )
-        except NotificationType.DoesNotExist:
-            logger.error(f"NotificationType not found for {notification_type}")
-            return
+        # Get or create the NotificationType instance
+        notification_type_obj, created = NotificationType.objects.get_or_create(
+            name=notification_type_mapping.get(notification_type, 'QUERY_STATUS_UPDATED'),
+            defaults={
+                'description': f'Notification for {notification_type} query event'
+            }
+        )
+        
+        if created:
+            logger.info(f"Created new NotificationType: {notification_type_obj.name}")
 
         # Create notification message
         notification_messages = {
