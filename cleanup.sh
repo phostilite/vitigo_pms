@@ -12,11 +12,11 @@ find . -name "db.sqlite3" -delete
 
 # Deactivate and remove virtual environment
 deactivate 2>/dev/null
-rm -rf env
+rm -rf .venv
 
 # Create new virtual environment
-python3 -m venv env
-source env/bin/activate
+python3.12 -m venv .venv
+source .venv/bin/activate
 
 # Install requirements
 if [ -f "requirements.txt" ]; then

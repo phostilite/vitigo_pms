@@ -1,89 +1,93 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import Employee, Attendance, LeaveType, LeaveRequest, PerformanceReview, Training, TrainingAttendance
+from .models import (
+    Department, Position, Employee, Attendance, Leave,
+    PayrollPeriod, Payroll, PerformanceReview, Training,
+    TrainingParticipant, Document, Grievance, AssetAssignment,
+    EmployeeSkill
+)
 
-class AttendanceInline(admin.TabularInline):
-    model = Attendance
-    extra = 0
-    fields = ['date', 'time_in', 'time_out', 'status', 'notes']
+# Simple admin classes for all models
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'head', 'is_active')
+    search_fields = ('name', 'code')
+    list_filter = ('is_active',)
 
-class LeaveRequestInline(admin.TabularInline):
-    model = LeaveRequest
-    extra = 0
-    fields = ['leave_type', 'start_date', 'end_date', 'status']
-
-class TrainingAttendanceInline(admin.TabularInline):
-    model = TrainingAttendance
-    extra = 0
-    fields = ['training', 'status', 'feedback']
+@admin.register(Position)
+class PositionAdmin(admin.ModelAdmin):
+    list_display = ('title', 'department', 'min_salary', 'max_salary', 'is_active')
+    search_fields = ('title', 'department__name')
+    list_filter = ('department', 'is_active')
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ['employee_id', 'get_full_name', 'department', 'position', 'phone_number', 'is_active']
-    list_filter = ['department', 'is_active', 'date_of_joining']
-    search_fields = ['employee_id', 'user__email', 'user__first_name', 'user__last_name', 'phone_number']
-    inlines = [AttendanceInline, LeaveRequestInline, TrainingAttendanceInline]
-    
-    def get_full_name(self, obj):
-        return obj.user.get_full_name()
-    get_full_name.short_description = 'Full Name'
+    list_display = ('employee_id', 'user', 'department', 'position', 'employment_status')
+    search_fields = ('employee_id', 'user__username', 'user__first_name', 'user__last_name')
+    list_filter = ('department', 'employment_status', 'is_active')
 
 @admin.register(Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
-    list_display = ['employee', 'date', 'time_in', 'time_out', 'status']
-    list_filter = ['status', 'date']
-    search_fields = ['employee__user__first_name', 'employee__user__last_name', 'employee__employee_id']
-    date_hierarchy = 'date'
+    list_display = ('employee', 'date', 'status', 'check_in', 'check_out')
+    list_filter = ('status', 'date')
+    search_fields = ('employee__employee_id', 'employee__user__username')
 
-@admin.register(LeaveType)
-class LeaveTypeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'max_days_per_year']
-    search_fields = ['name']
+@admin.register(Leave)
+class LeaveAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'leave_type', 'start_date', 'end_date', 'status')
+    list_filter = ('leave_type', 'status')
+    search_fields = ('employee__employee_id', 'employee__user__username')
 
-@admin.register(LeaveRequest)
-class LeaveRequestAdmin(admin.ModelAdmin):
-    list_display = ['employee', 'leave_type', 'start_date', 'end_date', 'status', 'approved_by']
-    list_filter = ['status', 'leave_type', 'start_date']
-    search_fields = ['employee__user__first_name', 'employee__user__last_name', 'employee__employee_id']
-    date_hierarchy = 'start_date'
-    actions = ['approve_leave', 'reject_leave']
+@admin.register(PayrollPeriod)
+class PayrollPeriodAdmin(admin.ModelAdmin):
+    list_display = ('start_date', 'end_date', 'is_processed', 'processed_at')
+    list_filter = ('is_processed',)
 
-    def approve_leave(self, request, queryset):
-        queryset.update(status='APPROVED', approved_by=request.user)
-    approve_leave.short_description = "Approve selected leave requests"
-
-    def reject_leave(self, request, queryset):
-        queryset.update(status='REJECTED', approved_by=request.user)
-    reject_leave.short_description = "Reject selected leave requests"
+@admin.register(Payroll)
+class PayrollAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'period', 'basic_salary', 'net_salary', 'payment_status')
+    list_filter = ('payment_status', 'period')
+    search_fields = ('employee__employee_id', 'employee__user__username')
 
 @admin.register(PerformanceReview)
 class PerformanceReviewAdmin(admin.ModelAdmin):
-    list_display = ['employee', 'reviewer', 'review_date', 'performance_score']
-    list_filter = ['review_date', 'performance_score']
-    search_fields = ['employee__user__first_name', 'employee__user__last_name', 'employee__employee_id']
-    date_hierarchy = 'review_date'
+    list_display = ('employee', 'reviewer', 'review_date', 'status')
+    list_filter = ('status', 'review_date')
+    search_fields = ('employee__employee_id', 'employee__user__username')
 
 @admin.register(Training)
 class TrainingAdmin(admin.ModelAdmin):
-    list_display = ['title', 'trainer', 'start_date', 'end_date', 'location', 'max_participants']
-    list_filter = ['start_date', 'location']
-    search_fields = ['title', 'trainer', 'description']
-    date_hierarchy = 'start_date'
+    list_display = ('title', 'trainer', 'start_date', 'end_date', 'status')
+    list_filter = ('status',)
+    search_fields = ('title', 'trainer')
 
-@admin.register(TrainingAttendance)
-class TrainingAttendanceAdmin(admin.ModelAdmin):
-    list_display = ['training', 'employee', 'status']
-    list_filter = ['status', 'training']
-    search_fields = ['employee__user__first_name', 'employee__user__last_name', 'training__title']
-    actions = ['mark_as_attended', 'mark_as_completed']
+@admin.register(TrainingParticipant)
+class TrainingParticipantAdmin(admin.ModelAdmin):
+    list_display = ('training', 'employee', 'status', 'score')
+    list_filter = ('status', 'training')
+    search_fields = ('employee__employee_id', 'employee__user__username')
 
-    def mark_as_attended(self, request, queryset):
-        queryset.update(status='ATTENDED')
-    mark_as_attended.short_description = "Mark selected entries as attended"
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'document_type', 'title', 'is_verified')
+    list_filter = ('document_type', 'is_verified')
+    search_fields = ('employee__employee_id', 'title')
 
-    def mark_as_completed(self, request, queryset):
-        queryset.update(status='COMPLETED')
-    mark_as_completed.short_description = "Mark selected entries as completed"
+@admin.register(Grievance)
+class GrievanceAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'subject', 'priority', 'status', 'filed_date')
+    list_filter = ('priority', 'status')
+    search_fields = ('employee__employee_id', 'subject')
 
+@admin.register(AssetAssignment)
+class AssetAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'asset_type', 'asset_id', 'assigned_date')
+    list_filter = ('asset_type',)
+    search_fields = ('employee__employee_id', 'asset_id')
 
+@admin.register(EmployeeSkill)
+class EmployeeSkillAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'skill_name', 'proficiency_level', 'is_primary')
+    list_filter = ('is_primary', 'certified')
+    search_fields = ('employee__employee_id', 'skill_name')
