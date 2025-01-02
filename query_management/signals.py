@@ -9,7 +9,7 @@ User = get_user_model()
 
 def get_random_staff():
     """Get a random staff member with appropriate roles"""
-    staff_roles = ['STAFF', 'NURSE', 'DOCTOR', 'SUPPORT_STAFF', 'MEDICAL_ASSISTANT', 'ADMINISTRATOR'] 
+    staff_roles = ['NURSE', 'DOCTOR', 'MEDICAL_ASSISTANT', 'ADMINISTRATOR'] 
     staff_users = User.objects.filter(
         Q(role__name__in=staff_roles) & 
         Q(is_active=True)
