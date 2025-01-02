@@ -313,88 +313,120 @@
 
                         <!-- Activity Tabs -->
                         <div class="mb-4 border-b border-gray-200">
-                            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" role="tablist">
+                            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="activity-tabs" data-tabs-toggle="#activity-content" role="tablist">
                                 <li class="mr-2" role="presentation">
-                                    <button class="inline-block p-4 border-b-2 rounded-t-lg border-blue-600 text-blue-600" type="button" role="tab">All</button>
+                                    <button class="inline-block p-4 border-b-2 rounded-t-lg" id="all-tab" data-tabs-target="#all" type="button" role="tab" aria-controls="all" aria-selected="true">
+                                        All
+                                    </button>
                                 </li>
                                 <li class="mr-2" role="presentation">
-                                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:border-gray-300 hover:text-gray-600" type="button" role="tab">Employees</button>
+                                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:border-gray-300 hover:text-gray-600" id="employees-tab" data-tabs-target="#employees" type="button" role="tab" aria-controls="employees" aria-selected="false">
+                                        Employees
+                                    </button>
                                 </li>
                                 <li class="mr-2" role="presentation">
-                                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:border-gray-300 hover:text-gray-600" type="button" role="tab">Leaves</button>
+                                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:border-gray-300 hover:text-gray-600" id="leaves-tab" data-tabs-target="#leaves" type="button" role="tab" aria-controls="leaves" aria-selected="false">
+                                        Leaves
+                                    </button>
                                 </li>
                                 <li role="presentation">
-                                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:border-gray-300 hover:text-gray-600" type="button" role="tab">Trainings</button>
+                                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:border-gray-300 hover:text-gray-600" id="trainings-tab" data-tabs-target="#trainings" type="button" role="tab" aria-controls="trainings" aria-selected="false">
+                                        Trainings
+                                    </button>
                                 </li>
                             </ul>
                         </div>
 
-                        <!-- Activity Feed -->
-                        <div class="space-y-4">
-                            {% if recent_activities.recent_employees or recent_activities.recent_leaves or recent_activities.recent_trainings or recent_activities.recent_grievances %}
-                                <!-- New Employees -->
-                                {% for employee in recent_activities.recent_employees %}
-                                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
-                                    <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-green-100 text-green-600">
-                                        <i class="fas fa-user-plus"></i>
-                                    </span>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-900">New employee joined</p>
-                                        <p class="text-sm text-gray-500">{{ employee.user.get_full_name }} joined as {{ employee.position.title }}</p>
-                                        <p class="text-xs text-gray-400">{{ employee.created_at|timesince }} ago</p>
+                        <!-- Activity Content -->
+                        <div id="activity-content">
+                            <!-- All Activities Tab -->
+                            <div class="space-y-4 max-h-[600px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" id="all" role="tabpanel" aria-labelledby="all-tab">
+                                {% if recent_activities.recent_employees or recent_activities.recent_leaves or recent_activities.recent_trainings or recent_activities.recent_grievances %}
+                                    {% include './activity_items.html' with activities=recent_activities %}
+                                {% else %}
+                                    <div class="flex items-center justify-center h-64">
+                                        <div class="text-center">
+                                            <i class="fas fa-stream text-4xl text-gray-400 mb-3"></i>
+                                            <p class="text-gray-500">No recent activities to display</p>
+                                        </div>
                                     </div>
-                                </div>
-                                {% endfor %}
+                                {% endif %}
+                            </div>
 
-                                <!-- Leave Requests -->
-                                {% for leave in recent_activities.recent_leaves %}
-                                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
-                                    <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
-                                        <i class="fas fa-calendar-alt"></i>
-                                    </span>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-900">Leave Request</p>
-                                        <p class="text-sm text-gray-500">{{ leave.employee.user.get_full_name }} requested {{ leave.leave_type }} leave</p>
-                                        <p class="text-xs text-gray-400">{{ leave.created_at|timesince }} ago</p>
+                            <!-- Employees Tab -->
+                            <div class="hidden space-y-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" id="employees" role="tabpanel" aria-labelledby="employees-tab">
+                                {% if recent_activities.recent_employees %}
+                                    {% for employee in recent_activities.recent_employees %}
+                                    <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                                        <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-green-100 text-green-600">
+                                            <i class="fas fa-user-plus"></i>
+                                        </span>
+                                        <div class="ml-4">
+                                            <p class="text-sm font-medium text-gray-900">New employee joined</p>
+                                            <p class="text-sm text-gray-500">{{ employee.user.get_full_name }} joined as {{ employee.position.title }}</p>
+                                            <p class="text-xs text-gray-400">{{ employee.created_at|timesince }} ago</p>
+                                        </div>
                                     </div>
-                                </div>
-                                {% endfor %}
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="flex items-center justify-center h-64">
+                                        <div class="text-center">
+                                            <i class="fas fa-users text-4xl text-gray-400 mb-3"></i>
+                                            <p class="text-gray-500">No recent employee activities</p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
 
-                                <!-- Training Updates -->
-                                {% for training in recent_activities.recent_trainings %}
-                                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
-                                    <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                                        <i class="fas fa-chalkboard-teacher"></i>
-                                    </span>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-900">Training Update</p>
-                                        <p class="text-sm text-gray-500">{{ training.title }} - {{ training.get_status_display }}</p>
-                                        <p class="text-xs text-gray-400">{{ training.updated_at|timesince }} ago</p>
+                            <!-- Leaves Tab -->
+                            <div class="hidden space-y-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" id="leaves" role="tabpanel" aria-labelledby="leaves-tab">
+                                {% if recent_activities.recent_leaves %}
+                                    {% for leave in recent_activities.recent_leaves %}
+                                    <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                                        <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </span>
+                                        <div class="ml-4">
+                                            <p class="text-sm font-medium text-gray-900">Leave Request</p>
+                                            <p class="text-sm text-gray-500">{{ leave.employee.user.get_full_name }} requested {{ leave.leave_type }} leave</p>
+                                            <p class="text-xs text-gray-400">{{ leave.created_at|timesince }} ago</p>
+                                        </div>
                                     </div>
-                                </div>
-                                {% endfor %}
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="flex items-center justify-center h-64">
+                                        <div class="text-center">
+                                            <i class="fas fa-calendar text-4xl text-gray-400 mb-3"></i>
+                                            <p class="text-gray-500">No recent leave requests</p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
 
-                                <!-- Grievances -->
-                                {% for grievance in recent_activities.recent_grievances %}
-                                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
-                                    <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                    </span>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-gray-900">Grievance Filed</p>
-                                        <p class="text-sm text-gray-500">{{ grievance.subject }}</p>
-                                        <p class="text-xs text-gray-400">{{ grievance.filed_date|timesince }} ago</p>
+                            <!-- Trainings Tab -->
+                            <div class="hidden space-y-4 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" id="trainings" role="tabpanel" aria-labelledby="trainings-tab">
+                                {% if recent_activities.recent_trainings %}
+                                    {% for training in recent_activities.recent_trainings %}
+                                    <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                                        <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                                            <i class="fas fa-chalkboard-teacher"></i>
+                                        </span>
+                                        <div class="ml-4">
+                                            <p class="text-sm font-medium text-gray-900">Training Update</p>
+                                            <p class="text-sm text-gray-500">{{ training.title }} - {{ training.get_status_display }}</p>
+                                            <p class="text-xs text-gray-400">{{ training.updated_at|timesince }} ago</p>
+                                        </div>
                                     </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="flex items-center justify-center h-64">
-                                    <div class="text-center">
-                                        <i class="fas fa-stream text-4xl text-gray-400 mb-3"></i>
-                                        <p class="text-gray-500">No recent activities to display</p>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="flex items-center justify-center h-64">
+                                        <div class="text-center">
+                                            <i class="fas fa-chalkboard text-4xl text-gray-400 mb-3"></i>
+                                            <p class="text-gray-500">No recent training activities</p>
+                                        </div>
                                     </div>
-                                </div>
-                            {% endif %}
+                                {% endif %}
+                            </div>
                         </div>
 
                         <!-- View All Link -->
@@ -417,9 +449,6 @@
     
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 
