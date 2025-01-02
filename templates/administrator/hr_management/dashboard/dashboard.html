@@ -48,46 +48,16 @@
             <h1 class="text-2xl font-bold text-gray-900">
                 HR Dashboard
             </h1>
-            <p class="mt-1 text-sm text-gray-600">
-                Overview of human resources activities and metrics
-            </p>
-        </div>
-    </header>
-
-    <!-- Greeting Section -->
-    <section class="mb-6">
-        <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <div class="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-2xl font-semibold text-gray-800">
-                            {% now "H" as current_hour %}
-                            {% if current_hour|add:"0" < 12 %}
-                                Good Morning,
-                            {% elif current_hour|add:"0" < 17 %}
-                                Good Afternoon,
-                            {% else %}
-                                Good Evening,
-                            {% endif %}
-                            {{ request.user.get_full_name }}
-                        </h2>
-                        <p class="mt-1 text-sm text-gray-600">
-                            Here's what's happening in HR today - {% now "l, F j, Y" %}
-                        </p>
-                    </div>
-                    <div class="hidden sm:flex items-center space-x-2">
-                        <button type="button" class="flex items-center text-sm text-gray-600 hover:text-blue-600" onclick="window.print()">
-                            <i class="mr-2 fas fa-print"></i> Print Dashboard
-                        </button>
-                        <div class="w-px h-4 bg-gray-300"></div>
-                        <button type="button" class="flex items-center text-sm text-gray-600 hover:text-blue-600">
-                            <i class="mr-2 fas fa-cog"></i> Settings
-                        </button>
-                    </div>
-                </div>
+            <div class="mt-1 flex items-center justify-between">
+                <p class="text-sm text-gray-600">
+                    Overview of human resources activities and metrics
+                </p>
+                <p class="text-sm text-gray-600">
+                    <span class="font-medium">{% now "l, F j, Y" %}</span>
+                </p>
             </div>
         </div>
-    </section>
+    </header>
 
     <!-- Quick Stats Cards Section -->
     <section class="mb-8">
