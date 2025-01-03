@@ -1,5 +1,7 @@
 # Standard library imports
 import logging
+from datetime import date, datetime
+from calendar import monthrange
 
 # Django imports
 from django.contrib import messages
@@ -11,6 +13,8 @@ from django.db import models
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
+from django.core.exceptions import ValidationError
+from django.utils.timezone import timedelta
 
 # Local imports
 from access_control.permissions import PermissionManager
@@ -67,6 +71,52 @@ class TrainingListView(LoginRequiredMixin, UserPassesTestMixin, View):
             'search_query': search_query,
             'status_filter': status_filter,
             'date_filter': date_filter,
+        }
+
+        return render(request, self.get_template_name(), context)
+
+class TrainingScheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('trainings/training_schedule.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        # Get current year and month
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+        
+        # Get first and last day of month
+        _, last_day = monthrange(year, month)
+        start_date = datetime(year, month, 1).date()
+        end_date = datetime(year, month, last_day).date()
+        
+        # Get all trainings for the month
+        trainings = Training.objects.filter(
+            (Q(start_date__range=[start_date, end_date]) | 
+             Q(end_date__range=[start_date, end_date])) &
+            Q(status__in=['PLANNED', 'IN_PROGRESS', 'COMPLETED'])
+        )
+
+        # Organize trainings by date
+        calendar_data = {}
+        current_date = start_date
+        while current_date <= end_date:
+            calendar_data[current_date] = []
+            for training in trainings:
+                if training.start_date <= current_date <= training.end_date:
+                    calendar_data[current_date].append(training)
+            current_date += timedelta(days=1)
+
+        context = {
+            'calendar_data': calendar_data,
+            'year': year,
+            'month': month,
+            'month_name': datetime(year, month, 1).strftime('%B'),
+            'prev_month': (datetime(year, month, 1) - timedelta(days=1)).strftime('%Y-%m'),
+            'next_month': (datetime(year, month, last_day) + timedelta(days=1)).strftime('%Y-%m'),
+            'today': timezone.now().date()
         }
 
         return render(request, self.get_template_name(), context)

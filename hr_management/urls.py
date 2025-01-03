@@ -24,6 +24,7 @@ urlpatterns = [
     path('leaves/settings/', leave_views.LeaveSettingsView.as_view(), name='leave_settings'),
     
     path('trainings/', training_views.TrainingListView.as_view(), name='training_list'),
+    path('trainings/schedule/', training_views.TrainingScheduleView.as_view(), name='training_schedule'),
 
     path('grievances/', grievance_views.GrievanceListView.as_view(), name='grievance_list'),
 ]
