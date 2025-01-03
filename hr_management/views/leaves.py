@@ -18,6 +18,9 @@ from error_handling.views import handler403, handler500
 from hr_management.models import Leave
 from hr_management.utils import get_template_path
 
+from datetime import datetime, timedelta
+from calendar import monthrange
+
 class LeaveListView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'hr_management')
@@ -85,6 +88,53 @@ class PendingLeaveRequestsView(LoginRequiredMixin, UserPassesTestMixin, View):
         context = {
             'pending_leaves': pending_leaves,
             'pending_count': pending_count
+        }
+
+        return render(request, self.get_template_name(), context)
+
+class LeaveCalendarView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('leaves/leave_calendar.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        # Get current year and month
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+        
+        # Get first and last day of month
+        _, last_day = monthrange(year, month)
+        start_date = datetime(year, month, 1).date()
+        end_date = datetime(year, month, last_day).date()
+        
+        # Get all leaves for the month
+        leaves = Leave.objects.select_related(
+            'employee__user'
+        ).filter(
+            (Q(start_date__range=[start_date, end_date]) | 
+             Q(end_date__range=[start_date, end_date])) &
+            Q(status__in=['APPROVED', 'PENDING'])
+        )
+
+        # Organize leaves by date
+        calendar_data = {}
+        current_date = start_date
+        while current_date <= end_date:
+            calendar_data[current_date] = []
+            for leave in leaves:
+                if leave.start_date <= current_date <= leave.end_date:
+                    calendar_data[current_date].append(leave)
+            current_date += timedelta(days=1)
+
+        context = {
+            'calendar_data': calendar_data,
+            'year': year,
+            'month': month,
+            'month_name': datetime(year, month, 1).strftime('%B'),
+            'prev_month': (datetime(year, month, 1) - timedelta(days=1)).strftime('%Y-%m'),
+            'next_month': (datetime(year, month, last_day) + timedelta(days=1)).strftime('%Y-%m'),
         }
 
         return render(request, self.get_template_name(), context)
