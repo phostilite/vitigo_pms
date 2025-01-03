@@ -18,6 +18,10 @@ from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 
+from django.contrib.auth import get_user_model
+from django.urls import reverse_lazy
+from .forms import EmployeeCreationForm
+
 # Logger configuration
 logger = logging.getLogger(__name__)
 
@@ -155,3 +159,42 @@ class HRManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.exception(f"Error in HRManagementView: {str(e)}")
             messages.error(request, "An error occurred while loading the HR dashboard.")
             return handler500(request, exception=str(e))
+
+class NewEmployeeView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('employees/new_employee.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        form = EmployeeCreationForm()
+        return render(request, self.get_template_name(), {'form': form})
+
+    def post(self, request):
+        form = EmployeeCreationForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                # Create User account
+                User = get_user_model()
+                user = User.objects.create_user(
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password'],
+                    first_name=form.cleaned_data['first_name'],
+                    last_name=form.cleaned_data['last_name']
+                )
+
+                # Create Employee profile
+                employee = form.save(commit=False)
+                employee.user = user
+                employee.save()
+
+                messages.success(request, "Employee created successfully")
+                return redirect('hr_management')
+
+            except Exception as e:
+                logger.error(f"Error creating employee: {str(e)}")
+                messages.error(request, "Error creating employee")
+                return render(request, self.get_template_name(), {'form': form})
+
+        return render(request, self.get_template_name(), {'form': form})

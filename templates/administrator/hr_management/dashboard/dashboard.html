@@ -1,5 +1,6 @@
 {% extends '../../base.html' %}
 {% load static %}
+{% load widget_tweaks %}
 
 {% block title %}HR Dashboard{% endblock %}
 
@@ -31,7 +32,7 @@
 
                 <!-- Quick Actions -->
                 <div class="flex items-center space-x-4">
-                    <button type="button" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
+                    <button type="button" onclick="window.location.href='{% url 'new_employee' %}'" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
                         <i class="mr-2 fas fa-plus"></i> New Employee
                     </button>
                     <button type="button" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 border">

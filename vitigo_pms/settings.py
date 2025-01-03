@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_tailwind',
     'encrypted_model_fields',
+    'widget_tweaks',
 
     # Custom apps
     'user_management',
