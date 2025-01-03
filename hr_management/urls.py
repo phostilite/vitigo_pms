@@ -19,6 +19,7 @@ urlpatterns = [
     path('new-department/', department_views.NewDepartmentView.as_view(), name='new_department'),
 
     path('leaves/', leave_views.LeaveListView.as_view(), name='leave_list'),
+    path('leaves/pending/', leave_views.PendingLeaveRequestsView.as_view(), name='pending_leave_requests'),
     
     path('trainings/', training_views.TrainingListView.as_view(), name='training_list'),
 

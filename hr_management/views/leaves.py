@@ -65,3 +65,26 @@ class LeaveListView(LoginRequiredMixin, UserPassesTestMixin, View):
         }
 
         return render(request, self.get_template_name(), context)
+
+class PendingLeaveRequestsView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('leaves/pending_requests.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        pending_leaves = Leave.objects.select_related(
+            'employee__user', 
+            'employee__department'
+        ).filter(status='PENDING').order_by('-created_at')
+
+        # Get pending count for badge
+        pending_count = pending_leaves.count()
+
+        context = {
+            'pending_leaves': pending_leaves,
+            'pending_count': pending_count
+        }
+
+        return render(request, self.get_template_name(), context)
