@@ -4,14 +4,14 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 # Django imports
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
-# Initialize logging
+# Initialize logger
 logger = logging.getLogger(__name__)
 
 # Get User model

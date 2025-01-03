@@ -1,10 +1,13 @@
-# error_handling/views.py
-
-from django.shortcuts import render
-from django.http import HttpRequest
-from .models import ErrorLog
-import traceback
+# Standard library imports
 import json
+import traceback
+
+# Django imports
+from django.http import HttpRequest
+from django.shortcuts import render
+
+# Local imports
+from .models import ErrorLog
 
 def log_error(request: HttpRequest, status_code: int, exception: Exception = None):
     """Helper function to log errors to database"""
