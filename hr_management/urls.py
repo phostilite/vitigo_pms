@@ -21,6 +21,7 @@ urlpatterns = [
     path('leaves/', leave_views.LeaveListView.as_view(), name='leave_list'),
     path('leaves/pending/', leave_views.PendingLeaveRequestsView.as_view(), name='pending_leave_requests'),
     path('leaves/calendar/', leave_views.LeaveCalendarView.as_view(), name='leave_calendar'),
+    path('leaves/settings/', leave_views.LeaveSettingsView.as_view(), name='leave_settings'),
     
     path('trainings/', training_views.TrainingListView.as_view(), name='training_list'),
 

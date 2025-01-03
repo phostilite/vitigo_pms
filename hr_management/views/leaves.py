@@ -11,11 +11,12 @@ from django.db import models
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
+from django.core.exceptions import ValidationError
 
 # Local imports
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
-from hr_management.models import Leave
+from hr_management.models import Leave, LeaveSettings
 from hr_management.utils import get_template_path
 
 from datetime import datetime, timedelta
@@ -138,3 +139,43 @@ class LeaveCalendarView(LoginRequiredMixin, UserPassesTestMixin, View):
         }
 
         return render(request, self.get_template_name(), context)
+
+class LeaveSettingsView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('leaves/leave_settings.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        settings = LeaveSettings.objects.all()
+        context = {
+            'settings': settings,
+            'leave_types': Leave.LEAVE_TYPE_CHOICES
+        }
+        return render(request, self.get_template_name(), context)
+
+    def post(self, request):
+        leave_type = request.POST.get('leave_type')
+        try:
+            setting = LeaveSettings.objects.get(leave_type=leave_type)
+        except LeaveSettings.DoesNotExist:
+            setting = LeaveSettings(leave_type=leave_type)
+
+        setting.annual_allowance = request.POST.get('annual_allowance', 0)
+        setting.carry_forward_limit = request.POST.get('carry_forward_limit', 0)
+        setting.min_service_days = request.POST.get('min_service_days', 0)
+        setting.requires_approval = request.POST.get('requires_approval') == 'on'
+        setting.requires_documentation = request.POST.get('requires_documentation') == 'on'
+        setting.documentation_info = request.POST.get('documentation_info', '')
+        setting.notice_period_days = request.POST.get('notice_period_days', 0)
+        setting.is_active = request.POST.get('is_active') == 'on'
+
+        try:
+            setting.full_clean()
+            setting.save()
+            messages.success(request, f'Settings for {setting.get_leave_type_display()} updated successfully')
+        except ValidationError as e:
+            messages.error(request, f'Error updating settings: {e}')
+
+        return redirect('leave_settings')
