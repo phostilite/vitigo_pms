@@ -20,6 +20,7 @@ from error_handling.views import handler403, handler404, handler500
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse_lazy
+from .models import Employee, Department
 from .forms import EmployeeCreationForm
 
 # Logger configuration
@@ -198,3 +199,94 @@ class NewEmployeeView(LoginRequiredMixin, UserPassesTestMixin, View):
                 return render(request, self.get_template_name(), {'form': form})
 
         return render(request, self.get_template_name(), {'form': form})
+
+class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('employees/employee_list.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        search_query = request.GET.get('search', '')
+        department_filter = request.GET.get('department', '')
+        status_filter = request.GET.get('status', '')
+
+        employees = Employee.objects.select_related('user', 'department', 'position').all()
+
+        # Apply filters
+        if search_query:
+            employees = employees.filter(
+                Q(user__first_name__icontains=search_query) |
+                Q(user__last_name__icontains=search_query) |
+                Q(employee_id__icontains=search_query)
+            )
+
+        if department_filter:
+            employees = employees.filter(department_id=department_filter)
+
+        if status_filter:
+            employees = employees.filter(employment_status=status_filter)
+
+        # Pagination
+        paginator = Paginator(employees, 10)
+        page = request.GET.get('page', 1)
+        try:
+            employees_page = paginator.page(page)
+        except (PageNotAnInteger, EmptyPage):
+            employees_page = paginator.page(1)
+
+        departments = Department.objects.filter(is_active=True)
+        employment_statuses = dict(Employee.EMPLOYMENT_STATUS)
+
+        context = {
+            'employees': employees_page,
+            'departments': departments,
+            'employment_statuses': employment_statuses,
+            'search_query': search_query,
+            'department_filter': department_filter,
+            'status_filter': status_filter
+        }
+
+        return render(request, self.get_template_name(), context)
+
+class DepartmentListView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('departments/department_list.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        search_query = request.GET.get('search', '')
+        status_filter = request.GET.get('status', '')
+
+        departments = Department.objects.annotate(
+            employee_count=Count('employees', filter=Q(employees__is_active=True))
+        )
+
+        # Apply filters
+        if search_query:
+            departments = departments.filter(
+                Q(name__icontains=search_query) |
+                Q(code__icontains=search_query)
+            )
+
+        if status_filter:
+            departments = departments.filter(is_active=(status_filter == 'active'))
+
+        # Pagination
+        paginator = Paginator(departments, 10)
+        page = request.GET.get('page', 1)
+        try:
+            departments_page = paginator.page(page)
+        except (PageNotAnInteger, EmptyPage):
+            departments_page = paginator.page(1)
+
+        context = {
+            'departments': departments_page,
+            'search_query': search_query,
+            'status_filter': status_filter,
+        }
+
+        return render(request, self.get_template_name(), context)
