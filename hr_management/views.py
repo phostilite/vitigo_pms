@@ -20,7 +20,7 @@ from error_handling.views import handler403, handler404, handler500
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse_lazy
-from .models import Employee, Department
+from .models import Employee, Department, Leave, Training, Grievance
 from .forms import EmployeeCreationForm, DepartmentForm
 
 # Logger configuration
@@ -315,3 +315,51 @@ class NewDepartmentView(LoginRequiredMixin, UserPassesTestMixin, View):
                 return render(request, self.get_template_name(), {'form': form})
         
         return render(request, self.get_template_name(), {'form': form})
+
+class LeaveListView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('leaves/leave_list.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        search_query = request.GET.get('search', '')
+        status_filter = request.GET.get('status', '')
+        type_filter = request.GET.get('type', '')
+
+        leaves = Leave.objects.select_related(
+            'employee__user', 
+            'employee__department'
+        ).all().order_by('-created_at')
+
+        # Apply filters
+        if search_query:
+            leaves = leaves.filter(
+                Q(employee__user__first_name__icontains=search_query) |
+                Q(employee__user__last_name__icontains=search_query) |
+                Q(employee__employee_id__icontains=search_query)
+            )
+
+        if status_filter:
+            leaves = leaves.filter(status=status_filter)
+
+        if type_filter:
+            leaves = leaves.filter(leave_type=type_filter)
+
+        # Pagination
+        paginator = Paginator(leaves, 10)
+        page = request.GET.get('page', 1)
+        try:
+            leaves_page = paginator.page(page)
+        except (PageNotAnInteger, EmptyPage):
+            leaves_page = paginator.page(1)
+
+        context = {
+            'leaves': leaves_page,
+            'search_query': search_query,
+            'status_filter': status_filter,
+            'type_filter': type_filter
+        }
+
+        return render(request, self.get_template_name(), context)
