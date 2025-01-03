@@ -19,6 +19,9 @@ from hr_management.models import Department, Employee
 from hr_management.forms import EmployeeCreationForm
 from hr_management.utils import get_template_path
 
+# Get user model
+User = get_user_model()
+
 # Initialize logger
 logger = logging.getLogger(__name__)
 
@@ -110,3 +113,59 @@ class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, View):
         }
 
         return render(request, self.get_template_name(), context)
+
+class BulkActionsView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('employees/bulk_actions.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        employees = Employee.objects.select_related('user', 'department', 'position').all()
+        departments = Department.objects.filter(is_active=True)
+        
+        context = {
+            'employees': employees,
+            'departments': departments,
+            'employment_statuses': dict(Employee.EMPLOYMENT_STATUS),
+        }
+        return render(request, self.get_template_name(), context)
+
+    def post(self, request):
+        action = request.POST.get('action')
+        employee_ids = request.POST.getlist('employee_ids')
+        
+        if not employee_ids:
+            messages.error(request, "No employees selected")
+            return redirect('employee_bulk_actions')
+            
+        try:
+            employees = Employee.objects.filter(id__in=employee_ids)
+            
+            if action == 'update_department':
+                department_id = request.POST.get('department')
+                if department_id:
+                    department = Department.objects.get(id=department_id)
+                    employees.update(department=department)
+                    messages.success(request, f"Updated department for {len(employees)} employees")
+                    
+            elif action == 'update_status':
+                status = request.POST.get('status')
+                if status in dict(Employee.EMPLOYMENT_STATUS):
+                    employees.update(employment_status=status)
+                    messages.success(request, f"Updated status for {len(employees)} employees")
+                    
+            elif action == 'deactivate':
+                employees.update(is_active=False)
+                User.objects.filter(employee_profile__in=employees).update(is_active=False)
+                messages.success(request, f"Deactivated {len(employees)} employees")
+                
+            else:
+                messages.error(request, "Invalid action")
+                
+        except Exception as e:
+            logger.error(f"Bulk action error: {str(e)}")
+            messages.error(request, "Error performing bulk action")
+            
+        return redirect('employee_bulk_actions')

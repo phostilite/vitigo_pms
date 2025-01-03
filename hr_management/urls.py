@@ -13,6 +13,7 @@ urlpatterns = [
     
     path('new-employee/', employee_views.NewEmployeeView.as_view(), name='new_employee'),
     path('employees/', employee_views.EmployeeListView.as_view(), name='employee_list'),
+    path('employees/bulk-actions/', employee_views.BulkActionsView.as_view(), name='employee_bulk_actions'),
     
     path('departments/', department_views.DepartmentListView.as_view(), name='department_list'),
     path('new-department/', department_views.NewDepartmentView.as_view(), name='new_department'),
