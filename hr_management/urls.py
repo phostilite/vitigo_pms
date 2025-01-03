@@ -11,4 +11,6 @@ urlpatterns = [
     path('new-department/', views.NewDepartmentView.as_view(), name='new_department'),
 
     path('leaves/', views.LeaveListView.as_view(), name='leave_list'),
+    
+    path('trainings/', views.TrainingListView.as_view(), name='training_list'),
 ]
