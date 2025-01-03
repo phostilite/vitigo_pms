@@ -19,7 +19,7 @@ from django.utils.timezone import timedelta
 # Local imports
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
-from hr_management.models import Training
+from hr_management.models import Training, Department, EmployeeSkill, Employee
 from hr_management.utils import get_template_path
 
 class TrainingListView(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -117,6 +117,51 @@ class TrainingScheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
             'prev_month': (datetime(year, month, 1) - timedelta(days=1)).strftime('%Y-%m'),
             'next_month': (datetime(year, month, last_day) + timedelta(days=1)).strftime('%Y-%m'),
             'today': timezone.now().date()
+        }
+
+        return render(request, self.get_template_name(), context)
+
+class SkillMatrixView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('trainings/skill_matrix.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        department_id = request.GET.get('department')
+        skill_filter = request.GET.get('skill')
+
+        # Get all departments for filtering
+        departments = Department.objects.filter(is_active=True)
+        
+        # Base queryset for employees
+        employees = Employee.objects.filter(is_active=True).select_related('department')
+        
+        if department_id:
+            employees = employees.filter(department_id=department_id)
+
+        # Get all unique skills
+        all_skills = EmployeeSkill.objects.values_list('skill_name', flat=True).distinct()
+        
+        # Create skill matrix data
+        skill_matrix = []
+        for employee in employees:
+            skills = {skill.skill_name: skill.proficiency_level for skill in employee.skills.all()}
+            
+            # Filter by skill if specified
+            if not skill_filter or skill_filter in skills:
+                skill_matrix.append({
+                    'employee': employee,
+                    'skills': skills
+                })
+
+        context = {
+            'departments': departments,
+            'all_skills': all_skills,
+            'skill_matrix': skill_matrix,
+            'selected_department': department_id,
+            'selected_skill': skill_filter
         }
 
         return render(request, self.get_template_name(), context)

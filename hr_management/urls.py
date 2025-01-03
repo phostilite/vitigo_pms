@@ -25,6 +25,7 @@ urlpatterns = [
     
     path('trainings/', training_views.TrainingListView.as_view(), name='training_list'),
     path('trainings/schedule/', training_views.TrainingScheduleView.as_view(), name='training_schedule'),
+    path('trainings/skill-matrix/', training_views.SkillMatrixView.as_view(), name='skill_matrix'),
 
     path('grievances/', grievance_views.GrievanceListView.as_view(), name='grievance_list'),
 ]
