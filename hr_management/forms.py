@@ -63,3 +63,27 @@ class EmployeeCreationForm(forms.ModelForm):
             raise forms.ValidationError("Passwords do not match")
 
         return cleaned_data
+
+class DepartmentForm(forms.ModelForm):
+    class Meta:
+        model = Department
+        fields = ['name', 'code', 'description', 'head', 'parent']
+        help_texts = {
+            'name': 'Full name of the department',
+            'code': 'Unique identifier code (3-5 characters)',
+            'description': 'Detailed description of the department\'s role and responsibilities',
+            'head': 'Employee who will lead this department',
+            'parent': 'Parent department if this is a sub-department'
+        }
+
+    def clean_code(self):
+        code = self.cleaned_data.get('code')
+        if code:
+            code = code.upper()
+            # Check if code exists (excluding current instance in case of update)
+            exists = Department.objects.filter(code=code)
+            if self.instance:
+                exists = exists.exclude(pk=self.instance.pk)
+            if exists.exists():
+                raise forms.ValidationError("This department code already exists")
+        return code

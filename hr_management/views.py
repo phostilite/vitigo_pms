@@ -21,7 +21,7 @@ from error_handling.views import handler403, handler404, handler500
 from django.contrib.auth import get_user_model
 from django.urls import reverse_lazy
 from .models import Employee, Department
-from .forms import EmployeeCreationForm
+from .forms import EmployeeCreationForm, DepartmentForm
 
 # Logger configuration
 logger = logging.getLogger(__name__)
@@ -290,3 +290,28 @@ class DepartmentListView(LoginRequiredMixin, UserPassesTestMixin, View):
         }
 
         return render(request, self.get_template_name(), context)
+
+class NewDepartmentView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('departments/new_department.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        form = DepartmentForm()
+        return render(request, self.get_template_name(), {'form': form})
+
+    def post(self, request):
+        form = DepartmentForm(request.POST)
+        if form.is_valid():
+            try:
+                department = form.save()
+                messages.success(request, "Department created successfully")
+                return redirect('department_list')
+            except Exception as e:
+                logger.error(f"Error creating department: {str(e)}")
+                messages.error(request, "Error creating department")
+                return render(request, self.get_template_name(), {'form': form})
+        
+        return render(request, self.get_template_name(), {'form': form})
