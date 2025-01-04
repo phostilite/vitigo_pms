@@ -623,3 +623,35 @@ class EmployeeSkill(models.Model):
 
     def __str__(self):
         return f"{self.skill_name} - {self.employee.user.get_full_name()}"
+
+class Notice(models.Model):
+    """HR notices and announcements"""
+    PRIORITY_CHOICES = [
+        ('HIGH', 'High Priority'),
+        ('MEDIUM', 'Medium Priority'),
+        ('LOW', 'Low Priority')
+    ]
+
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='MEDIUM')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_notices'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    expiry_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['priority']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return self.title

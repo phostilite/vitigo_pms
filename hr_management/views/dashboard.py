@@ -13,6 +13,7 @@ from django.views import View
 # Local imports
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
+from hr_management.models import Notice
 from hr_management.utils import get_template_path
 
 # Initialize logger
@@ -116,6 +117,14 @@ class HRManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             logger.error(f"Error getting leave stats: {str(e)}")
             return {}
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['important_notices'] = Notice.objects.filter(
+            is_active=True,
+            expiry_date__gte=timezone.now().date()
+        ).order_by('-priority', '-created_at')[:5]
+        return context
 
     def get(self, request):
         try:

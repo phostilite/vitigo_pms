@@ -7,7 +7,8 @@ from .views import (
     trainings as training_views,
     grievances as grievance_views,
     performance as performance_views,
-    documents as document_views
+    documents as document_views,
+    notices as notice_views
 )
 
 urlpatterns = [
@@ -35,4 +36,6 @@ urlpatterns = [
 
     path('documents/', document_views.DocumentListView.as_view(), name='document_list'),
     path('documents/upload/', document_views.DocumentUploadView.as_view(), name='document_upload'),
+
+    path('notices/', notice_views.NoticeListView.as_view(), name='notice_list'),
 ]
