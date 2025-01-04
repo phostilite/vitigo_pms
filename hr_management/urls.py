@@ -38,4 +38,5 @@ urlpatterns = [
     path('documents/upload/', document_views.DocumentUploadView.as_view(), name='document_upload'),
 
     path('notices/', notice_views.NoticeListView.as_view(), name='notice_list'),
+    path('notices/new/', notice_views.NoticeCreateView.as_view(), name='notice_create'),
 ]

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Employee, Department, Position, Document
+from .models import Employee, Department, Position, Document, Notice
 
 User = get_user_model()
 
@@ -110,3 +110,24 @@ class DocumentUploadForm(forms.ModelForm):
             if file.size > 5 * 1024 * 1024:  # 5MB
                 raise forms.ValidationError("File size must be no more than 5MB")
         return file
+
+class NoticeForm(forms.ModelForm):
+    class Meta:
+        model = Notice
+        fields = ['title', 'content', 'priority', 'expiry_date']
+        widgets = {
+            'expiry_date': forms.DateInput(attrs={'type': 'date'}),
+            'content': forms.Textarea(attrs={'rows': 4}),
+        }
+        help_texts = {
+            'title': 'Enter a clear and concise title for the notice',
+            'content': 'Provide the complete notice content',
+            'priority': 'Select the importance level of this notice',
+            'expiry_date': 'Set an expiry date for the notice (optional)'
+        }
+
+    def clean_expiry_date(self):
+        expiry_date = self.cleaned_data.get('expiry_date')
+        if expiry_date and expiry_date < timezone.now().date():
+            raise forms.ValidationError("Expiry date cannot be in the past")
+        return expiry_date

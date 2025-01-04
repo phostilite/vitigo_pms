@@ -47,7 +47,7 @@
                     <p class="mt-1 text-sm text-gray-600">View and manage HR announcements and notices</p>
                 </div>
                 {% if perms.hr_management.add_notice %}
-                <a href="#" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
+                <a href="{% url 'notice_create' %}" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
                     <i class="mr-2 fas fa-plus"></i> New Notice
                 </a>
                 {% endif %}
