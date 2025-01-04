@@ -5,7 +5,8 @@ from .views import (
     employees as employee_views,
     leaves as leave_views,
     trainings as training_views,
-    grievances as grievance_views
+    grievances as grievance_views,
+    performance as performance_views
 )
 
 urlpatterns = [
@@ -28,4 +29,6 @@ urlpatterns = [
     path('trainings/skill-matrix/', training_views.SkillMatrixView.as_view(), name='skill_matrix'),
 
     path('grievances/', grievance_views.GrievanceListView.as_view(), name='grievance_list'),
+    
+    path('performance/reviews/', performance_views.PerformanceListView.as_view(), name='performance_reviews'),
 ]
