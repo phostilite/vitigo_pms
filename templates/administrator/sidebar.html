@@ -162,6 +162,14 @@
              </a>
           </li>
           {% endif %}
+          {% if request.user|has_module_access:'asset_management' %}
+          <li>
+             <a href="{% url 'asset_dashboard' %}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+                <i class="fa-solid fa-box-archive w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900"></i>
+                <span class="ms-3">Asset Management</span>
+             </a>
+          </li>
+          {% endif %}
        </ul>
 
        <!-- Additional Services -->
