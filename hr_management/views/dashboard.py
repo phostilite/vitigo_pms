@@ -13,7 +13,7 @@ from django.views import View
 # Local imports
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
-from hr_management.models import Notice
+from hr_management.models import Notice, TrainingParticipant
 from hr_management.utils import get_template_path
 
 # Initialize logger
@@ -43,14 +43,21 @@ class HRManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'departments': Department.objects.filter(is_active=True).count(),
                 'pending_leaves': Leave.objects.filter(status='PENDING').count(),
                 'active_trainings': Training.objects.filter(
-                    status='IN_PROGRESS',
-                    start_date__lte=current_date,
-                    end_date__gte=current_date
+                    Q(status='IN_PROGRESS') 
                 ).count(),
                 'open_grievances': Grievance.objects.filter(
                     status__in=['OPEN', 'IN_PROGRESS']
                 ).count(),
             }
+            
+            # Add debug logging
+            logger.debug(f"Active trainings query result: {stats['active_trainings']}")
+            logger.debug(f"Current date for comparison: {current_date}")
+            
+            # Log details of all IN_PROGRESS trainings
+            in_progress_trainings = Training.objects.filter(status='IN_PROGRESS')
+            logger.debug(f"All IN_PROGRESS trainings: {list(in_progress_trainings.values('id', 'title', 'start_date', 'end_date', 'status'))}")
+            
             return stats
         except Exception as e:
             logger.error(f"Error getting dashboard stats: {str(e)}")
@@ -118,6 +125,118 @@ class HRManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error getting leave stats: {str(e)}")
             return {}
 
+    def get_upcoming_reviews(self):
+        """Get upcoming performance reviews in the next 30 days"""
+        try:
+            from hr_management.models import PerformanceReview
+            current_date = timezone.now().date()
+            thirty_days_later = current_date + timezone.timedelta(days=30)
+            
+            return PerformanceReview.objects.filter(
+                review_date__range=[current_date, thirty_days_later],
+                status='DRAFT'
+            ).select_related('employee').order_by('review_date')[:5]
+        except Exception as e:
+            logger.error(f"Error getting upcoming reviews: {str(e)}")
+            return []
+
+    def get_expiring_documents(self):
+        """Get documents expiring in the next 30 days"""
+        try:
+            from hr_management.models import Document
+            current_date = timezone.now().date()
+            thirty_days_later = current_date + timezone.timedelta(days=30)
+            
+            documents = Document.objects.filter(
+                expiry_date__range=[current_date, thirty_days_later]
+            ).select_related('employee').order_by('expiry_date')
+            
+            # Add days_until_expiry to each document
+            for doc in documents:
+                doc.days_until_expiry = (doc.expiry_date - current_date).days
+            
+            return documents[:5]
+        except Exception as e:
+            logger.error(f"Error getting expiring documents: {str(e)}")
+            return []
+
+    def get_key_metrics(self):
+        """Calculate key performance metrics"""
+        try:
+            from hr_management.models import Training, Employee, PerformanceReview
+            from django.db.models import Avg
+            current_date = timezone.now().date()
+            thirty_days_ago = current_date - timezone.timedelta(days=30)
+
+            # Training completion rate
+            total_trainings = TrainingParticipant.objects.filter(
+                training__end_date__lte=current_date
+            ).count()
+            completed_trainings = TrainingParticipant.objects.filter(
+                training__end_date__lte=current_date,
+                status='COMPLETED'
+            ).count()
+            training_completion_rate = (completed_trainings / total_trainings * 100) if total_trainings > 0 else 0
+
+            # Average time to hire (last 30 days)
+            recent_hires = Employee.objects.filter(
+                join_date__gte=thirty_days_ago
+            ).aggregate(
+                avg_days=Avg(models.F('join_date') - models.F('created_at'))
+            )
+            avg_time_to_hire = recent_hires['avg_days'].days if recent_hires['avg_days'] else 0
+
+            # Employee satisfaction (from performance reviews)
+            recent_satisfaction = PerformanceReview.objects.filter(
+                review_date__gte=thirty_days_ago
+            ).aggregate(
+                avg_satisfaction=Avg(
+                    (models.F('technical_skills') + 
+                     models.F('communication') + 
+                     models.F('teamwork') + 
+                     models.F('productivity') + 
+                     models.F('reliability')) / 5.0
+                )
+            )
+            employee_satisfaction = round(recent_satisfaction['avg_satisfaction'] or 0, 1)
+
+            # Retention rate calculation
+            total_employees_start = Employee.objects.filter(
+                join_date__lte=thirty_days_ago,
+                is_active=True
+            ).count()
+            employees_left = Employee.objects.filter(
+                end_date__range=[thirty_days_ago, current_date]
+            ).count()
+            retention_rate = ((total_employees_start - employees_left) / total_employees_start * 100) if total_employees_start > 0 else 100
+
+            return {
+                'training_completion_rate': training_completion_rate,
+                'avg_time_to_hire': avg_time_to_hire,
+                'employee_satisfaction': employee_satisfaction,
+                'retention_rate': retention_rate,
+                # Include month-over-month changes
+                'training_rate_change': 12.0,  # Example: +12% improvement
+                'time_to_hire_change': 3,      # Example: +3 days (negative change)
+                'satisfaction_change': 5.0,     # Example: +5% improvement
+                'retention_rate_change': 2.0    # Example: +2% improvement
+            }
+        except Exception as e:
+            logger.error(f"Error calculating key metrics: {str(e)}")
+            return {}
+
+    def get_important_notices(self):
+        """Get active important notices"""
+        try:
+            current_date = timezone.now().date()
+            return Notice.objects.filter(
+                is_active=True,
+                expiry_date__gte=current_date
+            ).order_by('-priority', '-created_at')[:3]
+        except Exception as e:
+            logger.error(f"Error getting important notices: {str(e)}")
+            return []
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['important_notices'] = Notice.objects.filter(
@@ -138,6 +257,10 @@ class HRManagementView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'department_stats': self.get_department_stats(),
                 'recent_activities': self.get_recent_activities(),
                 'leave_stats': self.get_leave_stats(),
+                'upcoming_reviews': self.get_upcoming_reviews(),
+                'expiring_documents': self.get_expiring_documents(),
+                'key_metrics': self.get_key_metrics(),
+                'important_notices': self.get_important_notices(),
                 'user_role': request.user.role.name if request.user.role else None,
                 'module_name': 'HR Management',
                 'page_title': 'HR Dashboard',
