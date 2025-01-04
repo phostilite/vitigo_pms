@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Employee, Department, Position
+from .models import Employee, Department, Position, Document
 
 User = get_user_model()
 
@@ -87,3 +87,26 @@ class DepartmentForm(forms.ModelForm):
             if exists.exists():
                 raise forms.ValidationError("This department code already exists")
         return code
+
+class DocumentUploadForm(forms.ModelForm):
+    class Meta:
+        model = Document
+        fields = ['document_type', 'title', 'description', 'file', 'expiry_date']
+        widgets = {
+            'expiry_date': forms.DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+        help_texts = {
+            'document_type': 'Select the type of document you are uploading',
+            'title': 'Enter a descriptive title for the document',
+            'description': 'Provide any additional details about the document',
+            'file': 'Upload document in PDF, JPG, JPEG, or PNG format (Max 5MB)',
+            'expiry_date': 'Set expiry date if applicable (optional)'
+        }
+
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if file:
+            if file.size > 5 * 1024 * 1024:  # 5MB
+                raise forms.ValidationError("File size must be no more than 5MB")
+        return file

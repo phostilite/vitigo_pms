@@ -247,6 +247,41 @@ class Leave(models.Model):
     def clean(self):
         if self.end_date < self.start_date:
             raise ValidationError("End date cannot be earlier than start date")
+        
+class LeaveSettings(models.Model):
+    """Leave type configuration and policies"""
+    leave_type = models.CharField(max_length=20, choices=Leave.LEAVE_TYPE_CHOICES, unique=True)
+    annual_allowance = models.PositiveIntegerField(
+        help_text="Number of days allowed per year"
+    )
+    carry_forward_limit = models.PositiveIntegerField(
+        default=0,
+        help_text="Maximum days that can be carried forward to next year"
+    )
+    min_service_days = models.PositiveIntegerField(
+        default=0,
+        help_text="Minimum service days required before leave type becomes available"
+    )
+    requires_approval = models.BooleanField(default=True)
+    requires_documentation = models.BooleanField(default=False)
+    documentation_info = models.TextField(
+        blank=True,
+        help_text="Information about required documentation"
+    )
+    notice_period_days = models.PositiveIntegerField(
+        default=0,
+        help_text="Minimum notice period required in days"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Leave Settings"
+        ordering = ['leave_type']
+
+    def __str__(self):
+        return f"{self.get_leave_type_display()} Settings"
 
 class PayrollPeriod(models.Model):
     """Payroll periods configuration"""
@@ -467,6 +502,12 @@ class Document(models.Model):
     verified_at = models.DateTimeField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    uploaded_by = models.ForeignKey(
+        User,  # Add this field
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_documents'
+    )
 
     class Meta:
         indexes = [
@@ -582,38 +623,3 @@ class EmployeeSkill(models.Model):
 
     def __str__(self):
         return f"{self.skill_name} - {self.employee.user.get_full_name()}"
-
-class LeaveSettings(models.Model):
-    """Leave type configuration and policies"""
-    leave_type = models.CharField(max_length=20, choices=Leave.LEAVE_TYPE_CHOICES, unique=True)
-    annual_allowance = models.PositiveIntegerField(
-        help_text="Number of days allowed per year"
-    )
-    carry_forward_limit = models.PositiveIntegerField(
-        default=0,
-        help_text="Maximum days that can be carried forward to next year"
-    )
-    min_service_days = models.PositiveIntegerField(
-        default=0,
-        help_text="Minimum service days required before leave type becomes available"
-    )
-    requires_approval = models.BooleanField(default=True)
-    requires_documentation = models.BooleanField(default=False)
-    documentation_info = models.TextField(
-        blank=True,
-        help_text="Information about required documentation"
-    )
-    notice_period_days = models.PositiveIntegerField(
-        default=0,
-        help_text="Minimum notice period required in days"
-    )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name_plural = "Leave Settings"
-        ordering = ['leave_type']
-
-    def __str__(self):
-        return f"{self.get_leave_type_display()} Settings"
