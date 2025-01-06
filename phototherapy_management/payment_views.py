@@ -107,3 +107,36 @@ class PaymentListView(LoginRequiredMixin, View):
         )
 
         return render(request, template_path, context)
+
+class PaymentDetailView(LoginRequiredMixin, View):
+    def get(self, request, payment_id):
+        try:
+            payment = PhototherapyPayment.objects.select_related(
+                'plan__patient',
+                'session',
+                'recorded_by'
+            ).get(id=payment_id)
+
+            context = {
+                'payment': payment,
+                'plan': payment.plan,
+                'patient': payment.plan.patient,
+                'session': payment.session,
+                'recorded_by': payment.recorded_by
+            }
+
+            template_path = get_template_path(
+                'payment_detail.html',
+                request.user.role,
+                'phototherapy_management'
+            )
+
+            return render(request, template_path, context)
+            
+        except PhototherapyPayment.DoesNotExist:
+            messages.error(request, "Payment not found")
+            return redirect('payment_list')
+        except Exception as e:
+            logger.error(f"Error viewing payment details: {str(e)}")
+            messages.error(request, "An error occurred while loading payment details")
+            return redirect('payment_list')

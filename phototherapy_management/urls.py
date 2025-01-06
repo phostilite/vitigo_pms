@@ -92,4 +92,5 @@ urlpatterns = [
 
     # Add these new payment-related URLs
     path('payments/', pmv.PaymentListView.as_view(), name='payment_list'),
+    path('payments/<int:payment_id>/', pmv.PaymentDetailView.as_view(), name='payment_detail'),
 ]
