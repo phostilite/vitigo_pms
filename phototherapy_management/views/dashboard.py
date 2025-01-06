@@ -25,7 +25,7 @@ from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 from patient_management.models import Patient
-from .models import (
+from phototherapy_management.models import (
     PhototherapyDevice,
     PhototherapyPlan, 
     PhototherapyProtocol,
@@ -36,8 +36,8 @@ from .models import (
     PatientRFIDCard,
     PhototherapyProgress
 )
-from .forms import TreatmentPlanForm, PhototherapyTypeForm
-from .utils import get_template_path
+from phototherapy_management.forms import TreatmentPlanForm, PhototherapyTypeForm
+from phototherapy_management.utils import get_template_path
 
 # Configure logging and user model
 User = get_user_model()

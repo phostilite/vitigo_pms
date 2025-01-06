@@ -15,8 +15,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 
 # Local application imports
-from .models import PatientRFIDCard, PhototherapyPlan, PhototherapySession
-from .utils import get_template_path
+from phototherapy_management.models import PatientRFIDCard, PhototherapyPlan, PhototherapySession
+from phototherapy_management.utils import get_template_path
 from error_handling.views import handler500, handler403
 from access_control.permissions import PermissionManager
 

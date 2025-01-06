@@ -9,8 +9,8 @@ import logging
 from django.contrib import messages
 from django.shortcuts import redirect
 
-from .models import PhototherapyPayment
-from .utils import get_template_path
+from phototherapy_management.models import PhototherapyPayment
+from phototherapy_management.utils import get_template_path
 
 logger = logging.getLogger(__name__)
 

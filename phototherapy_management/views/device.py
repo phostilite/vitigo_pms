@@ -16,8 +16,8 @@ from django.core.exceptions import ValidationError
 # Local/application imports
 from error_handling.views import handler500
 from phototherapy_management.models import DeviceMaintenance, PhototherapyDevice
-from .utils import get_template_path
-from .forms import PhototherapyDeviceForm, ScheduleMaintenanceForm
+from phototherapy_management.utils import get_template_path
+from phototherapy_management.forms import PhototherapyDeviceForm, ScheduleMaintenanceForm
 
 # Configure logger  
 logger = logging.getLogger(__name__)

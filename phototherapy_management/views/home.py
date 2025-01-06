@@ -7,9 +7,9 @@ from django.utils import timezone
 from django.views.generic import ListView
 from datetime import timedelta
 import logging
-from .models import HomePhototherapyLog, PhototherapyPlan
+from phototherapy_management.models import HomePhototherapyLog, PhototherapyPlan
 from access_control.permissions import PermissionManager
-from .utils import get_template_path
+from phototherapy_management.utils import get_template_path
 from error_handling.views import handler403
 from django.db import models
 
@@ -36,7 +36,7 @@ class HomeTherapyLogsView(LoginRequiredMixin, ListView):
     def get(self, request, *args, **kwargs):
         export_format = request.GET.get('export')
         if export_format in ['excel', 'pdf']:
-            from .export_views import HomeTherapyLogsExportView
+            from .export import HomeTherapyLogsExportView
             export_view = HomeTherapyLogsExportView()
             return export_view.get(request)
         return super().get(request, *args, **kwargs)

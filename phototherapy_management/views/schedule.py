@@ -20,9 +20,9 @@ from phototherapy_management.models import (
     PhototherapyPlan,
     PhototherapySession,
 )
-from .forms import ScheduleSessionForm
-from .utils import get_template_path
-from .models import ProblemReport
+from phototherapy_management.forms import ScheduleSessionForm
+from phototherapy_management.utils import get_template_path
+from phototherapy_management.models import ProblemReport
 
 # Configure logging
 logger = logging.getLogger(__name__)

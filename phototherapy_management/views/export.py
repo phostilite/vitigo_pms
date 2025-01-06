@@ -19,7 +19,7 @@ from django.shortcuts import redirect
 from datetime import timedelta
 
 from access_control.permissions import PermissionManager
-from .models import (
+from phototherapy_management.models import (
     PhototherapyPlan, PhototherapySession, PhototherapyDevice,
     PhototherapyType, PhototherapyPayment, PhototherapyProgress, PhototherapyProtocol, ProblemReport, DeviceMaintenance, PatientRFIDCard
 )
@@ -429,7 +429,7 @@ class HomeTherapyLogsExportView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def gather_logs_data(self, request):
         """Gather all home therapy logs data with filters"""
-        from .home_views import HomeTherapyLogsView
+        from .home import HomeTherapyLogsView
         
         # Reuse the filtering logic from HomeTherapyLogsView
         view = HomeTherapyLogsView()

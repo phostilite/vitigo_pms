@@ -1,34 +1,34 @@
 from django.urls import path
-from . import (
-    views as v, 
-    device_views as dv,
-    protocol_views as pv,
-    schedule_views as sv,
-    report_views as rv,
-    rfid_views as rf,
-    problem_report_views as pr,
-    reminder_views as rm,
-    export_views as ev,
-    home_views as hv,
-    payment_views as pmv  # Add this import
+from .views import (
+    dashboard as d, 
+    device as dv,
+    protocol as pv,
+    schedule as sv,
+    report as rv,
+    rfid as rf,
+    problem_report as pr,
+    reminder as rm,
+    export as ev,
+    home as hv,
+    payment as pmv 
 )
 
 urlpatterns = [
-    path('', v.PhototherapyManagementView.as_view(), name='phototherapy_management'),
-    path('new-treatment-plan/', v.NewTreatmentPlanView.as_view(), name='new_treatment_plan'),
-    path('treatment-plans/', v.TreatmentPlanListView.as_view(), name='treatment_plan_list'),
-    path('therapy-types/', v.PhototherapyTypeListView.as_view(), name='therapy_types_dashboard'),
-    path('add-therapy-type/', v.AddPhototherapyTypeView.as_view(), name='add_therapy_type'),
-    path('therapy-types/<int:pk>/edit/', v.EditPhototherapyTypeView.as_view(), name='edit_therapy_type'),
-    path('therapy-types/<int:pk>/delete/', v.DeletePhototherapyTypeView.as_view(), name='delete_therapy_type'),
+    path('', d.PhototherapyManagementView.as_view(), name='phototherapy_management'),
+    path('new-treatment-plan/', d.NewTreatmentPlanView.as_view(), name='new_treatment_plan'),
+    path('treatment-plans/', d.TreatmentPlanListView.as_view(), name='treatment_plan_list'),
+    path('therapy-types/', d.PhototherapyTypeListView.as_view(), name='therapy_types_dashboard'),
+    path('add-therapy-type/', d.AddPhototherapyTypeView.as_view(), name='add_therapy_type'),
+    path('therapy-types/<int:pk>/edit/', d.EditPhototherapyTypeView.as_view(), name='edit_therapy_type'),
+    path('therapy-types/<int:pk>/delete/', d.DeletePhototherapyTypeView.as_view(), name='delete_therapy_type'),
     path('therapy-type/<int:type_id>/details/', 
-         v.get_therapy_type_details, 
+         d.get_therapy_type_details, 
          name='therapy_type_details'),
     path('treatment-plans/export/', ev.TreatmentPlanExportView.as_view(), name='export_treatment_plans'),
-    path('treatment-plans/<int:pk>/', v.TreatmentPlanDetailView.as_view(), name='treatment_plan_detail'),
-    path('treatment-plans/<int:pk>/activate/', v.ActivateTreatmentPlanView.as_view(), name='activate_treatment_plan'),
-    path('treatment-plans/<int:pk>/deactivate/', v.DeactivateTreatmentPlanView.as_view(), name='deactivate_treatment_plan'),
-    path('treatment-plans/<int:pk>/edit/', v.EditTreatmentPlanView.as_view(), name='edit_treatment_plan'),
+    path('treatment-plans/<int:pk>/', d.TreatmentPlanDetailView.as_view(), name='treatment_plan_detail'),
+    path('treatment-plans/<int:pk>/activate/', d.ActivateTreatmentPlanView.as_view(), name='activate_treatment_plan'),
+    path('treatment-plans/<int:pk>/deactivate/', d.DeactivateTreatmentPlanView.as_view(), name='deactivate_treatment_plan'),
+    path('treatment-plans/<int:pk>/edit/', d.EditTreatmentPlanView.as_view(), name='edit_treatment_plan'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),
@@ -37,7 +37,7 @@ urlpatterns = [
     path('devices/edit/<int:device_id>/', dv.EditDeviceView.as_view(), name='edit_device'),
     path('devices/<int:pk>/delete/', dv.DeleteDeviceView.as_view(), name='delete_device'),
     path('device/<int:device_id>/details/', 
-         v.get_device_details, 
+         d.get_device_details, 
          name='device_details'),
 
     path('protocols/', pv.ProtocolManagementView.as_view(), name='protocol_management'),
@@ -47,7 +47,7 @@ urlpatterns = [
     path('protocols/<int:protocol_id>/', pv.ProtocolDetailView.as_view(), name='protocol_detail'),
     path('protocols/<int:protocol_id>/activate/', pv.ActivateProtocolView.as_view(), name='activate_protocol'),
     path('protocols/<int:protocol_id>/deactivate/', pv.DeactivateProtocolView.as_view(), name='deactivate_protocol'),
-    path('protocol/<int:protocol_id>/details/', v.get_protocol_details, name='protocol_details'),
+    path('protocol/<int:protocol_id>/details/', d.get_protocol_details, name='protocol_details'),
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
     path('schedule-session/', sv.ScheduleSessionView.as_view(), name='schedule_session'),
@@ -83,11 +83,11 @@ urlpatterns = [
     path('home-therapy/logs/', hv.HomeTherapyLogsView.as_view(), name='home_therapy_logs'),
 
     path('treatment-plan/<int:plan_id>/details/', 
-         v.get_treatment_plan_details, 
+         d.get_treatment_plan_details, 
          name='treatment_plan_details'),
 
     path('patient/<int:patient_id>/details/', 
-         v.get_patient_details, 
+         d.get_patient_details, 
          name='patient_details'),
 
     # Add these new payment-related URLs
