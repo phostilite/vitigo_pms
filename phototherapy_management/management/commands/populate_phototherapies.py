@@ -194,22 +194,48 @@ class Command(BaseCommand):
 
     def _create_sessions(self, plans, devices):
         sessions = []
-        for plan in plans:
-            for i in range(random.randint(5, 15)):
-                session = PhototherapySession.objects.create(
-                    plan=plan,
-                    session_number=i+1,
-                    scheduled_date=fake.date_between(start_date='-3m'),
-                    scheduled_time=fake.time(),
-                    device=random.choice(devices),
-                    planned_dose=random.uniform(100, 500),
-                    actual_dose=random.uniform(100, 500),
-                    duration_seconds=random.randint(60, 300),
-                    status=random.choice(['COMPLETED', 'MISSED', 'SCHEDULED']),
-                    problem_severity='NONE'
-                )
-                sessions.append(session)
-        return sessions
+        try:
+            # Get eligible staff members first
+            excluded_roles = [
+                'PATIENT', 'HR_STAFF', 'INVENTORY_MANAGER', 'BILLING_STAFF',
+                'LAB_TECHNICIAN', 'PHARMACIST', 'RECEPTIONIST', 'MANAGER'
+            ]
+            eligible_staff = User.objects.filter(
+                is_active=True
+            ).exclude(
+                role__name__in=excluded_roles
+            ).select_related('role')
+
+            if not eligible_staff.exists():
+                self.stdout.write(self.style.WARNING('No eligible staff found to administer sessions'))
+                return []
+
+            for plan in plans:
+                for i in range(random.randint(5, 15)):
+                    session_date = fake.date_between(start_date='-3m')
+                    session = PhototherapySession.objects.create(
+                        plan=plan,
+                        session_number=i+1,
+                        scheduled_date=session_date,
+                        scheduled_time=fake.time(),
+                        device=random.choice(devices),
+                        planned_dose=random.uniform(100, 500),
+                        actual_dose=random.uniform(100, 500),
+                        duration_seconds=random.randint(60, 300),
+                        status=random.choice(['COMPLETED', 'MISSED', 'SCHEDULED']),
+                        problem_severity='NONE',
+                        administered_by=random.choice(eligible_staff),  # Assign from filtered staff
+                        actual_date=session_date  # Set actual_date for completed sessions
+                    )
+                    sessions.append(session)
+                    self.stdout.write(f'Created session {session.session_number} for plan {plan.id} with administrator {session.administered_by.get_full_name()}')
+
+            return sessions
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(f'Error creating sessions: {str(e)}')
+            )
+            return []
 
     def _create_home_logs(self, plans):
         for plan in plans:
