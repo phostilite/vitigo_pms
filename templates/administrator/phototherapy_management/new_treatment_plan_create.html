@@ -258,17 +258,38 @@
                 <div class="col-span-2">
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-sm font-medium text-gray-800">Quick Select Package</h3>
-                            <div class="flex items-center space-x-4">
-                                <div class="relative">
-                                    <input type="text" 
-                                           id="package-search"
-                                           placeholder="Search packages..."
-                                           class="w-64 rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500">
-                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                        <i class="fas fa-search text-gray-400"></i>
+                            <div class="flex items-center">
+                                <h3 class="text-sm font-medium text-gray-800">Quick Select Package</h3>
+                                <div class="relative ml-2 group">
+                                    <i class="fas fa-info-circle text-gray-400 hover:text-blue-500 cursor-help text-lg"></i>
+                                    <div class="hidden group-hover:block absolute left-0 top-6 w-96 p-4 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                                        <div class="text-sm text-gray-600 space-y-2">
+                                            <p class="font-medium text-gray-700 mb-2">About Treatment Packages</p>
+                                            <p>Treatment packages are pre-configured plans that include:</p>
+                                            <ul class="list-disc pl-4 space-y-1">
+                                                <li>Pre-set number of treatment sessions</li>
+                                                <li>Fixed total cost with potential savings</li>
+                                                <li>Specific therapy type recommendations</li>
+                                            </ul>
+                                            <p class="mt-2">How to use:</p>
+                                            <ol class="list-decimal pl-4 space-y-1">
+                                                <li>Select a package that matches patient needs</li>
+                                                <li>Review the session count and cost details</li>
+                                                <li>Package will auto-fill relevant form fields</li>
+                                                <li>Modify values if needed before saving</li>
+                                            </ol>
+                                            <div class="mt-2 p-2 bg-blue-50 rounded">
+                                                <p class="text-blue-700 text-xs">
+                                                    <i class="fas fa-lightbulb mr-1"></i>
+                                                    Featured packages are recommended based on common treatment patterns
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="absolute -top-2 left-2 w-4 h-4 bg-white border-t border-l border-gray-200 transform rotate-45"></div>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="flex items-center space-x-4">
                                 <a href="{% url 'create_package' %}" 
                                    class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none">
                                     <i class="fas fa-plus-circle mr-1"></i>Create New Package
@@ -686,47 +707,6 @@
             additionalPackages.classList.add('hidden');
             this.innerHTML = '<i class="fas fa-plus-circle mr-1"></i>Show more packages';
         }
-    });
-
-    // Package filtering and search
-    document.addEventListener('DOMContentLoaded', function() {
-        const packageSearch = document.getElementById('package-search');
-        const packageRows = document.querySelectorAll('.package-row');
-        const filterButtons = document.querySelectorAll('.package-filter');
-
-        // Search functionality
-        packageSearch.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            packageRows.forEach(row => {
-                const packageName = row.querySelector('td:first-child').textContent.toLowerCase();
-                if (packageName.includes(searchTerm)) {
-                    row.classList.remove('hidden');
-                } else {
-                    row.classList.add('hidden');
-                }
-            });
-        });
-
-        // Filter functionality
-        filterButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const filter = this.dataset.filter;
-                
-                // Update active state of filter buttons
-                filterButtons.forEach(btn => btn.classList.remove('active', 'bg-blue-500', 'text-white'));
-                this.classList.add('active', 'bg-blue-500', 'text-white');
-                
-                packageRows.forEach(row => {
-                    if (filter === 'all') {
-                        row.classList.remove('hidden');
-                    } else if (filter === 'featured') {
-                        row.classList.toggle('hidden', !row.classList.contains('featured'));
-                    } else {
-                        row.classList.toggle('hidden', !row.classList.contains(`type-${filter}`));
-                    }
-                });
-            });
-        });
     });
 
     // Update package selection function
