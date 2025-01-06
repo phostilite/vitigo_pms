@@ -899,4 +899,23 @@ def get_patient_details(request, patient_id):
         logger.error(f"Error fetching patient details: {str(e)}")
         return JsonResponse({'error': 'Error fetching patient details'}, status=500)
 
+def get_therapy_type_details(request, type_id):
+    """API endpoint for fetching phototherapy type details"""
+    try:
+        therapy_type = PhototherapyType.objects.get(id=type_id)
+        active_protocols = therapy_type.phototherapyprotocol_set.filter(is_active=True).count()
+        
+        return JsonResponse({
+            'therapy_type': therapy_type.get_therapy_type_display(),
+            'priority': therapy_type.get_priority_display(),
+            'requires_rfid': therapy_type.requires_rfid,
+            'active_protocols': active_protocols,
+            'description': therapy_type.description
+        })
+    except PhototherapyType.DoesNotExist:
+        return JsonResponse({'error': 'Phototherapy type not found'}, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching therapy type details: {str(e)}")
+        return JsonResponse({'error': 'Error fetching details'}, status=500)
+
 
