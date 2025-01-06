@@ -10,7 +10,8 @@ from .views import (
     reminder as rm,
     export as ev,
     home as hv,
-    payment as pmv 
+    payment as pmv,
+    packages as pm, 
 )
 
 urlpatterns = [
@@ -29,6 +30,8 @@ urlpatterns = [
     path('treatment-plans/<int:pk>/activate/', d.ActivateTreatmentPlanView.as_view(), name='activate_treatment_plan'),
     path('treatment-plans/<int:pk>/deactivate/', d.DeactivateTreatmentPlanView.as_view(), name='deactivate_treatment_plan'),
     path('treatment-plans/<int:pk>/edit/', d.EditTreatmentPlanView.as_view(), name='edit_treatment_plan'),
+
+    path('packages/', pm.PhototherapyPackagesListView.as_view(), name='package_list'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),
