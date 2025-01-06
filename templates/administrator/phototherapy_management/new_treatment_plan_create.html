@@ -14,7 +14,7 @@
     </nav>
 
     <!-- Page Header -->
-    <div class="mb-6 flex justify-between items-center">
+    <div class="flex justify-between items-center">
         <div class="flex items-center">
             <h1 class="text-2xl font-bold text-gray-800">New Treatment Plan</h1>
             <div class="relative ml-2 group">
@@ -103,43 +103,46 @@
 
             <!-- Form Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="{{ form.patient.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Patient*
-                    </label>
-                    <div class="relative">
-                        <input type="text" 
-                            id="patient-search" 
-                            placeholder="Search patient by name, email, or phone..." 
-                            class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
-                        <select name="{{ form.patient.html_name }}" 
-                                id="{{ form.patient.auto_id }}"
-                                size="5"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
-                                required>
-                            <option value="">Select a patient</option>
-                            {% for choice in form.patient %}
-                                {{ choice }}
-                            {% endfor %}
-                        </select>
-                    </div>
-                    {% if form.patient.help_text %}
-                    <p class="mt-2 text-sm text-gray-500">{{ form.patient.help_text }}</p>
-                    {% endif %}
-                    {% if form.patient.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.patient.errors.0 }}</p>
-                    {% endif %}
-                    
-                    <!-- Add Patient Instructions -->
-                    <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p class="text-sm text-blue-700">
-                            <i class="fas fa-info-circle mr-2"></i>
-                            Can't find the patient? 
-                            <a href="{% url 'patient_registration' %}" 
-                               class="font-medium text-blue-600 hover:text-blue-800 underline">
-                                Register new patient
-                            </a>
-                        </p>
+                <!-- Patient Section -->
+                <div class="space-y-4">
+                    <!-- Patient Selection -->
+                    <div>
+                        <label for="{{ form.patient.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Patient*
+                        </label>
+                        <div class="relative">
+                            <input type="text" 
+                                id="patient-search" 
+                                placeholder="Search patient by name, email, or phone..." 
+                                class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                            <select name="{{ form.patient.html_name }}" 
+                                    id="{{ form.patient.auto_id }}"
+                                    size="5"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                                    required>
+                                {% for choice in form.patient %}
+                                    {{ choice }}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if form.patient.help_text %}
+                        <p class="mt-2 text-sm text-gray-500">{{ form.patient.help_text }}</p>
+                        {% endif %}
+                        {% if form.patient.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.patient.errors.0 }}</p>
+                        {% endif %}
+                        
+                        <!-- Add Patient Instructions -->
+                        <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-sm text-blue-700">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Can't find the patient? 
+                                <a href="{% url 'patient_registration' %}" 
+                                   class="font-medium text-blue-600 hover:text-blue-800 underline">
+                                    Register new patient
+                                </a>
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Patient Details Box -->
@@ -177,73 +180,80 @@
                         </div>
                     </div>
                 </div>
-                <div>
-                    <label for="{{ form.protocol.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Protocol*
-                    </label>
-                    <div class="relative">
-                        <input type="text" 
-                            id="protocol-search" 
-                            placeholder="Search protocols by name or type..." 
-                            class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
-                        <select name="{{ form.protocol.html_name }}" 
-                                id="{{ form.protocol.auto_id }}"
-                                size="5"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
-                                required>
-                            {% if form.protocol.field.choices %}
-                                {% for value, label in form.protocol.field.choices %}
-                                    {% if value and label %}
-                                        <option value="{{ value }}">{{ label }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            {% else %}
-                                <option value="" disabled>No protocols available</option>
-                            {% endif %}
-                        </select>
+
+                <!-- Protocol Section -->
+                <div class="space-y-4">
+                    <!-- Protocol Selection -->
+                    <div>
+                        <label for="{{ form.protocol.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Protocol*
+                        </label>
+                        <div class="relative">
+                            <input type="text" 
+                                id="protocol-search" 
+                                placeholder="Search protocols by name or type..." 
+                                class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                            <select name="{{ form.protocol.html_name }}" 
+                                    id="{{ form.protocol.auto_id }}"
+                                    size="5"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                                    required>
+                                {% if form.protocol.field.choices %}
+                                    {% for value, label in form.protocol.field.choices %}
+                                        {% if value and label %}
+                                            <option value="{{ value }}">{{ label }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="" disabled>No protocols available</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        {% if form.protocol.help_text %}
+                        <p class="mt-2 text-sm text-gray-500">{{ form.protocol.help_text }}</p>
+                        {% endif %}
+                        {% if form.protocol.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.protocol.errors.0 }}</p>
+                        {% endif %}
+                        
+                        <!-- Add Protocol Instructions -->
+                        <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-sm text-blue-700">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Need a different protocol? 
+                                <a href="{% url 'add_protocol' %}" 
+                                   class="font-medium text-blue-600 hover:text-blue-800 underline">
+                                    Create new protocol
+                                </a>
+                            </p>
+                        </div>
                     </div>
-                    {% if form.protocol.help_text %}
-                    <p class="mt-2 text-sm text-gray-500">{{ form.protocol.help_text }}</p>
-                    {% endif %}
-                    {% if form.protocol.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.protocol.errors.0 }}</p>
-                    {% endif %}
-                    
-                    <!-- Add Protocol Instructions -->
-                    <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p class="text-sm text-blue-700">
-                            <i class="fas fa-info-circle mr-2"></i>
-                            Need a different protocol? 
-                            <a href="{% url 'add_protocol' %}" 
-                               class="font-medium text-blue-600 hover:text-blue-800 underline">
-                                Create new protocol
-                            </a>
-                        </p>
+
+                    <!-- Protocol Details Box -->
+                    <div id="protocol-details" class="hidden p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <h3 class="text-sm font-medium text-blue-800 mb-2">Protocol Details</h3>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-600">Initial Dose:</p>
+                                <p class="font-medium" id="protocol-initial-dose">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Max Dose:</p>
+                                <p class="font-medium" id="protocol-max-dose">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Increment:</p>
+                                <p class="font-medium" id="protocol-increment">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Frequency:</p>
+                                <p class="font-medium" id="protocol-frequency">-</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Protocol Details Box -->
-                <div id="protocol-details" class="hidden p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 class="text-sm font-medium text-blue-800 mb-2">Protocol Details</h3>
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <p class="text-gray-600">Initial Dose:</p>
-                            <p class="font-medium" id="protocol-initial-dose">-</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Max Dose:</p>
-                            <p class="font-medium" id="protocol-max-dose">-</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Increment:</p>
-                            <p class="font-medium" id="protocol-increment">-</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Frequency:</p>
-                            <p class="font-medium" id="protocol-frequency">-</p>
-                        </div>
-                    </div>
-                </div>
+                <!-- Rest of the form fields -->
                 <div>{{ form.start_date|as_crispy_field }}</div>
                 <div>{{ form.total_sessions_planned|as_crispy_field }}</div>
                 <div>{{ form.current_dose|as_crispy_field }}</div>
