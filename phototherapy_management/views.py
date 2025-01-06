@@ -833,12 +833,26 @@ def get_treatment_plan_details(request, plan_id):
             'protocol'
         ).get(id=plan_id)
         
+        # Get last completed session details
+        last_session = plan.sessions.filter(
+            status='COMPLETED'
+        ).order_by('-scheduled_date', '-scheduled_time').first()
+
         return JsonResponse({
             'patient_name': plan.patient.get_full_name(),
             'protocol_name': plan.protocol.name,
             'sessions_completed': plan.sessions_completed,
             'total_sessions': plan.total_sessions_planned,
             'current_dose': plan.current_dose,
+            'last_session_date': (
+                last_session.scheduled_date.strftime('%Y-%m-%d') 
+                if last_session else 'No sessions completed'
+            ),
+            'last_dose': (
+                f"{last_session.actual_dose} joules/cm²" 
+                if last_session and last_session.actual_dose 
+                else 'No dose recorded'
+            ),
             'protocol': {
                 'initial_dose': plan.protocol.initial_dose,
                 'max_dose': plan.protocol.max_dose,
