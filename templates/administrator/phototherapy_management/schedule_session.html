@@ -80,6 +80,18 @@
                 {% if form.plan.errors %}
                 <p class="mt-1 text-sm text-red-600">{{ form.plan.errors.0 }}</p>
                 {% endif %}
+                
+                <!-- Add Treatment Plan Instructions -->
+                <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-sm text-blue-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Can't find the treatment plan you need? 
+                        <a href="{% url 'new_treatment_plan' %}" 
+                           class="font-medium text-blue-600 hover:text-blue-800 underline">
+                            Create a new treatment plan
+                        </a>
+                    </p>
+                </div>
             </div>
 
             <!-- Protocol Details -->
@@ -137,6 +149,18 @@
                 {% if form.device.errors %}
                 <p class="mt-1 text-sm text-red-600">{{ form.device.errors.0 }}</p>
                 {% endif %}
+                
+                <!-- Add Device Instructions -->
+                <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-sm text-blue-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Need to register a new device? 
+                        <a href="{% url 'register_device' %}" 
+                           class="font-medium text-blue-600 hover:text-blue-800 underline">
+                            Register new device
+                        </a>
+                    </p>
+                </div>
             </div>
 
             <!-- Device Details -->
