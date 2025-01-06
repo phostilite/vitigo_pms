@@ -9,7 +9,8 @@ from . import (
     problem_report_views as pr,
     reminder_views as rm,
     export_views as ev,
-    home_views as hv
+    home_views as hv,
+    payment_views as pmv  # Add this import
 )
 
 urlpatterns = [
@@ -88,4 +89,7 @@ urlpatterns = [
     path('patient/<int:patient_id>/details/', 
          v.get_patient_details, 
          name='patient_details'),
+
+    # Add these new payment-related URLs
+    path('payments/', pmv.PaymentListView.as_view(), name='payment_list'),
 ]
