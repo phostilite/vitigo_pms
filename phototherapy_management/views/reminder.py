@@ -27,8 +27,8 @@ from access_control.permissions import PermissionManager
 from phototherapy_management.models import (
     PhototherapyReminder, PhototherapyPlan
 )
-from .forms import PhototherapyReminderForm
-from .utils import get_template_path
+from phototherapy_management.forms import PhototherapyReminderForm
+from phototherapy_management.utils import get_template_path
 
 # Configure logging
 logger = logging.getLogger(__name__)

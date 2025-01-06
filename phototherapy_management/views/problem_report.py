@@ -16,8 +16,8 @@ from django.views.generic.edit import CreateView
 from error_handling.views import handler500, handler403
 from phototherapy_management.models import PhototherapySession, ProblemReport
 from access_control.permissions import PermissionManager
-from .utils import get_template_path
-from .forms import ProblemReportForm
+from phototherapy_management.utils import get_template_path
+from phototherapy_management.forms import ProblemReportForm
 
 # Configure logger  
 logger = logging.getLogger(__name__)

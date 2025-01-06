@@ -19,8 +19,8 @@ from phototherapy_management.models import (
     PhototherapyProtocol,
     PhototherapyType,
 )
-from .utils import get_template_path
-from .forms import ProtocolForm
+from phototherapy_management.utils import get_template_path
+from phototherapy_management.forms import ProtocolForm
 
 # Configure logging
 logger = logging.getLogger(__name__)

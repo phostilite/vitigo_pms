@@ -12,13 +12,13 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.generic import View
 
-from .models import (
+from phototherapy_management.models import (
     ProblemReport,
     PhototherapySession,
     DeviceMaintenance,
     PhototherapyProgress
 )
-from .utils import get_template_path
+from phototherapy_management.utils import get_template_path
 from error_handling.views import handler500
 
 # Configure logging
