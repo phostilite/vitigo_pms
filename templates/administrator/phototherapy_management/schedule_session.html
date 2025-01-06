@@ -359,19 +359,39 @@
                 <p class="mt-1 text-sm text-red-600">{{ form.administered_by.errors.0 }}</p>
                 {% endif %}
             </div>
-        </div>
 
-        <!-- Submit Button -->
-        <div class="flex justify-end space-x-4">
-            <button type="button" 
-                    onclick="window.location.href='{% url 'phototherapy_management' %}'"
-                    class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Cancel
-            </button>
-            <button type="submit"
-                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                Schedule Session
-            </button>
+            <!-- Add Remarks Field -->
+            <div class="col-span-2">
+                <label for="remarks" class="block text-sm font-medium text-gray-700">
+                    Session Remarks
+                </label>
+                <div class="mt-1">
+                    <textarea id="remarks" 
+                            name="remarks" 
+                            rows="3"
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            placeholder="Enter any additional remarks or special instructions for this session"></textarea>
+                </div>
+                {% if form.remarks.help_text %}
+                <p class="mt-2 text-sm text-gray-500">{{ form.remarks.help_text }}</p>
+                {% endif %}
+                {% if form.remarks.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.remarks.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <div class="col-span-2 flex justify-end space-x-4">
+                <button type="button" 
+                        onclick="window.location.href='{% url 'phototherapy_management' %}'"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                    Schedule Session
+                </button>
+            </div>
         </div>
     </form>
 </div>

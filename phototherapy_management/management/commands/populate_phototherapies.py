@@ -213,6 +213,19 @@ class Command(BaseCommand):
             for plan in plans:
                 for i in range(random.randint(5, 15)):
                     session_date = fake.date_between(start_date='-3m')
+                    # Generate some sample remarks
+                    remarks = random.choice([
+                        "Patient reported mild sensitivity during previous session",
+                        "Dose increased as per protocol guidelines",
+                        "Patient requested morning appointments for future sessions",
+                        "Treatment area showing good response",
+                        "Patient experienced slight redness after last session",
+                        "Follow standard protocol - no special instructions",
+                        "Monitor exposure time carefully",
+                        "Patient has sensitive skin - proceed with caution",
+                        "",  # Empty remarks for some sessions
+                    ])
+                    
                     session = PhototherapySession.objects.create(
                         plan=plan,
                         session_number=i+1,
@@ -224,8 +237,9 @@ class Command(BaseCommand):
                         duration_seconds=random.randint(60, 300),
                         status=random.choice(['COMPLETED', 'MISSED', 'SCHEDULED']),
                         problem_severity='NONE',
-                        administered_by=random.choice(eligible_staff),  # Assign from filtered staff
-                        actual_date=session_date  # Set actual_date for completed sessions
+                        administered_by=random.choice(eligible_staff),
+                        actual_date=session_date,
+                        remarks=remarks  # Add remarks here
                     )
                     sessions.append(session)
                     self.stdout.write(f'Created session {session.session_number} for plan {plan.id} with administrator {session.administered_by.get_full_name()}')

@@ -321,7 +321,8 @@ class ScheduleSessionForm(forms.ModelForm):
             'scheduled_time', 
             'device',
             'planned_dose',
-            'administered_by'  # Add this field
+            'administered_by',
+            'remarks'  # Add remarks field
         ]
         widgets = {
             'scheduled_date': forms.DateInput(
@@ -336,13 +337,21 @@ class ScheduleSessionForm(forms.ModelForm):
                     'placeholder': 'Select session time'
                 }
             ),
+            'remarks': forms.Textarea(
+                attrs={
+                    'rows': 3,
+                    'class': 'form-control rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200',
+                    'placeholder': 'Enter any additional remarks or special instructions for this session'
+                }
+            )
         }
         help_texts = {
             'plan': 'Select an active treatment plan. Only active plans are shown.',
             'scheduled_date': 'Choose a date within the treatment plan period. Cannot schedule beyond plan end date.',
             'scheduled_time': 'Select a time slot. Check device and staff availability.',
             'device': 'Select the phototherapy device to be used. Only active devices are shown.',
-            'planned_dose': 'Enter the planned dose in mJ/cm². Must be within protocol limits.'
+            'planned_dose': 'Enter the planned dose in mJ/cm². Must be within protocol limits.',
+            'remarks': 'Add any additional remarks, special instructions, or notes for this session.'
         }
         
     def __init__(self, *args, **kwargs):

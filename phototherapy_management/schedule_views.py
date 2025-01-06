@@ -499,3 +499,21 @@ class SessionListView(LoginRequiredMixin, View):
             logger.error(f"Error processing bulk action: {str(e)}", exc_info=True)
             messages.error(request, "An error occurred while processing the request")
             return redirect('session_list')
+
+
+class UpdateSessionRemarksView(LoginRequiredMixin, View):
+    def post(self, request, session_id):
+        try:
+            session = PhototherapySession.objects.get(id=session_id)
+            session.remarks = request.POST.get('remarks', '')
+            session.save()
+            
+            messages.success(request, "Session remarks updated successfully")
+            
+        except PhototherapySession.DoesNotExist:
+            messages.error(request, "Session not found")
+        except Exception as e:
+            logger.error(f"Error updating session remarks: {str(e)}")
+            messages.error(request, "An error occurred while updating remarks")
+        
+        return redirect('session_detail', session_id=session_id)

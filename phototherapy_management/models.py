@@ -307,6 +307,10 @@ class PhototherapySession(models.Model):
     side_effects = models.TextField(blank=True)
     problems_reported = models.TextField(blank=True)
     staff_notes = models.TextField(blank=True)
+    remarks = models.TextField(
+        blank=True,
+        help_text="Additional remarks or comments about the session"
+    )
     
     # RFID tracking
     rfid_entry_time = models.DateTimeField(null=True)
