@@ -194,11 +194,41 @@
                     <div class="mt-4 pt-4 border-t">
                         <h4 class="text-sm font-medium text-gray-700 mb-2">Payment History</h4>
                         {% if payments %}
-                            <div class="space-y-2">
+                            <div class="space-y-2 max-h-60 overflow-y-auto">
                                 {% for payment in payments %}
-                                <div class="flex justify-between items-center text-sm">
-                                    <span class="text-gray-600">{{ payment.payment_date|date:"M d, Y" }}</span>
-                                    <span class="text-gray-900">₹{{ payment.amount }}</span>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800">
+                                                ₹{{ payment.amount }} 
+                                                <span class="text-xs text-gray-500">({{ payment.get_payment_type_display }})</span>
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                {{ payment.payment_date|date:"M d, Y" }} 
+                                                via {{ payment.get_payment_method_display }}
+                                            </p>
+                                            {% if payment.is_installment %}
+                                            <p class="text-xs text-blue-600">
+                                                Installment {{ payment.installment_number }}/{{ payment.total_installments }}
+                                            </p>
+                                            {% endif %}
+                                            {% if payment.session %}
+                                            <p class="text-xs text-blue-600">
+                                                For Session #{{ payment.session.session_number }}
+                                            </p>
+                                            {% endif %}
+                                        </div>
+                                        <span class="px-2 py-1 text-xs rounded-full 
+                                            {% if payment.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                            {% elif payment.status == 'PENDING' %}bg-yellow-100 text-yellow-800
+                                            {% elif payment.status == 'FAILED' %}bg-red-100 text-red-800
+                                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                            {{ payment.get_status_display }}
+                                        </span>
+                                    </div>
+                                    {% if payment.notes %}
+                                    <p class="mt-1 text-xs text-gray-500">{{ payment.notes }}</p>
+                                    {% endif %}
                                 </div>
                                 {% endfor %}
                             </div>

@@ -459,10 +459,30 @@ class PhototherapyPayment(models.Model):
         ('OTHER', 'Other')
     ]
 
+    PAYMENT_TYPE = [
+        ('FULL', 'Full Payment'),
+        ('PER_SESSION', 'Per Session Payment'),
+        ('PARTIAL', 'Partial Payment')
+    ]
+
     plan = models.ForeignKey(
         PhototherapyPlan,
         on_delete=models.CASCADE,
         related_name='payments'
+    )
+    session = models.ForeignKey(
+        'PhototherapySession',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+        help_text="Associated session if this is a per-session payment"
+    )
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PAYMENT_TYPE,
+        default='FULL',
+        help_text="Whether this is a full payment or per-session payment"
     )
     amount = models.DecimalField(
         max_digits=10,
@@ -485,6 +505,23 @@ class PhototherapyPayment(models.Model):
         null=True,
         related_name='recorded_phototherapy_payments'
     )
+    
+    # For installment tracking
+    is_installment = models.BooleanField(
+        default=False,
+        help_text="Whether this payment is part of an installment plan"
+    )
+    installment_number = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Installment number if part of a payment plan"
+    )
+    total_installments = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Total number of installments planned"
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -493,10 +530,45 @@ class PhototherapyPayment(models.Model):
         indexes = [
             models.Index(fields=['plan', 'status']),
             models.Index(fields=['receipt_number']),
+            models.Index(fields=['session', 'payment_type']),
+            models.Index(fields=['is_installment', 'installment_number']),
         ]
 
     def __str__(self):
+        if self.payment_type == 'PER_SESSION':
+            return f"Session payment of {self.amount} for {self.plan} - Session {self.session.session_number}"
         return f"Payment of {self.amount} for {self.plan}"
+
+    def clean(self):
+        if self.payment_type == 'PER_SESSION' and not self.session:
+            raise ValidationError("Session must be specified for per-session payments")
+        
+        if self.is_installment and (not self.installment_number or not self.total_installments):
+            raise ValidationError("Installment number and total installments are required for installment payments")
+
+    @property
+    def is_last_installment(self):
+        """Check if this is the final installment payment"""
+        return self.is_installment and self.installment_number == self.total_installments
+
+    def save(self, *args, **kwargs):
+        # Update plan's amount_paid when payment is completed
+        if self.status == 'COMPLETED':
+            self.plan.amount_paid = self.plan.payments.filter(
+                status='COMPLETED'
+            ).aggregate(total=models.Sum('amount'))['total'] or 0
+            
+            # Update billing status based on payments
+            if self.plan.amount_paid >= self.plan.total_cost:
+                self.plan.billing_status = 'PAID'
+            elif self.plan.amount_paid > 0:
+                self.plan.billing_status = 'PARTIAL'
+            else:
+                self.plan.billing_status = 'PENDING'
+                
+            self.plan.save(update_fields=['amount_paid', 'billing_status'])
+            
+        super().save(*args, **kwargs)
 
 class PhototherapyReminder(models.Model):
     """Manage reminders for phototherapy sessions and payments"""

@@ -20,6 +20,30 @@ class Command(BaseCommand):
     help = 'Populate the database with sample phototherapy data'
 
     def handle(self, *args, **kwargs):
+        # Clear existing data
+        self.stdout.write('Clearing existing phototherapy data...')
+        try:
+            # Delete in proper order to respect foreign key constraints
+            PhototherapyReminder.objects.all().delete()
+            PhototherapyProgress.objects.all().delete()
+            DeviceMaintenance.objects.all().delete()
+            ProblemReport.objects.all().delete()
+            HomePhototherapyLog.objects.all().delete()
+            PhototherapyPayment.objects.all().delete()
+            PhototherapySession.objects.all().delete()
+            PhototherapyPlan.objects.all().delete()
+            PatientRFIDCard.objects.all().delete()
+            PhototherapyProtocol.objects.all().delete()
+            PhototherapyDevice.objects.all().delete()
+            PhototherapyType.objects.all().delete()
+            
+            self.stdout.write(self.style.SUCCESS('Successfully cleared all existing phototherapy data'))
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(f'Error clearing existing data: {str(e)}')
+            )
+            return
+
         self.stdout.write('Starting to populate phototherapy data...')
         
         # Get random users
@@ -214,21 +238,67 @@ class Command(BaseCommand):
     def _create_payments(self, plans, users):
         for plan in plans:
             try:
-                # Generate unique receipt number with timestamp to avoid collisions
-                receipt_number = f"RCP-{int(timezone.now().timestamp())}-{random.randint(1000, 9999)}"
+                total_amount = float(plan.total_cost)
+                payment_type = random.choice(['FULL', 'PER_SESSION', 'PARTIAL'])
                 
-                PhototherapyPayment.objects.create(
-                    plan=plan,
-                    amount=Decimal(random.uniform(1000, 5000)),
-                    payment_date=timezone.now() - timedelta(days=random.randint(1, 90)),
-                    payment_method=random.choice(['CASH', 'CARD', 'UPI']),
-                    transaction_id=fake.bothify(text='TXN####'),
-                    status='COMPLETED',
-                    receipt_number=receipt_number,
-                    recorded_by=random.choice(users)
-                )
+                if payment_type == 'FULL':
+                    # Create single full payment
+                    receipt_number = f"RCP-{int(timezone.now().timestamp())}-{random.randint(1000, 9999)}"
+                    PhototherapyPayment.objects.create(
+                        plan=plan,
+                        payment_type='FULL',
+                        amount=plan.total_cost,
+                        payment_date=timezone.now() - timedelta(days=random.randint(1, 90)),
+                        payment_method=random.choice(['CASH', 'CARD', 'UPI']),
+                        transaction_id=fake.bothify(text='TXN####'),
+                        status='COMPLETED',
+                        receipt_number=receipt_number,
+                        recorded_by=random.choice(users)
+                    )
+                
+                elif payment_type == 'PER_SESSION':
+                    # Create payment for each completed session
+                    completed_sessions = plan.sessions.filter(status='COMPLETED')
+                    per_session_amount = total_amount / plan.total_sessions_planned
+                    
+                    for session in completed_sessions:
+                        receipt_number = f"RCP-{int(timezone.now().timestamp())}-{random.randint(1000, 9999)}"
+                        PhototherapyPayment.objects.create(
+                            plan=plan,
+                            payment_type='PER_SESSION',
+                            session=session,
+                            amount=per_session_amount,
+                            payment_date=session.actual_date or session.scheduled_date,
+                            payment_method=random.choice(['CASH', 'CARD', 'UPI']),
+                            transaction_id=fake.bothify(text='TXN####'),
+                            status='COMPLETED',
+                            receipt_number=receipt_number,
+                            recorded_by=random.choice(users)
+                        )
+                
+                else:  # PARTIAL payments with installments
+                    # Create 3-4 installment payments
+                    num_installments = random.randint(3, 4)
+                    amount_per_installment = total_amount / num_installments
+                    
+                    for i in range(num_installments):
+                        receipt_number = f"RCP-{int(timezone.now().timestamp())}-{random.randint(1000, 9999)}"
+                        PhototherapyPayment.objects.create(
+                            plan=plan,
+                            payment_type='PARTIAL',
+                            amount=amount_per_installment,
+                            payment_date=timezone.now() - timedelta(days=90-i*30),
+                            payment_method=random.choice(['CASH', 'CARD', 'UPI']),
+                            transaction_id=fake.bothify(text='TXN####'),
+                            status='COMPLETED',
+                            receipt_number=receipt_number,
+                            recorded_by=random.choice(users),
+                            is_installment=True,
+                            installment_number=i+1,
+                            total_installments=num_installments
+                        )
+
             except Exception as e:
-                # Log error and continue with next payment
                 self.stdout.write(self.style.WARNING(f'Error creating payment for plan {plan.id}: {str(e)}'))
                 continue
 
