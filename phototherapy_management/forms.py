@@ -1,14 +1,34 @@
-# phototherapy_management/forms.py
-from django import forms
-from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession, ProblemReport, PhototherapyReminder, PhototherapyPayment
-from django.core.exceptions import ValidationError
-from django.contrib.auth import get_user_model
+# Standard Library imports
 import logging
-from django.utils.safestring import mark_safe
-from django.utils import timezone
+from datetime import datetime
 
-User = get_user_model()
+# Django Core imports
+from django import forms
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.utils.safestring import mark_safe
+
+# Local/Relative imports
+from .models import (
+    DeviceMaintenance,
+    PatientRFIDCard,
+    PhototherapyDevice,
+    PhototherapyPackage,
+    PhototherapyPayment,
+    PhototherapyPlan,
+    PhototherapyProtocol,
+    PhototherapyReminder,
+    PhototherapySession,
+    PhototherapyType,
+    ProblemReport,
+)
+
+# Configure logging
 logger = logging.getLogger(__name__)
+
+# Get User model
+User = get_user_model()
 
 class ProtocolForm(forms.ModelForm):
     increment_percentage = forms.FloatField(
@@ -939,3 +959,46 @@ class PhototherapyReminderForm(forms.ModelForm):
             raise forms.ValidationError("Session reminders must include {appointment_time}")
             
         return message
+
+
+class PhototherapyPackageForm(forms.ModelForm):
+    class Meta:
+        model = PhototherapyPackage
+        fields = ['name', 'description', 'number_of_sessions', 'total_cost', 
+                 'is_featured', 'therapy_type', 'is_active']
+        widgets = {
+            'description': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Enter package description...',
+                'class': 'form-textarea mt-1 block w-full rounded-lg'
+            }),
+            'name': forms.TextInput(attrs={
+                'placeholder': 'Enter package name',
+                'class': 'form-input rounded-lg'
+            }),
+            'number_of_sessions': forms.NumberInput(attrs={
+                'min': '1',
+                'class': 'form-input rounded-lg'
+            }),
+            'total_cost': forms.NumberInput(attrs={
+                'min': '0',
+                'step': '0.01',
+                'class': 'form-input rounded-lg'
+            })
+        }
+        help_texts = {
+            'name': 'Enter a unique and descriptive name for the package',
+            'description': 'Provide detailed information about what the package includes',
+            'number_of_sessions': 'Number of phototherapy sessions included in this package',
+            'total_cost': 'Total cost of the package in INR',
+            'is_featured': 'Featured packages appear at the top of the list',
+            'therapy_type': 'Select specific therapy type or leave blank for all types',
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('total_cost', 0) < 0:
+            raise ValidationError("Total cost cannot be negative")
+        if cleaned_data.get('number_of_sessions', 0) < 1:
+            raise ValidationError("Number of sessions must be at least 1")
+        return cleaned_data

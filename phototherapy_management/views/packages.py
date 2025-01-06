@@ -6,11 +6,14 @@ from django.views.generic import ListView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from django.shortcuts import render
+from django.views.generic.edit import CreateView
+from django.urls import reverse_lazy
 
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from phototherapy_management.models import PhototherapyPackage, PhototherapyPlan, PhototherapyType
 from phototherapy_management.utils import get_template_path
+from ..forms import PhototherapyPackageForm
 
 import logging
 
@@ -115,3 +118,75 @@ class PhototherapyPackagesListView(LoginRequiredMixin, ListView):
             messages.error(self.request, "Error loading some package data")
             
         return context
+
+@method_decorator(csrf_protect, name='dispatch')
+class CreatePackageView(LoginRequiredMixin, CreateView):
+    model = PhototherapyPackage
+    form_class = PhototherapyPackageForm
+    success_url = reverse_lazy('package_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                messages.error(request, "You don't have permission to create packages")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in create package dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return handler500(request, exception=str(e))
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'packages/create_package.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_create_package.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context.update({
+                # Add therapy types for dropdown
+                'therapy_types': PhototherapyType.objects.filter(is_active=True),
+                
+                # Add permissions for conditional rendering
+                'can_add': PermissionManager.check_module_modify(self.request.user, 'phototherapy_management'),
+                
+                # Add summary data for reference
+                'total_packages': PhototherapyPackage.objects.count(),
+                'active_packages': PhototherapyPackage.objects.filter(is_active=True).count(),
+            })
+        except Exception as e:
+            logger.error(f"Error in get_context_data: {str(e)}")
+            messages.error(self.request, "Error loading form data")
+        return context
+
+    def form_valid(self, form):
+        try:
+            # Set the created_by field to current user
+            form.instance.created_by = self.request.user
+            
+            # Save the package
+            response = super().form_valid(form)
+            
+            # Add success message
+            messages.success(self.request, f"Package '{form.instance.name}' created successfully")
+            
+            # Log the action
+            logger.info(f"Package created: {form.instance.id} by user {self.request.user.id}")
+            
+            return response
+        except Exception as e:
+            logger.error(f"Error creating package: {str(e)}")
+            messages.error(self.request, "Error creating package. Please try again.")
+            return super().form_invalid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below")
+        logger.warning(f"Invalid package form submission: {form.errors}")
+        return super().form_invalid(form)

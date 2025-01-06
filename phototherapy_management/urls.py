@@ -32,6 +32,7 @@ urlpatterns = [
     path('treatment-plans/<int:pk>/edit/', d.EditTreatmentPlanView.as_view(), name='edit_treatment_plan'),
 
     path('packages/', pm.PhototherapyPackagesListView.as_view(), name='package_list'),
+    path('packages/create/', pm.CreatePackageView.as_view(), name='create_package'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),
