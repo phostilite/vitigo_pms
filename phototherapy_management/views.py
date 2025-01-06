@@ -529,6 +529,13 @@ class TreatmentPlanDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         try:
             plan = self.get_object()
+            
+            # Update sessions_completed count based on actual completed sessions
+            completed_count = plan.sessions.filter(status='COMPLETED').count()
+            if completed_count != plan.sessions_completed:
+                plan.sessions_completed = completed_count
+                plan.save(update_fields=['sessions_completed'])
+
             context.update({
                 'sessions': plan.sessions.all().order_by('-scheduled_date'),
                 'progress_records': plan.progress_records.all().order_by('-assessment_date'),
@@ -540,9 +547,8 @@ class TreatmentPlanDetailView(LoginRequiredMixin, DetailView):
                     scheduled_date__gte=timezone.now().date(),
                     status='SCHEDULED'
                 ).first(),
-                'recent_progress': plan.progress_records.order_by('-assessment_date').first(),
                 'missed_sessions_count': plan.sessions.filter(status='MISSED').count(),
-                'completed_sessions_count': plan.sessions.filter(status='COMPLETED').count(),
+                'completed_sessions_count': completed_count,  # Use the same completed_count
             })
         except Exception as e:
             logger.error(f"Error getting context data: {str(e)}")

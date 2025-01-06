@@ -234,10 +234,20 @@ class PhototherapyPlan(models.Model):
     def __str__(self):
         return f"Plan for {self.patient.get_full_name()} - {self.protocol.name}"
 
+    def update_sessions_completed(self):
+        """Update the sessions_completed count based on actual completed sessions"""
+        completed_count = self.sessions.filter(status='COMPLETED').count()
+        if completed_count != self.sessions_completed:
+            self.sessions_completed = completed_count
+            self.save(update_fields=['sessions_completed'])
+        return self.sessions_completed
+
     def get_completion_percentage(self):
+        """Calculate completion percentage based on actual completed sessions"""
         if self.total_sessions_planned == 0:
             return 0
-        return (self.sessions_completed / self.total_sessions_planned) * 100
+        completed = self.update_sessions_completed()  # Ensure count is up to date
+        return round((completed / self.total_sessions_planned) * 100)
 
     def get_payment_percentage(self):
         if self.total_cost == 0:
