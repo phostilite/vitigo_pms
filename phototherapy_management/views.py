@@ -837,28 +837,49 @@ def get_treatment_plan_details(request, plan_id):
         plan = PhototherapyPlan.objects.select_related(
             'patient',
             'protocol'
+        ).prefetch_related(
+            'sessions'  # Add prefetch for sessions
         ).get(id=plan_id)
         
-        # Get last completed session details
+        # Update completed sessions count first
+        completed_count = plan.sessions.filter(status='COMPLETED').count()
+        if completed_count != plan.sessions_completed:
+            plan.sessions_completed = completed_count
+            plan.save(update_fields=['sessions_completed'])
+        
+        # Get last completed session details with more specific filtering
         last_session = plan.sessions.filter(
             status='COMPLETED'
-        ).order_by('-scheduled_date', '-scheduled_time').first()
+        ).order_by(
+            '-actual_date',  # First try actual date
+            '-scheduled_date',  # Then scheduled date as backup
+            '-scheduled_time'
+        ).first()
+
+        # Format last session information with better error handling
+        if last_session:
+            last_session_date = (
+                last_session.actual_date.strftime('%Y-%m-%d') 
+                if last_session.actual_date 
+                else last_session.scheduled_date.strftime('%Y-%m-%d')
+            )
+            last_session_dose = (
+                f"{last_session.actual_dose:.3f} joules/cm²" 
+                if last_session.actual_dose 
+                else f"{last_session.planned_dose:.3f} joules/cm² (planned)"
+            )
+        else:
+            last_session_date = 'No sessions completed'
+            last_session_dose = 'No dose recorded'
 
         return JsonResponse({
             'patient_name': plan.patient.get_full_name(),
             'protocol_name': plan.protocol.name,
-            'sessions_completed': plan.sessions_completed,
+            'sessions_completed': completed_count,  # Use the updated count
             'total_sessions': plan.total_sessions_planned,
             'current_dose': plan.current_dose,
-            'last_session_date': (
-                last_session.scheduled_date.strftime('%Y-%m-%d') 
-                if last_session else 'No sessions completed'
-            ),
-            'last_dose': (
-                f"{last_session.actual_dose} joules/cm²" 
-                if last_session and last_session.actual_dose 
-                else 'No dose recorded'
-            ),
+            'last_session_date': last_session_date,
+            'last_dose': last_session_dose,
             'protocol': {
                 'initial_dose': plan.protocol.initial_dose,
                 'max_dose': plan.protocol.max_dose,
@@ -867,6 +888,7 @@ def get_treatment_plan_details(request, plan_id):
             }
         })
     except PhototherapyPlan.DoesNotExist:
+        logger.warning(f"Treatment plan not found: {plan_id}")
         return JsonResponse({'error': 'Plan not found'}, status=404)
     except Exception as e:
         logger.error(f"Error fetching plan details: {str(e)}")

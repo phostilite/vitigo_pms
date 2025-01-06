@@ -143,7 +143,6 @@
                         <p class="text-gray-600">Current Dose:</p>
                         <p class="font-medium" id="plan-current-dose">-</p>
                     </div>
-                    <!-- Add Last Session Details -->
                     <div>
                         <p class="text-gray-600">Last Session:</p>
                         <p class="font-medium" id="plan-last-session-date">-</p>
@@ -459,6 +458,8 @@
                     document.getElementById('plan-completed-sessions').textContent = data.sessions_completed;
                     document.getElementById('plan-total-sessions').textContent = data.total_sessions;
                     document.getElementById('plan-current-dose').textContent = `${data.current_dose} joules/cm²`;
+                    document.getElementById('plan-last-session-date').textContent = data.last_session_date;
+                    document.getElementById('plan-last-dose').textContent = data.last_dose;
                     
                     // Update protocol details
                     document.getElementById('protocol-initial-dose').textContent = `${data.protocol.initial_dose} joules/cm²`;
