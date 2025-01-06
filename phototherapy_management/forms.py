@@ -429,12 +429,18 @@ class ScheduleSessionForm(forms.ModelForm):
                 required=True
             )
 
-            # Custom label_from_instance for plan to show detailed info
+            # Custom label_from_instance for plan to show detailed info with correct session count
             def get_plan_label(plan):
                 try:
                     if plan and plan.patient and plan.protocol:
+                        # Update sessions completed count first
+                        completed_count = plan.sessions.filter(status='COMPLETED').count()
+                        if completed_count != plan.sessions_completed:
+                            plan.sessions_completed = completed_count
+                            plan.save(update_fields=['sessions_completed'])
+                            
                         return (f"{plan.patient.get_full_name()} - {plan.protocol.name} "
-                               f"(Sessions: {plan.sessions_completed}/{plan.total_sessions_planned})")
+                               f"(Sessions: {completed_count}/{plan.total_sessions_planned})")
                     return "Unknown Plan"
                 except Exception as e:
                     logger.error(f"Error generating plan label: {str(e)}")
