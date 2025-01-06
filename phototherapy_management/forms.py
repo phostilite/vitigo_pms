@@ -417,6 +417,38 @@ class ScheduleSessionForm(forms.ModelForm):
 
             self.fields['plan'].label_from_instance = get_plan_label
             
+            # Configure device field with enhanced filtering and error handling
+            active_devices = (PhototherapyDevice.objects.filter(
+                is_active=True
+            ).exclude(
+                next_maintenance_date__lte=timezone.now().date()
+            ).select_related('phototherapy_type'))
+
+            # Verify queryset has results
+            if not active_devices.exists():
+                logger.warning("No active devices found")
+                active_devices = PhototherapyDevice.objects.none()
+
+            self.fields['device'] = forms.ModelChoiceField(
+                queryset=active_devices,
+                empty_label="Select device",
+                help_text="Select an available device. Search by name or location.",
+                required=True
+            )
+
+            # Custom label_from_instance for device to show detailed info
+            def get_device_label(device):
+                try:
+                    if device:
+                        maintenance_status = "Maintenance Required" if device.needs_maintenance() else "Available"
+                        return f"{device.name} - {device.location} ({maintenance_status})"
+                    return "Unknown Device"
+                except Exception as e:
+                    logger.error(f"Error generating device label: {str(e)}")
+                    return "Device"
+
+            self.fields['device'].label_from_instance = get_device_label
+
         except Exception as e:
             logger.error(f"Error initializing ScheduleSessionForm: {str(e)}")
             self.fields['plan'].queryset = PhototherapyPlan.objects.none()
@@ -535,6 +567,35 @@ class ScheduleSessionForm(forms.ModelForm):
             raise forms.ValidationError("Error validating treatment plan selection")
             
         return plan
+
+    def clean_device(self):
+        device = self.cleaned_data.get('device')
+        if not device:
+            raise forms.ValidationError("Please select a device")
+            
+        try:
+            # Verify the device is still active
+            if not device.is_active:
+                raise forms.ValidationError("Selected device is currently inactive")
+                
+            # Verify maintenance status
+            if device.needs_maintenance():
+                raise forms.ValidationError("Selected device requires maintenance")
+                
+            # Verify compatible with plan's protocol type
+            plan = self.cleaned_data.get('plan')
+            if plan and plan.protocol.phototherapy_type != device.phototherapy_type:
+                raise forms.ValidationError(
+                    "Device type does not match the treatment plan's protocol requirements"
+                )
+                
+        except PhototherapyDevice.DoesNotExist:
+            raise forms.ValidationError("Selected device not found")
+        except Exception as e:
+            logger.error(f"Error validating device: {str(e)}")
+            raise forms.ValidationError("Error validating device selection")
+            
+        return device
     
 
 class PhototherapyTypeForm(forms.ModelForm):
