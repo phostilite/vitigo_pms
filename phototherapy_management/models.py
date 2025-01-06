@@ -155,6 +155,46 @@ class PhototherapyProtocol(models.Model):
     def clean(self):
         if self.initial_dose > self.max_dose:
             raise ValidationError("Initial dose cannot exceed maximum dose")
+        
+class PhototherapyPackage(models.Model):
+    """Pre-defined packages for phototherapy treatment plans"""
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    number_of_sessions = models.PositiveIntegerField()
+    total_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
+    is_featured = models.BooleanField(
+        default=False,
+        help_text="Featured packages are shown first in the list"
+    )
+    therapy_type = models.ForeignKey(
+        PhototherapyType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Optional: Specific therapy type this package is for"
+    )
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_featured', 'number_of_sessions']
+        indexes = [
+            models.Index(fields=['is_active', 'is_featured']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.number_of_sessions} sessions"
+    
 
 class PhototherapyPlan(models.Model):
     """Treatment plans for patients"""

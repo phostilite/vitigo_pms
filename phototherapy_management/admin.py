@@ -1,9 +1,10 @@
 from django.contrib import admin
 from .models import (
     PhototherapyType, PatientRFIDCard, PhototherapyDevice,
-    PhototherapyProtocol, PhototherapyPlan, PhototherapySession,
-    HomePhototherapyLog, ProblemReport, PhototherapyPayment,
-    PhototherapyReminder, PhototherapyProgress, DeviceMaintenance
+    PhototherapyProtocol, PhototherapyPackage, PhototherapyPlan, 
+    PhototherapySession, HomePhototherapyLog, ProblemReport, 
+    PhototherapyPayment, PhototherapyReminder, PhototherapyProgress, 
+    DeviceMaintenance
 )
 
 @admin.register(PhototherapyType)
@@ -77,3 +78,9 @@ class DeviceMaintenanceAdmin(admin.ModelAdmin):
     list_display = ('device', 'maintenance_type', 'maintenance_date', 'next_maintenance_due')
     list_filter = ('maintenance_type',)
     search_fields = ('device__name', 'device__serial_number')
+
+@admin.register(PhototherapyPackage)
+class PhototherapyPackageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'therapy_type', 'number_of_sessions', 'total_cost', 'is_featured', 'is_active')
+    list_filter = ('is_featured', 'is_active', 'therapy_type')
+    search_fields = ('name', 'description')
