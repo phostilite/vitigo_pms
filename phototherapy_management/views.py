@@ -828,19 +828,29 @@ class DeletePhototherapyTypeView(LoginRequiredMixin, View):
 
 def get_treatment_plan_details(request, plan_id):
     try:
-        plan = PhototherapyPlan.objects.select_related('protocol').get(id=plan_id)
+        plan = PhototherapyPlan.objects.select_related(
+            'patient',
+            'protocol'
+        ).get(id=plan_id)
+        
         return JsonResponse({
+            'patient_name': plan.patient.get_full_name(),
+            'protocol_name': plan.protocol.name,
+            'sessions_completed': plan.sessions_completed,
+            'total_sessions': plan.total_sessions_planned,
+            'current_dose': plan.current_dose,
             'protocol': {
                 'initial_dose': plan.protocol.initial_dose,
                 'max_dose': plan.protocol.max_dose,
-                'increment_percentage': plan.protocol.increment_percentage
-            },
-            'current_dose': plan.current_dose,
-            'sessions_completed': plan.sessions_completed,
-            'total_sessions': plan.total_sessions_planned
+                'increment_percentage': plan.protocol.increment_percentage,
+                'frequency_per_week': plan.protocol.frequency_per_week
+            }
         })
     except PhototherapyPlan.DoesNotExist:
         return JsonResponse({'error': 'Plan not found'}, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching plan details: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 def get_device_details(request, device_id):
     try:

@@ -115,25 +115,62 @@
                 </div>
             </div>
 
-            <!-- Protocol Details -->
-            <div id="protocol-details" class="hidden p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 class="text-sm font-medium text-blue-800 mb-2">Protocol Details</h3>
+            <!-- Plan Details -->
+            <div id="plan-details" class="hidden p-4 mb-4 bg-white rounded-lg border border-gray-200">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-sm font-medium text-gray-800">Treatment Plan Details</h3>
+                    <a href="#" id="plan-detail-link" class="text-sm text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-external-link-alt mr-1"></i>View Full Details
+                    </a>
+                </div>
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <p class="text-gray-600">Initial Dose:</p>
-                        <p class="font-medium" id="protocol-initial-dose">-</p>
+                        <p class="text-gray-600">Patient:</p>
+                        <p class="font-medium" id="plan-patient-name">-</p>
                     </div>
                     <div>
-                        <p class="text-gray-600">Max Dose:</p>
-                        <p class="font-medium" id="protocol-max-dose">-</p>
+                        <p class="text-gray-600">Protocol:</p>
+                        <p class="font-medium" id="plan-protocol-name">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Sessions:</p>
+                        <p class="font-medium">
+                            <span id="plan-completed-sessions">-</span> / 
+                            <span id="plan-total-sessions">-</span>
+                        </p>
                     </div>
                     <div>
                         <p class="text-gray-600">Current Dose:</p>
-                        <p class="font-medium" id="protocol-current-dose">-</p>
+                        <p class="font-medium" id="plan-current-dose">-</p>
                     </div>
-                    <div>
-                        <p class="text-gray-600">Increment:</p>
-                        <p class="font-medium" id="protocol-increment">-</p>
+                </div>
+                <!-- Protocol Details Collapsible -->
+                <div class="mt-3">
+                    <button type="button" 
+                            class="flex items-center justify-between w-full px-4 py-2 text-sm text-left text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            onclick="toggleProtocolDetails()">
+                        <span>Protocol Details</span>
+                        <i class="fas fa-chevron-down" id="protocol-chevron"></i>
+                    </button>
+                    <div id="protocol-details" class="hidden mt-2 p-3 bg-gray-50 rounded-lg">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-600">Initial Dose:</p>
+                                <p class="font-medium" id="protocol-initial-dose">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Max Dose:</p>
+                                <p class="font-medium" id="protocol-max-dose">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Increment:</p>
+                                <p class="font-medium" id="protocol-increment">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Frequency:</p>
+                                <p class="font-medium" id="protocol-frequency">-</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -400,15 +437,28 @@
     // Add this to your existing JavaScript
     document.getElementById('id_plan').addEventListener('change', function() {
         const planId = this.value;
+        const planDetails = document.getElementById('plan-details');
         if (planId) {
             fetch(`/phototherapy/treatment-plan/${planId}/details/`)
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('protocol-details').classList.remove('hidden');
+                    planDetails.classList.remove('hidden');
+                    
+                    // Update plan details
+                    document.getElementById('plan-patient-name').textContent = data.patient_name;
+                    document.getElementById('plan-protocol-name').textContent = data.protocol_name;
+                    document.getElementById('plan-completed-sessions').textContent = data.sessions_completed;
+                    document.getElementById('plan-total-sessions').textContent = data.total_sessions;
+                    document.getElementById('plan-current-dose').textContent = `${data.current_dose} joules/cm²`;
+                    
+                    // Update protocol details
                     document.getElementById('protocol-initial-dose').textContent = `${data.protocol.initial_dose} joules/cm²`;
                     document.getElementById('protocol-max-dose').textContent = `${data.protocol.max_dose} joules/cm²`;
-                    document.getElementById('protocol-current-dose').textContent = `${data.current_dose} joules/cm²`;
                     document.getElementById('protocol-increment').textContent = `${data.protocol.increment_percentage}%`;
+                    document.getElementById('protocol-frequency').textContent = `${data.protocol.frequency_per_week}x per week`;
+                    
+                    // Update plan details link
+                    document.getElementById('plan-detail-link').href = `/phototherapy/treatment-plans/${planId}/`;
                     
                     // Automatically set planned dose to current dose
                     document.getElementById('id_planned_dose').value = data.current_dose;
@@ -417,13 +467,23 @@
                     updateDosePresets(data.protocol.initial_dose, data.protocol.max_dose);
                 })
                 .catch(error => {
-                    console.error('Error fetching protocol details:', error);
-                    document.getElementById('protocol-details').classList.add('hidden');
+                    console.error('Error fetching plan details:', error);
+                    planDetails.classList.add('hidden');
                 });
         } else {
-            document.getElementById('protocol-details').classList.add('hidden');
+            planDetails.classList.add('hidden');
         }
     });
+
+    function toggleProtocolDetails() {
+        const protocolDetails = document.getElementById('protocol-details');
+        const chevron = document.getElementById('protocol-chevron');
+        const isHidden = protocolDetails.classList.contains('hidden');
+        
+        protocolDetails.classList.toggle('hidden');
+        chevron.classList.toggle('fa-chevron-down');
+        chevron.classList.toggle('fa-chevron-up');
+    }
 
     function updateDosePresets(initialDose, maxDose) {
         // Calculate intermediate doses
