@@ -34,7 +34,8 @@ from phototherapy_management.models import (
     PhototherapyPayment,
     HomePhototherapyLog,
     PatientRFIDCard,
-    PhototherapyProgress
+    PhototherapyProgress,
+    PhototherapyPackage
 )
 from phototherapy_management.forms import TreatmentPlanForm, PhototherapyTypeForm
 from phototherapy_management.utils import get_template_path
@@ -428,6 +429,18 @@ class NewTreatmentPlanView(LoginRequiredMixin, CreateView):
             logger.error(f"Error getting template: {str(e)}")
             return ['phototherapy_management/default_new_treatment_plan_create.html']
         
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            # Add active packages to context, featured ones first
+            context['packages'] = PhototherapyPackage.objects.filter(
+                is_active=True
+            ).order_by('-is_featured', 'number_of_sessions')
+        except Exception as e:
+            logger.error(f"Error getting packages: {str(e)}")
+            context['packages'] = []
+        return context
+
 
 class TreatmentPlanListView(LoginRequiredMixin, ListView):
     model = PhototherapyPlan
