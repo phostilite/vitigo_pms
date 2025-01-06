@@ -1,6 +1,6 @@
 # phototherapy_management/forms.py
 from django import forms
-from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession, ProblemReport, PhototherapyReminder
+from .models import PhototherapyProtocol, PhototherapyType, PhototherapyDevice, PhototherapyType, DeviceMaintenance, PhototherapyPlan, PatientRFIDCard, PhototherapySession, ProblemReport, PhototherapyReminder, PhototherapyPayment
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 import logging
@@ -235,12 +235,40 @@ class TreatmentPlanForm(forms.ModelForm):
         help_text="How often to send reminders (in days). Recommended: 1-3 days"
     )
 
+    # Add payment fields
+    payment_type = forms.ChoiceField(
+        choices=PhototherapyPayment.PAYMENT_TYPE,
+        widget=forms.RadioSelect(attrs={'class': 'payment-type-radio'}),
+        help_text="Select how the patient wishes to pay for the treatment"
+    )
+
+    payment_method = forms.ChoiceField(
+        choices=PhototherapyPayment.PAYMENT_METHOD,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Select the payment method"
+    )
+
+    number_of_installments = forms.IntegerField(
+        required=False,
+        min_value=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text="Number of installments (if paying in installments)"
+    )
+
+    immediate_payment = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        help_text="Collect first payment now"
+    )
+
     class Meta:
         model = PhototherapyPlan
         fields = [
             'patient', 'protocol', 'rfid_card', 'start_date', 
             'total_sessions_planned', 'current_dose', 'total_cost',
-            'special_instructions', 'reminder_frequency'
+            'special_instructions', 'reminder_frequency',
+            'payment_type', 'payment_method', 'number_of_installments', 'immediate_payment'
         ]
 
     def __init__(self, *args, **kwargs):
@@ -280,6 +308,8 @@ class TreatmentPlanForm(forms.ModelForm):
         protocol = cleaned_data.get('protocol')
         current_dose = cleaned_data.get('current_dose')
         start_date = cleaned_data.get('start_date')
+        payment_type = cleaned_data.get('payment_type')
+        number_of_installments = cleaned_data.get('number_of_installments')
 
         try:
             # Validate dose against protocol limits
@@ -304,6 +334,10 @@ class TreatmentPlanForm(forms.ModelForm):
                 from django.utils import timezone
                 if start_date < timezone.now().date():
                     self.add_error('start_date', 'Start date cannot be in the past')
+
+            # Validate payment fields
+            if payment_type == 'PARTIAL' and not number_of_installments:
+                self.add_error('number_of_installments', 'Number of installments is required for partial payments')
 
         except Exception as e:
             logger.error(f"Error in form validation: {str(e)}")
