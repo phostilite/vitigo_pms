@@ -400,3 +400,102 @@ class UpdateSessionStatusView(LoginRequiredMixin, View):
             messages.error(request, "An error occurred while updating session status")
         
         return redirect('session_detail', session_id=session_id)
+
+
+class SessionListView(LoginRequiredMixin, View):
+    def get(self, request):
+        try:
+            # Get filter parameters from request
+            filter_status = request.GET.get('status', '')
+            filter_start_date = request.GET.get('start_date', '')
+            filter_end_date = request.GET.get('end_date', '')
+            search_query = request.GET.get('search', '')
+
+            # Base queryset with optimized joins
+            sessions = PhototherapySession.objects.select_related(
+                'plan__patient',
+                'plan__protocol',
+                'device',
+                'administered_by'
+            ).order_by('-scheduled_date', '-scheduled_time')
+
+            # Apply filters
+            if filter_status:
+                sessions = sessions.filter(status=filter_status)
+            
+            if filter_start_date:
+                sessions = sessions.filter(scheduled_date__gte=filter_start_date)
+            
+            if filter_end_date:
+                sessions = sessions.filter(scheduled_date__lte=filter_end_date)
+            
+            if search_query:
+                sessions = sessions.filter(
+                    Q(plan__patient__first_name__icontains=search_query) |
+                    Q(plan__patient__last_name__icontains=search_query) |
+                    Q(plan__protocol__name__icontains=search_query)
+                )
+
+            # Calculate statistics
+            total_count = sessions.count()
+            completed_count = sessions.filter(status='COMPLETED').count()
+            missed_count = sessions.filter(status='MISSED').count()
+
+            # Prepare status choices for the filter dropdown
+            status_choices = [
+                ('SCHEDULED', 'Scheduled'),
+                ('COMPLETED', 'Completed'),
+                ('MISSED', 'Missed'),
+                ('CANCELLED', 'Cancelled')
+            ]
+
+            context = {
+                'sessions': sessions,
+                'total_count': total_count,
+                'completed_count': completed_count,
+                'missed_count': missed_count,
+                'status_choices': status_choices,
+                'filter_status': filter_status,
+                'filter_start_date': filter_start_date,
+                'filter_end_date': filter_end_date,
+                'search_query': search_query
+            }
+
+            template_path = get_template_path(
+                'session_list.html',
+                request.user.role,
+                'phototherapy_management'
+            )
+
+            return render(request, template_path, context)
+
+        except Exception as e:
+            logger.error(f"Error in session list view: {str(e)}", exc_info=True)
+            messages.error(
+                request,
+                "An error occurred while loading the sessions list."
+            )
+            return redirect('schedule_management')
+
+    def post(self, request):
+        try:
+            # Handle bulk actions if implemented
+            action = request.POST.get('action')
+            selected_sessions = request.POST.getlist('selected_sessions')
+
+            if action and selected_sessions:
+                if action == 'cancel':
+                    PhototherapySession.objects.filter(
+                        id__in=selected_sessions
+                    ).update(status='CANCELLED')
+                    messages.success(request, "Selected sessions cancelled successfully")
+                elif action == 'reschedule':
+                    # Implement rescheduling logic if needed
+                    pass
+
+            return redirect('session_list')
+
+        except Exception as e:
+            logger.error(f"Error processing bulk action: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while processing the request")
+            return redirect('session_list')
