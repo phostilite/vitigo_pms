@@ -6,7 +6,7 @@ from django.views.generic import ListView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from django.shortcuts import render
-from django.views.generic.edit import CreateView
+from django.views.generic.edit import CreateView, UpdateView
 from django.urls import reverse_lazy
 
 from access_control.permissions import PermissionManager
@@ -190,3 +190,55 @@ class CreatePackageView(LoginRequiredMixin, CreateView):
         messages.error(self.request, "Please correct the errors below")
         logger.warning(f"Invalid package form submission: {form.errors}")
         return super().form_invalid(form)
+
+@method_decorator(csrf_protect, name='dispatch')
+class EditPackageView(LoginRequiredMixin, UpdateView):
+    model = PhototherapyPackage
+    form_class = PhototherapyPackageForm
+    success_url = reverse_lazy('package_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_modify(request.user, 'phototherapy_management'):
+                messages.error(request, "You don't have permission to edit packages")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in edit package dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return handler500(request, exception=str(e))
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'packages/edit_package.html',
+                self.request.user.role,
+                'phototherapy_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['phototherapy_management/default_edit_package.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context.update({
+                'therapy_types': PhototherapyType.objects.filter(is_active=True),
+                'can_edit': PermissionManager.check_module_modify(self.request.user, 'phototherapy_management'),
+                'package': self.get_object()
+            })
+        except Exception as e:
+            logger.error(f"Error in get_context_data: {str(e)}")
+            messages.error(self.request, "Error loading form data")
+        return context
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, f"Package '{form.instance.name}' updated successfully")
+            logger.info(f"Package updated: {form.instance.id} by user {self.request.user.id}")
+            return response
+        except Exception as e:
+            logger.error(f"Error updating package: {str(e)}")
+            messages.error(self.request, "Error updating package. Please try again.")
+            return super().form_invalid(form)

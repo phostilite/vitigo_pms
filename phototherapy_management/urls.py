@@ -33,6 +33,7 @@ urlpatterns = [
 
     path('packages/', pm.PhototherapyPackagesListView.as_view(), name='package_list'),
     path('packages/create/', pm.CreatePackageView.as_view(), name='create_package'),
+    path('packages/<int:pk>/edit/', pm.EditPackageView.as_view(), name='edit_package'),
 
     path('devices/', dv.DeviceManagementView.as_view(), name='device_management'),
     path('devices/register/', dv.RegisterDeviceView.as_view(), name='register_device'),
