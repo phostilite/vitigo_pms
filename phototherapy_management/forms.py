@@ -353,29 +353,74 @@ class ScheduleSessionForm(forms.ModelForm):
             self.fields['device'].help_text += ' Ensure device maintenance status and availability.'
             self.fields['planned_dose'].help_text += f' Recommended range: {self.get_dose_range()}'
 
-            # Customize administered_by field with expanded role filtering
+            # Customize administered_by field with expanded role filtering and error handling
             excluded_roles = ['PATIENT', 'HR_STAFF', 'INVENTORY_MANAGER', 'BILLING_STAFF', 'LAB_TECHNICIAN', 'PHARMACIST', 'RECEPTIONIST', 'MANAGER']
+            staff_queryset = User.objects.filter(
+                is_active=True
+            ).exclude(
+                role__name__in=excluded_roles
+            ).select_related('role')  # Optimize by preloading role
+
+            # Verify queryset has results
+            if not staff_queryset.exists():
+                logger.warning("No eligible staff members found for administered_by field")
+                staff_queryset = User.objects.none()
+
             self.fields['administered_by'] = forms.ModelChoiceField(
-                queryset=User.objects.filter(
-                    is_active=True
-                ).exclude(
-                    role__name__in=excluded_roles
-                ),
+                queryset=staff_queryset,
                 empty_label="Select staff member",
                 help_text="Select the medical staff member who will administer the session",
-                required=False
+                required=True  # Make this field required
             )
 
-            # Custom label_from_instance for administered_by to show role
-            self.fields['administered_by'].label_from_instance = lambda user: (
-                f"{user.get_full_name()} ({user.role.name})"
+            # Custom label_from_instance for administered_by with error handling
+            def get_staff_label(user):
+                try:
+                    if user and user.role:
+                        return f"{user.get_full_name()} ({user.role.name})"
+                    return f"{user.get_full_name()} (Role not assigned)" if user else "Unknown Staff"
+                except Exception as e:
+                    logger.error(f"Error generating staff label: {str(e)}")
+                    return "Staff Member"
+
+            self.fields['administered_by'].label_from_instance = get_staff_label
+
+            # Configure plan field with enhanced filtering and error handling
+            active_plans = (PhototherapyPlan.objects.filter(is_active=True)
+                          .select_related(
+                              'patient__patient_profile__user',
+                              'protocol'
+                          ).order_by('patient__first_name'))
+
+            # Verify queryset has results
+            if not active_plans.exists():
+                logger.warning("No active treatment plans found")
+                active_plans = PhototherapyPlan.objects.none()
+
+            self.fields['plan'] = forms.ModelChoiceField(
+                queryset=active_plans,
+                empty_label="Select treatment plan",
+                help_text="Select an active treatment plan. Search by patient name or protocol.",
+                required=True
             )
 
-            # Add this to customize device display
-            self.fields['device'].label_from_instance = lambda obj: f"{obj.name} - {obj.model_number}"
+            # Custom label_from_instance for plan to show detailed info
+            def get_plan_label(plan):
+                try:
+                    if plan and plan.patient and plan.protocol:
+                        return (f"{plan.patient.get_full_name()} - {plan.protocol.name} "
+                               f"(Sessions: {plan.sessions_completed}/{plan.total_sessions_planned})")
+                    return "Unknown Plan"
+                except Exception as e:
+                    logger.error(f"Error generating plan label: {str(e)}")
+                    return "Treatment Plan"
 
+            self.fields['plan'].label_from_instance = get_plan_label
+            
         except Exception as e:
             logger.error(f"Error initializing ScheduleSessionForm: {str(e)}")
+            self.fields['plan'].queryset = PhototherapyPlan.objects.none()
+            self.fields['plan'].help_text = "Error loading treatment plans. Please contact administrator."
 
     def get_dose_range(self):
         """Get recommended dose range based on protocol defaults"""
@@ -437,6 +482,59 @@ class ScheduleSessionForm(forms.ModelForm):
             self.add_error(None, f"An error occurred during validation: {str(e)}")
 
         return cleaned_data
+
+    def clean_administered_by(self):
+        administered_by = self.cleaned_data.get('administered_by')
+        if not administered_by:
+            raise forms.ValidationError("Please select a staff member to administer the session")
+            
+        try:
+            # Verify the selected user is still valid
+            if not administered_by.is_active:
+                raise forms.ValidationError("Selected staff member is no longer active")
+                
+            # Verify the user has a valid role
+            if not hasattr(administered_by, 'role') or not administered_by.role:
+                raise forms.ValidationError("Selected staff member has no assigned role")
+                
+            # Verify the role is appropriate
+            excluded_roles = ['PATIENT', 'HR_STAFF', 'INVENTORY_MANAGER', 'BILLING_STAFF', 'LAB_TECHNICIAN', 'PHARMACIST', 'RECEPTIONIST', 'MANAGER']
+            if administered_by.role.name in excluded_roles:
+                raise forms.ValidationError("Selected staff member is not authorized to administer sessions")
+                
+        except User.DoesNotExist:
+            raise forms.ValidationError("Selected staff member not found")
+        except Exception as e:
+            logger.error(f"Error validating administered_by: {str(e)}")
+            raise forms.ValidationError("Error validating staff member selection")
+            
+        return administered_by
+
+    def clean_plan(self):
+        plan = self.cleaned_data.get('plan')
+        if not plan:
+            raise forms.ValidationError("Please select a treatment plan")
+            
+        try:
+            # Verify the plan is still active
+            if not plan.is_active:
+                raise forms.ValidationError("Selected treatment plan is no longer active")
+                
+            # Verify the plan has not exceeded total sessions
+            if plan.sessions_completed >= plan.total_sessions_planned:
+                raise forms.ValidationError("This treatment plan has completed all planned sessions")
+                
+            # Verify the plan hasn't expired
+            if plan.end_date and plan.end_date < timezone.now().date():
+                raise forms.ValidationError("This treatment plan has expired")
+                
+        except PhototherapyPlan.DoesNotExist:
+            raise forms.ValidationError("Selected treatment plan not found")
+        except Exception as e:
+            logger.error(f"Error validating treatment plan: {str(e)}")
+            raise forms.ValidationError("Error validating treatment plan selection")
+            
+        return plan
     
 
 class PhototherapyTypeForm(forms.ModelForm):

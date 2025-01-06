@@ -48,15 +48,37 @@
         {% csrf_token %}
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Treatment Plan -->
-            <div>
-                {{ form.plan|as_crispy_field }}
-                {% if form.plan.errors %}
-                <div class="mt-1 text-red-600 text-sm">
-                    {% for error in form.plan.errors %}
-                        {{ error }}
-                    {% endfor %}
+            <!-- Treatment Plan with Search -->
+            <div class="form-group">
+                <label for="{{ form.plan.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Treatment Plan*
+                </label>
+                <div class="relative">
+                    <input type="text" 
+                        id="plan-search" 
+                        placeholder="Search plans by patient name or protocol..." 
+                        class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                    <select name="plan" 
+                            id="{{ form.plan.auto_id }}"
+                            size="5"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                            required>
+                        {% if form.plan.field.choices %}
+                            {% for value, label in form.plan.field.choices %}
+                                {% if value and label %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No active treatment plans available</option>
+                        {% endif %}
+                    </select>
                 </div>
+                {% if form.plan.help_text %}
+                <p class="mt-2 text-sm text-gray-500">{{ form.plan.help_text }}</p>
+                {% endif %}
+                {% if form.plan.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.plan.errors.0 }}</p>
                 {% endif %}
             </div>
 
@@ -204,9 +226,15 @@
                             size="5"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
                             required>
-                        {% for choice in form.administered_by %}
-                            {{ choice }}
-                        {% endfor %}
+                        {% if form.administered_by.field.choices %}
+                            {% for value, label in form.administered_by.field.choices %}
+                                {% if value and label %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No staff members available</option>
+                        {% endif %}
                     </select>
                 </div>
                 {% if form.administered_by.help_text %}
@@ -263,6 +291,28 @@
                 const noResults = new Option('No staff members found', '');
                 noResults.disabled = true;
                 staffSelectElement.appendChild(noResults);
+            }
+        });
+
+        // Plan search functionality
+        const planSearchInput = document.getElementById('plan-search');
+        const planSelectElement = document.getElementById('{{ form.plan.auto_id }}');
+        const originalPlanOptions = Array.from(planSelectElement.options);
+        
+        planSearchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            planSelectElement.innerHTML = '';
+            
+            originalPlanOptions.forEach(option => {
+                if (option.text.toLowerCase().includes(searchTerm)) {
+                    planSelectElement.appendChild(option.cloneNode(true));
+                }
+            });
+            
+            if (planSelectElement.options.length === 0) {
+                const noResults = new Option('No treatment plans found', '');
+                noResults.disabled = true;
+                planSelectElement.appendChild(noResults);
             }
         });
     });
