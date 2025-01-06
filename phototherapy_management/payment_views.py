@@ -5,9 +5,12 @@ from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator
+import logging
 
 from .models import PhototherapyPayment
 from .utils import get_template_path
+
+logger = logging.getLogger(__name__)
 
 class PaymentListView(LoginRequiredMixin, View):
     def get(self, request):

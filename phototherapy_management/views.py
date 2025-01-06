@@ -33,7 +33,8 @@ from .models import (
     PhototherapyType,
     PhototherapyPayment,
     HomePhototherapyLog,
-    PatientRFIDCard
+    PatientRFIDCard,
+    PhototherapyProgress
 )
 from .forms import TreatmentPlanForm, PhototherapyTypeForm
 from .utils import get_template_path
@@ -269,6 +270,16 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 if count > 0:  # Only include types that have active treatments
                     treatment_distribution[therapy_type[1]] = count
 
+            # Add recent payments with related data
+            recent_payments = PhototherapyPayment.objects.select_related(
+                'plan__patient',
+                'recorded_by'
+            ).filter(
+                status='COMPLETED'  # Only show completed payments
+            ).order_by(
+                '-payment_date'  # Most recent first
+            )[:4]  # Limit to 4 recent payments
+
             context = {
                 # Basic data
                 'phototherapy_types': PhototherapyType.objects.filter(is_active=True),
@@ -320,6 +331,12 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 # Treatment distribution
                 'active_treatments_count': active_treatments_count,
                 'treatment_distribution': treatment_distribution,
+
+                'recent_payments': recent_payments,
+                'treatment_progress': PhototherapyProgress.objects.select_related(
+                    'plan__patient',
+                    'assessed_by'
+                ).order_by('-assessment_date')[:4],  # Also limit progress records to 4
             }
 
             return context
@@ -365,6 +382,8 @@ class PhototherapyManagementView(LoginRequiredMixin, View):
                 },
                 'active_treatments_count': 0,
                 'treatment_distribution': {},
+                'recent_payments': [],
+                'treatment_progress': [],
             }
         
 
