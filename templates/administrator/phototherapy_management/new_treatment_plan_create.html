@@ -279,89 +279,79 @@
                         {% if packages %}
                             <!-- Package Categories -->
                             <div class="mb-4">
-                                <div class="flex space-x-2 overflow-x-auto pb-2">
-                                    <button type="button"
-                                            class="package-filter active px-4 py-2 text-sm rounded-full bg-blue-500 text-white hover:bg-blue-600"
-                                            data-filter="all">
-                                        All Packages
-                                    </button>
-                                    <button type="button"
-                                            class="package-filter px-4 py-2 text-sm rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                            data-filter="featured">
-                                        Featured
-                                    </button>
-                                    {% regroup packages by therapy_type as therapy_types %}
+                                <div class="border-b border-gray-200">
+                                    <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="package-tabs" data-tabs-toggle="#package-tabs-content" role="tablist">
+                                        <li class="mr-2" role="presentation">
+                                            <button class="inline-block p-4 border-b-2 rounded-t-lg" 
+                                                    id="all-tab" 
+                                                    data-tabs-target="#all" 
+                                                    type="button" 
+                                                    role="tab" 
+                                                    aria-controls="all" 
+                                                    aria-selected="true">
+                                                All Packages
+                                            </button>
+                                        </li>
+                                        <li class="mr-2" role="presentation">
+                                            <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300" 
+                                                    id="featured-tab" 
+                                                    data-tabs-target="#featured" 
+                                                    type="button" 
+                                                    role="tab" 
+                                                    aria-controls="featured" 
+                                                    aria-selected="false">
+                                                Featured
+                                            </button>
+                                        </li>
+                                        {% regroup packages by therapy_type as therapy_types %}
+                                        {% for type in therapy_types %}
+                                            {% if type.grouper %}
+                                                <li class="mr-2" role="presentation">
+                                                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300" 
+                                                            id="type-{{ type.grouper.therapy_type }}-tab" 
+                                                            data-tabs-target="#type-{{ type.grouper.therapy_type }}" 
+                                                            type="button" 
+                                                            role="tab" 
+                                                            aria-controls="type-{{ type.grouper.therapy_type }}" 
+                                                            aria-selected="false">
+                                                        {{ type.grouper.get_therapy_type_display }}
+                                                    </button>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
+                                <!-- Tab Content -->
+                                <div id="package-tabs-content">
+                                    <!-- All Packages Tab -->
+                                    <div class="hidden p-4" id="all" role="tabpanel" aria-labelledby="all-tab">
+                                        <div class="max-h-96 overflow-y-auto">
+                                            {% include "./packages/package_table.html" with packages=packages %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Featured Packages Tab -->
+                                    <div class="hidden p-4" id="featured" role="tabpanel" aria-labelledby="featured-tab">
+                                        <div class="max-h-96 overflow-y-auto">
+                                            {% include "./packages/package_table.html" with packages=packages|featured_packages %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Therapy Type Tabs -->
                                     {% for type in therapy_types %}
                                         {% if type.grouper %}
-                                            <button type="button"
-                                                    class="package-filter px-4 py-2 text-sm rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                                    data-filter="{{ type.grouper.therapy_type }}">
-                                                {{ type.grouper.get_therapy_type_display }}
-                                            </button>
+                                            <div class="hidden p-4" 
+                                                 id="type-{{ type.grouper.therapy_type }}" 
+                                                 role="tabpanel" 
+                                                 aria-labelledby="type-{{ type.grouper.therapy_type }}-tab">
+                                                <div class="max-h-96 overflow-y-auto">
+                                                    {% include "./packages/package_table.html" with packages=type.list %}
+                                                </div>
+                                            </div>
                                         {% endif %}
                                     {% endfor %}
                                 </div>
-                            </div>
-
-                            <!-- Packages Table -->
-                            <div class="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50 sticky top-0">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Package Name
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Sessions
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Cost
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Per Session
-                                            </th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Type
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        {% for package in packages %}
-                                            <tr class="package-row hover:bg-gray-50 cursor-pointer {% if package.is_featured %}featured{% endif %} 
-                                                       {% if package.therapy_type %}type-{{ package.therapy_type.therapy_type }}{% endif %}"
-                                                onclick="selectPackage({{ package.number_of_sessions }}, {{ package.total_cost }}, '{{ package.name }}')">
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div class="flex items-center">
-                                                        <div class="text-sm font-medium text-gray-900">
-                                                            {{ package.name }}
-                                                            {% if package.is_featured %}
-                                                                <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                                    Featured
-                                                                </span>
-                                                            {% endif %}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {{ package.number_of_sessions }}
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div class="text-sm font-medium text-blue-600">₹{{ package.total_cost }}</div>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    ₹{{ package.total_cost|divide:package.number_of_sessions|floatformat:0 }}
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {% if package.therapy_type %}
-                                                        {{ package.therapy_type.get_therapy_type_display }}
-                                                    {% else %}
-                                                        Any
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
                             </div>
 
                             <!-- Selected Package Preview -->
