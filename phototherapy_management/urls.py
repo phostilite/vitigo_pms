@@ -43,6 +43,7 @@ urlpatterns = [
     path('protocols/<int:protocol_id>/', pv.ProtocolDetailView.as_view(), name='protocol_detail'),
     path('protocols/<int:protocol_id>/activate/', pv.ActivateProtocolView.as_view(), name='activate_protocol'),
     path('protocols/<int:protocol_id>/deactivate/', pv.DeactivateProtocolView.as_view(), name='deactivate_protocol'),
+    path('protocol/<int:protocol_id>/details/', v.get_protocol_details, name='protocol_details'),
 
     path('schedules/', sv.ScheduleManagementView.as_view(), name='schedule_management'),
     path('schedule-session/', sv.ScheduleSessionView.as_view(), name='schedule_session'),
@@ -76,4 +77,8 @@ urlpatterns = [
     path('treatment-plan/<int:plan_id>/details/', 
          v.get_treatment_plan_details, 
          name='treatment_plan_details'),
+
+    path('patient/<int:patient_id>/details/', 
+         v.get_patient_details, 
+         name='patient_details'),
 ]

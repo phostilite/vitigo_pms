@@ -15,9 +15,26 @@
 
     <!-- Page Header -->
     <div class="mb-6 flex justify-between items-center">
-        <div>
+        <div class="flex items-center">
             <h1 class="text-2xl font-bold text-gray-800">New Treatment Plan</h1>
-            <p class="text-gray-600">Create a new phototherapy treatment plan</p>
+            <div class="relative ml-2 group">
+                <i class="fas fa-info-circle text-gray-400 hover:text-blue-500 cursor-help text-lg"></i>
+                <div class="hidden group-hover:block absolute left-0 top-6 w-96 p-4 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div class="text-sm text-gray-600 space-y-2">
+                        <p class="font-medium text-gray-700 mb-2">About Treatment Plan Creation</p>
+                        <p>Create a new phototherapy treatment plan by:</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>Selecting a patient who needs phototherapy treatment</li>
+                            <li>Choosing an appropriate protocol based on diagnosis</li>
+                            <li>Setting start date and total number of sessions</li>
+                            <li>Configuring initial dose and cost details</li>
+                            <li>Adding any special instructions or precautions</li>
+                        </ul>
+                        <p class="mt-2 text-blue-600">Note: All fields marked with * are required</p>
+                    </div>
+                    <div class="absolute -top-2 left-2 w-4 h-4 bg-white border-t border-l border-gray-200 transform rotate-45"></div>
+                </div>
+            </div>
         </div>
         <div>
             <a href="{% url 'phototherapy_management' %}" 
@@ -88,31 +105,23 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="{{ form.patient.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Patient
+                        Patient*
                     </label>
                     <div class="relative">
                         <input type="text" 
                             id="patient-search" 
-                            placeholder="Search patient..." 
+                            placeholder="Search patient by name, email, or phone..." 
                             class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
                         <select name="{{ form.patient.html_name }}" 
                                 id="{{ form.patient.auto_id }}"
                                 size="5"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                                required>
                             <option value="">Select a patient</option>
                             {% for choice in form.patient %}
                                 {{ choice }}
                             {% endfor %}
                         </select>
-                        <!-- New Patient Link -->
-                        <div class="mt-2 flex items-center justify-between text-sm">
-                            <span class="text-gray-500">Can't find patient?</span>
-                            <a href="{% url 'patient_registration' %}" 
-                               class="inline-flex items-center text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-user-plus mr-1"></i>
-                                Register New Patient
-                            </a>
-                        </div>
                     </div>
                     {% if form.patient.help_text %}
                     <p class="mt-2 text-sm text-gray-500">{{ form.patient.help_text }}</p>
@@ -120,8 +129,121 @@
                     {% if form.patient.errors %}
                     <p class="mt-1 text-sm text-red-600">{{ form.patient.errors.0 }}</p>
                     {% endif %}
+                    
+                    <!-- Add Patient Instructions -->
+                    <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-sm text-blue-700">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Can't find the patient? 
+                            <a href="{% url 'patient_registration' %}" 
+                               class="font-medium text-blue-600 hover:text-blue-800 underline">
+                                Register new patient
+                            </a>
+                        </p>
+                    </div>
+
+                    <!-- Patient Details Box -->
+                    <div id="patient-details" class="hidden mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0">
+                                <img id="patient-image" src="" alt="Patient photo" 
+                                     class="w-20 h-20 rounded-full object-cover border-2 border-gray-200">
+                            </div>
+                            <div class="flex-grow">
+                                <h3 class="text-sm font-medium text-gray-800 mb-2">Patient Details</h3>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p class="text-gray-600">Name:</p>
+                                        <p class="font-medium" id="patient-name">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-600">Gender:</p>
+                                        <p class="font-medium" id="patient-gender">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-600">Contact:</p>
+                                        <p class="font-medium" id="patient-contact">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-600">Email:</p>
+                                        <p class="font-medium" id="patient-email">-</p>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <p class="text-gray-600">Previous Plans:</p>
+                                        <p class="font-medium" id="patient-history">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div>{{ form.protocol|as_crispy_field }}</div>
+                <div>
+                    <label for="{{ form.protocol.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Protocol*
+                    </label>
+                    <div class="relative">
+                        <input type="text" 
+                            id="protocol-search" 
+                            placeholder="Search protocols by name or type..." 
+                            class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                        <select name="{{ form.protocol.html_name }}" 
+                                id="{{ form.protocol.auto_id }}"
+                                size="5"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                                required>
+                            {% if form.protocol.field.choices %}
+                                {% for value, label in form.protocol.field.choices %}
+                                    {% if value and label %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No protocols available</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    {% if form.protocol.help_text %}
+                    <p class="mt-2 text-sm text-gray-500">{{ form.protocol.help_text }}</p>
+                    {% endif %}
+                    {% if form.protocol.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.protocol.errors.0 }}</p>
+                    {% endif %}
+                    
+                    <!-- Add Protocol Instructions -->
+                    <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-sm text-blue-700">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Need a different protocol? 
+                            <a href="{% url 'add_protocol' %}" 
+                               class="font-medium text-blue-600 hover:text-blue-800 underline">
+                                Create new protocol
+                            </a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Protocol Details Box -->
+                <div id="protocol-details" class="hidden p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 class="text-sm font-medium text-blue-800 mb-2">Protocol Details</h3>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-600">Initial Dose:</p>
+                            <p class="font-medium" id="protocol-initial-dose">-</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600">Max Dose:</p>
+                            <p class="font-medium" id="protocol-max-dose">-</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600">Increment:</p>
+                            <p class="font-medium" id="protocol-increment">-</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600">Frequency:</p>
+                            <p class="font-medium" id="protocol-frequency">-</p>
+                        </div>
+                    </div>
+                </div>
                 <div>{{ form.start_date|as_crispy_field }}</div>
                 <div>{{ form.total_sessions_planned|as_crispy_field }}</div>
                 <div>{{ form.current_dose|as_crispy_field }}</div>
@@ -169,6 +291,85 @@
                 const noResults = new Option('No patients found', '');
                 noResults.disabled = true;
                 selectElement.appendChild(noResults);
+            }
+        });
+
+        // Protocol search functionality
+        const protocolSearchInput = document.getElementById('protocol-search');
+        const protocolSelectElement = document.getElementById('{{ form.protocol.auto_id }}');
+        const originalProtocolOptions = Array.from(protocolSelectElement.options);
+        
+        protocolSearchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            protocolSelectElement.innerHTML = '';
+            
+            originalProtocolOptions.forEach(option => {
+                if (option.text.toLowerCase().includes(searchTerm)) {
+                    protocolSelectElement.appendChild(option.cloneNode(true));
+                }
+            });
+            
+            if (protocolSelectElement.options.length === 0) {
+                const noResults = new Option('No protocols found', '');
+                noResults.disabled = true;
+                protocolSelectElement.appendChild(noResults);
+            }
+        });
+
+        // Protocol details fetch
+        protocolSelectElement.addEventListener('change', function() {
+            const protocolId = this.value;
+            if (protocolId) {
+                fetch(`/phototherapy/protocol/${protocolId}/details/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('protocol-details').classList.remove('hidden');
+                        document.getElementById('protocol-initial-dose').textContent = `${data.initial_dose} joules/cm²`;
+                        document.getElementById('protocol-max-dose').textContent = `${data.max_dose} joules/cm²`;
+                        document.getElementById('protocol-increment').textContent = `${data.increment_percentage}%`;
+                        document.getElementById('protocol-frequency').textContent = `${data.frequency_per_week}x per week`;
+                        
+                        // Automatically set initial dose
+                        document.getElementById('id_current_dose').value = data.initial_dose;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching protocol details:', error);
+                        document.getElementById('protocol-details').classList.add('hidden');
+                    });
+            } else {
+                document.getElementById('protocol-details').classList.add('hidden');
+            }
+        });
+
+        // Add patient details fetch
+        document.getElementById('{{ form.patient.auto_id }}').addEventListener('change', function() {
+            const patientId = this.value;
+            if (patientId) {
+                fetch(`/phototherapy/patient/${patientId}/details/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('patient-details').classList.remove('hidden');
+                        document.getElementById('patient-name').textContent = data.full_name;
+                        document.getElementById('patient-gender').textContent = data.gender || 'Not specified';
+                        document.getElementById('patient-contact').textContent = data.phone_number || 'No contact';
+                        document.getElementById('patient-email').textContent = data.email || 'No email';
+                        document.getElementById('patient-history').textContent = 
+                            `${data.completed_plans} completed, ${data.active_plans} active plans`;
+                        
+                        // Set patient image
+                        const imgElement = document.getElementById('patient-image');
+                        if (data.profile_picture) {
+                            imgElement.src = data.profile_picture;
+                        } else {
+                            imgElement.src = '/static/images/default-patient.png';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching patient details:', error);
+                        document.getElementById('patient-details').classList.add('hidden');
+                    });
+            } else {
+                document.getElementById('patient-details').classList.add('hidden');
             }
         });
     });

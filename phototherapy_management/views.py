@@ -644,7 +644,7 @@ class AddPhototherapyTypeView(LoginRequiredMixin, CreateView):
             return super().dispatch(request, *args, **kwargs)
         except Exception as e:
             logger.error(f"Error in phototherapy type dispatch: {str(e)}")
-            messages.error(request, "An error occurred while accessing the page")
+            messages.error(self.request, "An error occurred while accessing the page")
             return redirect('dashboard')
 
     def get_template_names(self):
@@ -854,5 +854,49 @@ def get_device_details(request, device_id):
         })
     except PhototherapyDevice.DoesNotExist:
         return JsonResponse({'error': 'Device not found'}, status=404)
+
+def get_protocol_details(request, protocol_id):
+    try:
+        protocol = PhototherapyProtocol.objects.get(id=protocol_id)
+        return JsonResponse({
+            'initial_dose': protocol.initial_dose,
+            'max_dose': protocol.max_dose,
+            'increment_percentage': protocol.increment_percentage,
+            'frequency_per_week': protocol.frequency_per_week,
+            'duration_weeks': protocol.duration_weeks
+        })
+    except PhototherapyProtocol.DoesNotExist:
+        return JsonResponse({'error': 'Protocol not found'}, status=404)
+
+def get_patient_details(request, patient_id):
+    try:
+        patient = User.objects.get(id=patient_id, role__name='PATIENT')
+        
+        # Get treatment plan history
+        completed_plans = PhototherapyPlan.objects.filter(
+            patient=patient,
+            is_active=False,
+            sessions_completed__gte=models.F('total_sessions_planned')
+        ).count()
+        
+        active_plans = PhototherapyPlan.objects.filter(
+            patient=patient,
+            is_active=True
+        ).count()
+        
+        return JsonResponse({
+            'full_name': patient.get_full_name(),
+            'email': patient.email,
+            'phone_number': f"{patient.country_code} {patient.phone_number}" if patient.phone_number else None,
+            'gender': patient.get_gender_display() if patient.gender else None,
+            'profile_picture': patient.profile_picture.url if patient.profile_picture else None,
+            'completed_plans': completed_plans,
+            'active_plans': active_plans,
+        })
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'Patient not found'}, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching patient details: {str(e)}")
+        return JsonResponse({'error': 'Error fetching patient details'}, status=500)
 
 

@@ -249,6 +249,31 @@ class TreatmentPlanForm(forms.ModelForm):
         self.fields['special_instructions'].widget.attrs['placeholder'] = (
             "Enter any special instructions, precautions, or notes for this treatment plan"
         )
+        # Customize patient queryset to include related data
+        patient_queryset = User.objects.filter(
+            role__name='PATIENT',
+            is_active=True
+        ).select_related('role')
+        
+        self.fields['patient'].queryset = patient_queryset
+        
+        # Enhanced patient label with contact info
+        def get_patient_label(user):
+            try:
+                details = []
+                details.append(user.get_full_name())
+                if user.email:
+                    details.append(f"Email: {user.email}")
+                if user.phone_number:
+                    details.append(f"Phone: {user.phone_number}")
+                if user.gender:
+                    details.append(f"Gender: {user.get_gender_display()}")
+                return " | ".join(details)
+            except Exception as e:
+                logger.error(f"Error generating patient label: {str(e)}")
+                return str(user)
+        
+        self.fields['patient'].label_from_instance = get_patient_label
 
     def clean(self):
         cleaned_data = super().clean()
