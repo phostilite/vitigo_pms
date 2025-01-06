@@ -838,7 +838,8 @@ def get_treatment_plan_details(request, plan_id):
             'patient',
             'protocol'
         ).prefetch_related(
-            'sessions'  # Add prefetch for sessions
+            'sessions',
+            'payments'  # Add payments to prefetch
         ).get(id=plan_id)
         
         # Update completed sessions count first
@@ -868,9 +869,33 @@ def get_treatment_plan_details(request, plan_id):
                 if last_session.actual_dose 
                 else f"{last_session.planned_dose:.3f} joules/cm² (planned)"
             )
+            administrator_name = (
+                last_session.administered_by.get_full_name() 
+                if last_session.administered_by 
+                else 'Not recorded'
+            )
         else:
             last_session_date = 'No sessions completed'
             last_session_dose = 'No dose recorded'
+            administrator_name = 'No sessions completed'
+
+        # Get last payment and next payment info
+        last_payment = plan.payments.filter(
+            status='COMPLETED'
+        ).order_by('-payment_date').first()
+
+        # Calculate next payment info
+        if plan.total_cost > plan.amount_paid:
+            if last_payment and last_payment.is_installment:
+                amount_per_installment = plan.total_cost / last_payment.total_installments
+                next_payment_amount = amount_per_installment
+            elif plan.sessions.filter(status='COMPLETED').exists() and plan.billing_status == 'PARTIAL':
+                # For per-session payments
+                next_payment_amount = plan.total_cost / plan.total_sessions_planned
+            else:
+                next_payment_amount = plan.total_cost - plan.amount_paid
+        else:
+            next_payment_amount = None
 
         return JsonResponse({
             'patient_name': plan.patient.get_full_name(),
@@ -880,11 +905,21 @@ def get_treatment_plan_details(request, plan_id):
             'current_dose': plan.current_dose,
             'last_session_date': last_session_date,
             'last_dose': last_session_dose,
+            'administrator': administrator_name,  # Add administrator info
             'protocol': {
                 'initial_dose': plan.protocol.initial_dose,
                 'max_dose': plan.protocol.max_dose,
                 'increment_percentage': plan.protocol.increment_percentage,
                 'frequency_per_week': plan.protocol.frequency_per_week
+            },
+            'last_payment': {
+                'date': last_payment.payment_date.strftime('%Y-%m-%d') if last_payment else None,
+                'amount': float(last_payment.amount) if last_payment else None,
+                'method': last_payment.get_payment_method_display() if last_payment else None
+            },
+            'next_payment': {
+                'amount': float(next_payment_amount) if next_payment_amount else None,
+                'status': plan.get_billing_status_display()
             }
         })
     except PhototherapyPlan.DoesNotExist:

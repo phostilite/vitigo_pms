@@ -151,6 +151,18 @@
                         <p class="text-gray-600">Last Dose Given:</p>
                         <p class="font-medium" id="plan-last-dose">-</p>
                     </div>
+                    <div>
+                        <p class="text-gray-600">Last Payment:</p>
+                        <p class="font-medium" id="plan-last-payment">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Next Payment Due:</p>
+                        <p class="font-medium" id="plan-next-payment">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Administered By:</p>
+                        <p class="font-medium" id="plan-last-administrator">-</p>
+                    </div>
                 </div>
                 <!-- Protocol Details Collapsible -->
                 <div class="mt-3">
@@ -461,6 +473,21 @@
                     document.getElementById('plan-last-session-date').textContent = data.last_session_date;
                     document.getElementById('plan-last-dose').textContent = data.last_dose;
                     
+                    // Update payment information
+                    if (data.last_payment.date) {
+                        document.getElementById('plan-last-payment').textContent = 
+                            `₹${data.last_payment.amount} (${data.last_payment.date})`;
+                    } else {
+                        document.getElementById('plan-last-payment').textContent = 'No payments yet';
+                    }
+                    
+                    if (data.next_payment.amount) {
+                        document.getElementById('plan-next-payment').textContent = 
+                            `₹${data.next_payment.amount} (${data.next_payment.status})`;
+                    } else {
+                        document.getElementById('plan-next-payment').textContent = 'All payments completed';
+                    }
+                    
                     // Update protocol details
                     document.getElementById('protocol-initial-dose').textContent = `${data.protocol.initial_dose} joules/cm²`;
                     document.getElementById('protocol-max-dose').textContent = `${data.protocol.max_dose} joules/cm²`;
@@ -475,6 +502,9 @@
                     
                     // Update dose presets based on protocol
                     updateDosePresets(data.protocol.initial_dose, data.protocol.max_dose);
+
+                    // Update administrator information
+                    document.getElementById('plan-last-administrator').textContent = data.administrator;
                 })
                 .catch(error => {
                     console.error('Error fetching plan details:', error);
