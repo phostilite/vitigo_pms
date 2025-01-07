@@ -268,12 +268,17 @@
                                            title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <button type="button" class="text-red-600 hover:text-red-900" title="Delete">
+                                        <button type="button" 
+                                                data-modal-target="delete-modal-{{ document.id }}" 
+                                                data-modal-toggle="delete-modal-{{ document.id }}"
+                                                class="text-red-600 hover:text-red-900" 
+                                                title="Delete">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
+                            {% include 'administrator/hr_management/documents/modals/document_delete.html' %}
                         {% empty %}
                             <tr>
                                 <td colspan="5" class="px-6 py-12">

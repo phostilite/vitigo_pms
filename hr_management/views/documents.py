@@ -231,3 +231,29 @@ class DocumentEditView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'form': form,
                 'document': document
             })
+
+class DocumentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def post(self, request, document_id):
+        try:
+            document = get_object_or_404(Document, id=document_id)
+            
+            # Delete the physical file
+            if document.file:
+                try:
+                    if os.path.exists(document.file.path):
+                        os.remove(document.file.path)
+                except Exception as e:
+                    logger.warning(f"Error deleting file: {str(e)}")
+
+            # Delete the document record
+            document.delete()
+            messages.success(request, "Document deleted successfully")
+            
+        except Exception as e:
+            logger.error(f"Error deleting document {document_id}: {str(e)}")
+            messages.error(request, "Error deleting document")
+            
+        return redirect('document_list')
