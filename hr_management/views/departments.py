@@ -144,3 +144,45 @@ class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
             messages.error(self.request, "Some department data could not be loaded")
         
         return context
+
+class DepartmentEditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('departments/edit_department.html', self.request.user.role, 'hr_management')
+
+    def get(self, request, pk):
+        try:
+            department = get_object_or_404(Department, pk=pk)
+            form = DepartmentForm(instance=department)
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'department': department
+            })
+        except Exception as e:
+            logger.error(f"Error retrieving department for edit: {str(e)}")
+            messages.error(request, "Error retrieving department details")
+            return redirect('department_list')
+
+    def post(self, request, pk):
+        try:
+            department = get_object_or_404(Department, pk=pk)
+            form = DepartmentForm(request.POST, instance=department)
+            
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Department updated successfully")
+                return redirect('department_detail', pk=pk)
+            
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'department': department
+            })
+        except Exception as e:
+            logger.error(f"Error updating department: {str(e)}")
+            messages.error(request, "Error updating department")
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'department': department
+            })
