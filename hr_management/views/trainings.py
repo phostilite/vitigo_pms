@@ -224,3 +224,53 @@ class TrainingDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error viewing training details: {str(e)}")
             messages.error(request, "Error retrieving training details")
             return redirect('training_list')
+
+class TrainingEditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('trainings/training_edit.html', self.request.user.role, 'hr_management')
+
+    def get(self, request, pk):
+        try:
+            training = Training.objects.get(pk=pk)
+            if training.status != 'PLANNED':
+                messages.error(request, "Only planned trainings can be edited")
+                return redirect('training_detail', pk=pk)
+                
+            form = TrainingForm(instance=training)
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'training': training
+            })
+            
+        except Training.DoesNotExist:
+            messages.error(request, "Training program not found")
+            return redirect('training_list')
+
+    def post(self, request, pk):
+        try:
+            training = Training.objects.get(pk=pk)
+            if training.status != 'PLANNED':
+                messages.error(request, "Only planned trainings can be edited")
+                return redirect('training_detail', pk=pk)
+                
+            form = TrainingForm(request.POST, request.FILES, instance=training)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Training program updated successfully")
+                return redirect('training_detail', pk=pk)
+                
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'training': training
+            })
+            
+        except Training.DoesNotExist:
+            messages.error(request, "Training program not found")
+            return redirect('training_list')
+        except Exception as e:
+            logger.error(f"Error updating training: {str(e)}")
+            messages.error(request, "Error updating training program")
+            return redirect('training_list')
