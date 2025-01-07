@@ -65,6 +65,45 @@ class EmployeeCreationForm(forms.ModelForm):
 
         return cleaned_data
 
+class EmployeeEditForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=30)
+    last_name = forms.CharField(max_length=30)
+    email = forms.EmailField()
+    phone_number = forms.CharField(max_length=15, required=False)
+
+    class Meta:
+        model = Employee
+        fields = [
+            'department', 'position', 'reporting_to',
+            'emergency_contact_name', 'emergency_contact_number',
+            'address', 'employment_status', 'employment_type',
+            'current_salary'
+        ]
+        widgets = {
+            'address': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.user:
+            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['last_name'].initial = self.instance.user.last_name
+            self.fields['email'].initial = self.instance.user.email
+            self.fields['phone_number'].initial = self.instance.user.phone_number
+
+    def save(self, commit=True):
+        employee = super().save(commit=False)
+        if commit:
+            # Update User model fields
+            user = employee.user
+            user.first_name = self.cleaned_data['first_name']
+            user.last_name = self.cleaned_data['last_name']
+            user.email = self.cleaned_data['email']
+            user.phone_number = self.cleaned_data['phone_number']
+            user.save()
+            employee.save()
+        return employee
+
 class DepartmentForm(forms.ModelForm):
     class Meta:
         model = Department

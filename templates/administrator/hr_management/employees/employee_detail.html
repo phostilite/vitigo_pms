@@ -45,9 +45,9 @@
                     <a href="{% url 'employee_list' %}" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 border">
                         <i class="mr-2 fas fa-arrow-left"></i> Back to List
                     </a>
-                    <button type="button" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
+                    <a href="{% url 'employee_edit' employee.id %}" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
                         <i class="mr-2 fas fa-edit"></i> Edit Employee
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>

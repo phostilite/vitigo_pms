@@ -8,7 +8,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from django.db import models
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView
@@ -18,7 +18,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from hr_management.models import Department, Employee, Document, Leave, TrainingParticipant, PerformanceReview
-from hr_management.forms import EmployeeCreationForm
+from hr_management.forms import EmployeeCreationForm, EmployeeEditForm
 from hr_management.utils import get_template_path
 
 # Get user model
@@ -208,3 +208,36 @@ class EmployeeDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
             messages.error(self.request, "Some employee data could not be loaded")
         
         return context
+
+class EmployeeEditView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = 'hr_management.change_employee'
+    template_name = 'administrator/hr_management/employees/employee_edit.html'
+
+    def get_employee(self, pk):
+        return get_object_or_404(Employee, pk=pk)
+
+    def get(self, request, pk):
+        employee = self.get_employee(pk)
+        form = EmployeeEditForm(instance=employee)
+        return render(request, self.template_name, {
+            'form': form,
+            'employee': employee
+        })
+
+    def post(self, request, pk):
+        employee = self.get_employee(pk)
+        form = EmployeeEditForm(request.POST, instance=employee)
+        
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, "Employee details updated successfully")
+                return redirect('employee_detail', pk=pk)
+            except Exception as e:
+                logger.error(f"Error updating employee {pk}: {str(e)}")
+                messages.error(request, "Error updating employee details")
+        
+        return render(request, self.template_name, {
+            'form': form,
+            'employee': employee
+        })
