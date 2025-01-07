@@ -319,11 +319,11 @@ class TreatmentPlanForm(forms.ModelForm):
                 details = []
                 details.append(user.get_full_name())
                 if user.email:
-                    details.append(f"Email: {user.email}")
+                    details.append(f"{user.email}")
                 if user.phone_number:
-                    details.append(f"Phone: {user.phone_number}")
+                    details.append(f"{user.phone_number}")
                 if user.gender:
-                    details.append(f"Gender: {user.get_gender_display()}")
+                    details.append(f"{user.get_gender_display()}")
                 return " | ".join(details)
             except Exception as e:
                 logger.error(f"Error generating patient label: {str(e)}")
