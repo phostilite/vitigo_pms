@@ -18,6 +18,7 @@ urlpatterns = [
     path('employees/', employee_views.EmployeeListView.as_view(), name='employee_list'),
     path('employees/<int:pk>/', employee_views.EmployeeDetailView.as_view(), name='employee_detail'),
     path('employees/<int:pk>/edit/', employee_views.EmployeeEditView.as_view(), name='employee_edit'),
+    path('employees/<int:pk>/delete/', employee_views.EmployeeDeleteView.as_view(), name='employee_delete'),
     path('employees/bulk-actions/', employee_views.BulkActionsView.as_view(), name='employee_bulk_actions'),
     
     path('departments/', department_views.DepartmentListView.as_view(), name='department_list'),

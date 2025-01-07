@@ -12,7 +12,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.http import Http404
 
 # Local imports
 from access_control.permissions import PermissionManager
@@ -70,8 +70,28 @@ class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'hr_management')
 
-    def get_template_name(self):
-        return get_template_path('employees/employee_list.html', self.request.user.role, 'hr_management')
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not PermissionManager.check_module_access(request.user, 'hr_management'):
+                logger.warning(f"Access denied to employee list for user {request.user.id}")
+                messages.error(request, "You don't have permission to access Employee Management")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in employee list dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('dashboard')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'employees/employee_list.html',
+                self.request.user.role,
+                'hr_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['hr_management/default_employee_list.html']
 
     def get(self, request):
         search_query = request.GET.get('search', '')
@@ -114,7 +134,7 @@ class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, View):
             'status_filter': status_filter
         }
 
-        return render(request, self.get_template_name(), context)
+        return render(request, self.get_template_names(), context)
 
 class BulkActionsView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
@@ -172,11 +192,35 @@ class BulkActionsView(LoginRequiredMixin, UserPassesTestMixin, View):
             
         return redirect('employee_bulk_actions')
 
-class EmployeeDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+class EmployeeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Employee
-    template_name = 'administrator/hr_management/employees/employee_detail.html'
     context_object_name = 'employee'
-    permission_required = 'hr_management.view_employee'
+
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to employee details for user {request.user.id}")
+                messages.error(request, "You don't have permission to view employee details")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in employee detail dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the employee details")
+            return redirect('dashboard')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'employees/employee_detail.html',
+                self.request.user.role,
+                'hr_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['hr_management/default_employee_detail.html']
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -209,9 +253,38 @@ class EmployeeDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
         
         return context
 
-class EmployeeEditView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    permission_required = 'hr_management.change_employee'
-    template_name = 'administrator/hr_management/employees/employee_edit.html'
+class EmployeeEditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            self.employee = get_object_or_404(Employee, pk=kwargs['pk'])
+            
+            if not self.test_func():
+                logger.warning(f"Access denied to employee edit for user {request.user.id}")
+                messages.error(request, "You don't have permission to edit employees")
+                return redirect('employee_detail', pk=self.employee.pk)
+            
+            return super().dispatch(request, *args, **kwargs)
+        except Http404:
+            messages.error(request, "Employee not found")
+            return redirect('employee_list')
+        except Exception as e:
+            logger.error(f"Error in employee edit dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('employee_list')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'employees/employee_edit.html',
+                self.request.user.role,
+                'hr_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['hr_management/default_employee_edit.html']
 
     def get_employee(self, pk):
         return get_object_or_404(Employee, pk=pk)
@@ -219,7 +292,7 @@ class EmployeeEditView(LoginRequiredMixin, PermissionRequiredMixin, View):
     def get(self, request, pk):
         employee = self.get_employee(pk)
         form = EmployeeEditForm(instance=employee)
-        return render(request, self.template_name, {
+        return render(request, self.get_template_names(), {
             'form': form,
             'employee': employee
         })
@@ -237,7 +310,40 @@ class EmployeeEditView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 logger.error(f"Error updating employee {pk}: {str(e)}")
                 messages.error(request, "Error updating employee details")
         
-        return render(request, self.template_name, {
+        return render(request, self.get_template_names(), {
             'form': form,
             'employee': employee
         })
+
+class EmployeeDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to employee deletion for user {request.user.id}")
+                messages.error(request, "You don't have permission to delete employees")
+                return handler403(request, exception="Access Denied")
+                
+            if request.method != 'POST':
+                return handler403(request, exception="Method not allowed")
+                
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in employee delete dispatch: {str(e)}")
+            messages.error(request, "An error occurred while processing your request")
+            return redirect('employee_list')
+
+    def post(self, request, pk):
+        try:
+            employee = get_object_or_404(Employee, pk=pk)
+            user = employee.user
+            employee.delete()
+            user.delete()
+            messages.success(request, "Employee deleted successfully")
+        except Exception as e:
+            logger.error(f"Error deleting employee {pk}: {str(e)}")
+            messages.error(request, "Error deleting employee")
+        
+        return redirect('employee_list')

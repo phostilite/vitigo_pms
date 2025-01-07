@@ -148,9 +148,14 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-3">
                                         <a href="{% url 'employee_detail' employee.id %}" class="text-blue-600 hover:text-blue-900"><i class="fas fa-eye"></i></a>
-                                        <a href="#" class="text-green-600 hover:text-green-900"><i class="fas fa-edit"></i></a>
-                                        <button type="button" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                                        <a href="{% url 'employee_edit' employee.id %}" class="text-green-600 hover:text-green-900"><i class="fas fa-edit"></i></a>
+                                        <button data-modal-target="delete-modal-{{ employee.id }}" data-modal-toggle="delete-modal-{{ employee.id }}" class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
+
+                                    <!-- Delete Modal -->
+                                    {% include './modals/employee_delete.html' %}
                                 </td>
                             </tr>
                         {% empty %}
