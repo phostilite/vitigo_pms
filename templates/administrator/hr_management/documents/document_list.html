@@ -252,7 +252,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-3">
                                         {% if document.file_available %}
-                                            <a href="{{ document.file.url }}" target="_blank" 
+                                            <a href="{% url 'document_download' document.id %}" 
                                                class="text-blue-600 hover:text-blue-900" 
                                                title="Download">
                                                 <i class="fas fa-download"></i>

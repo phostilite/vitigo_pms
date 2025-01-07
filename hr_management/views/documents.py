@@ -11,6 +11,11 @@ from access_control.permissions import PermissionManager
 from hr_management.utils import get_template_path
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 import logging
+from django.http import FileResponse, HttpResponseNotFound, HttpResponseServerError
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404
+import os
+import mimetypes
 
 logger = logging.getLogger(__name__)
 
@@ -118,3 +123,40 @@ class DocumentListView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'document_types': Document.DOCUMENT_TYPES,
                 'total_documents': 0
             })
+
+class DocumentDownloadView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get(self, request, document_id):
+        try:
+            document = get_object_or_404(Document, id=document_id)
+            
+            # Check if file exists
+            if not document.file or not os.path.exists(document.file.path):
+                logger.error(f"Document file not found: ID {document_id}")
+                return HttpResponseNotFound("Document file not found")
+
+            # Get the file's mime type
+            content_type, _ = mimetypes.guess_type(document.file.path)
+            if not content_type:
+                content_type = 'application/octet-stream'
+
+            # Open the file in binary mode
+            response = FileResponse(
+                document.file.open('rb'),
+                content_type=content_type,
+                as_attachment=True,
+                filename=os.path.basename(document.file.name)
+            )
+            
+            logger.info(f"Document downloaded successfully: ID {document_id}")
+            return response
+
+        except PermissionDenied:
+            logger.warning(f"Permission denied for document download: ID {document_id}, User {request.user.id}")
+            raise
+
+        except Exception as e:
+            logger.error(f"Error downloading document {document_id}: {str(e)}")
+            return HttpResponseServerError("Error downloading document")
