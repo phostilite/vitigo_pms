@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Employee, Department, Position, Document, Notice
+from .models import Employee, Department, Position, Document, Notice, Training
 from django.utils import timezone
 
 User = get_user_model()
@@ -171,3 +171,44 @@ class NoticeForm(forms.ModelForm):
         if expiry_date and expiry_date < timezone.now().date():
             raise forms.ValidationError("Expiry date cannot be in the past")
         return expiry_date
+
+class TrainingForm(forms.ModelForm):
+    class Meta:
+        model = Training
+        fields = [
+            'title', 'description', 'trainer', 'start_date', 
+            'end_date', 'location', 'max_participants', 'materials'
+        ]
+        widgets = {
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 4}),
+        }
+        help_texts = {
+            'title': 'Enter a clear and descriptive title for the training program',
+            'description': 'Provide detailed information about the training content and objectives',
+            'trainer': 'Name of the person conducting the training',
+            'start_date': 'Training start date',
+            'end_date': 'Training end date',
+            'location': 'Where the training will be conducted',
+            'max_participants': 'Maximum number of participants allowed',
+            'materials': 'Upload training materials (PDF, DOC, DOCX, PPT, PPTX only)'
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if start_date and end_date:
+            if start_date > end_date:
+                raise forms.ValidationError("End date cannot be earlier than start date")
+            
+        return cleaned_data
+
+    def clean_materials(self):
+        materials = self.cleaned_data.get('materials')
+        if materials:
+            if materials.size > 10 * 1024 * 1024:  # 10MB
+                raise forms.ValidationError("File size must be no more than 10MB")
+        return materials

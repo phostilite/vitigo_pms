@@ -21,6 +21,9 @@ from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from hr_management.models import Training, Department, EmployeeSkill, Employee
 from hr_management.utils import get_template_path
+from ..forms import TrainingForm
+
+logger = logging.getLogger(__name__)
 
 class TrainingListView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
@@ -165,3 +168,31 @@ class SkillMatrixView(LoginRequiredMixin, UserPassesTestMixin, View):
         }
 
         return render(request, self.get_template_name(), context)
+
+class NewTrainingView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('trainings/new_training.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        form = TrainingForm()
+        return render(request, self.get_template_name(), {'form': form})
+
+    def post(self, request):
+        form = TrainingForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                training = form.save(commit=False)
+                training.status = 'PLANNED'
+                training.save()
+                
+                messages.success(request, "Training program created successfully")
+                return redirect('training_list')
+            except Exception as e:
+                logger.error(f"Error creating training: {str(e)}")
+                messages.error(request, "Error creating training program")
+                return render(request, self.get_template_name(), {'form': form})
+        
+        return render(request, self.get_template_name(), {'form': form})
