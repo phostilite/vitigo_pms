@@ -31,6 +31,7 @@ urlpatterns = [
     path('leaves/pending/', leave_views.PendingLeaveRequestsView.as_view(), name='pending_leave_requests'),
     path('leaves/calendar/', leave_views.LeaveCalendarView.as_view(), name='leave_calendar'),
     path('leaves/settings/', leave_views.LeaveSettingsView.as_view(), name='leave_settings'),
+    path('leaves/<int:pk>/', leave_views.LeaveDetailView.as_view(), name='leave_detail'),
     
     path('trainings/', training_views.TrainingListView.as_view(), name='training_list'),
     path('trainings/schedule/', training_views.TrainingScheduleView.as_view(), name='training_schedule'),

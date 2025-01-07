@@ -12,6 +12,7 @@ from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
 from django.core.exceptions import ValidationError
+from django.views.generic import DetailView
 
 # Local imports
 from access_control.permissions import PermissionManager
@@ -21,6 +22,8 @@ from hr_management.utils import get_template_path
 
 from datetime import datetime, timedelta
 from calendar import monthrange
+
+logger = logging.getLogger(__name__)
 
 class LeaveListView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
@@ -179,3 +182,56 @@ class LeaveSettingsView(LoginRequiredMixin, UserPassesTestMixin, View):
             messages.error(request, f'Error updating settings: {e}')
 
         return redirect('leave_settings')
+
+class LeaveDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    model = Leave
+    context_object_name = 'leave'
+
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to leave details for user {request.user.id}")
+                messages.error(request, "You don't have permission to view leave details")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in leave detail dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the leave details")
+            return redirect('leave_list')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'leaves/leave_detail.html',
+                self.request.user.role,
+                'hr_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['hr_management/default_leave_detail.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        leave = self.object
+        
+        try:
+            # Add any additional context data needed for the template
+            context['employee'] = leave.employee
+            context['department'] = leave.employee.department
+            context['leave_duration'] = (leave.end_date - leave.start_date).days + 1
+            
+            # Get leave history for this employee
+            context['leave_history'] = Leave.objects.filter(
+                employee=leave.employee
+            ).exclude(
+                id=leave.id
+            ).order_by('-start_date')[:5]
+            
+        except Exception as e:
+            logger.error(f"Error fetching leave details for {leave.id}: {str(e)}")
+            messages.error(self.request, "Some leave data could not be loaded")
+        
+        return context
