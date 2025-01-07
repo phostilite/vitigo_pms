@@ -2,9 +2,6 @@
 
 echo "Starting Django project cleanup..."
 
-# Kill any running Django server
-pkill -f runserver
-
 # Delete migrations and cache files
 find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
 find . -name "__pycache__" -type d -exec rm -r {} +

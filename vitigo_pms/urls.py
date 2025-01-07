@@ -48,6 +48,7 @@ urlpatterns = [
     path('appointments/', include('appointment_management.urls')),
     path('consultations/', include('consultation_management.urls')),
     path('clinic/', include('clinic_management.urls')),
+    path('compliance/', include('compliance_management.urls')),
     path('queries/', include('query_management.urls')),
     path('procedures/', include('procedure_management.urls')),
     path('phototherapy/', include('phototherapy_management.urls')),

@@ -41,6 +41,7 @@ class Command(BaseCommand):
             {'name': 'user_management', 'display_name': 'User Management', 'url_name': 'user_dashboard', 'order': 53},
             {'name': 'notification_management', 'display_name': 'Notification Management', 'url_name': 'notification_dashboard', 'order': 54},
             {'name': 'asset_management', 'display_name': 'Asset Management', 'url_name': 'asset_dashboard', 'order': 55},
+            {'name': 'compliance_management', 'display_name': 'Compliance Management', 'url_name': 'compliance_dashboard', 'order': 56},
         ]
 
         # Define roles with their attributes

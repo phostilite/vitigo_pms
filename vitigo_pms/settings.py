@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'body_mapping',
     'clinic_management',
     'asset_management',
+    'compliance_management',
 ]
 
 MIDDLEWARE = [
