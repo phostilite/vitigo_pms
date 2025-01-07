@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Employee, Department, Position, Document, Notice, Training, Grievance
+from .models import Employee, Department, Position, Document, Notice, Training, Grievance, PerformanceReview
 from django.utils import timezone
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field, Submit, Button
@@ -286,4 +286,48 @@ class GrievanceEditForm(forms.ModelForm):
         if status in ['RESOLVED', 'CLOSED'] and not resolution:
             raise forms.ValidationError("Resolution is required when status is Resolved or Closed")
 
+        return cleaned_data
+
+class PerformanceReviewForm(forms.ModelForm):
+    class Meta:
+        model = PerformanceReview
+        fields = [
+            'employee', 'review_date', 'review_period_start', 
+            'review_period_end', 'technical_skills', 'communication',
+            'teamwork', 'productivity', 'reliability', 'achievements',
+            'areas_for_improvement', 'goals', 'overall_comments'
+        ]
+        widgets = {
+            'review_date': forms.DateInput(attrs={'type': 'date'}),
+            'review_period_start': forms.DateInput(attrs={'type': 'date'}),
+            'review_period_end': forms.DateInput(attrs={'type': 'date'}),
+            'achievements': forms.Textarea(attrs={'rows': 3}),
+            'areas_for_improvement': forms.Textarea(attrs={'rows': 3}),
+            'goals': forms.Textarea(attrs={'rows': 3}),
+            'overall_comments': forms.Textarea(attrs={'rows': 3}),
+        }
+        help_texts = {
+            'employee': 'Select the employee whose performance is being reviewed',
+            'review_date': 'Date when this performance review is being conducted',
+            'review_period_start': 'Start date of the period being reviewed (e.g., start of quarter/year)',
+            'review_period_end': 'End date of the period being reviewed (e.g., end of quarter/year)',
+            'technical_skills': 'Rate 1-5: Job knowledge, technical competency, quality of work, and problem-solving abilities',
+            'communication': 'Rate 1-5: Verbal/written communication, listening skills, and ability to convey information clearly',
+            'teamwork': 'Rate 1-5: Collaboration, cooperation with colleagues, and contribution to team objectives',
+            'productivity': 'Rate 1-5: Work efficiency, meeting deadlines, and achieving targets',
+            'reliability': 'Rate 1-5: Attendance, punctuality, responsibility, and dependability',
+            'achievements': 'List key accomplishments, completed projects, and notable contributions during the review period',
+            'areas_for_improvement': 'Identify specific skills, behaviors, or competencies that need development',
+            'goals': 'Set SMART goals (Specific, Measurable, Achievable, Relevant, Time-bound) for the next period',
+            'overall_comments': 'Provide a comprehensive summary of the employee\'s performance and additional observations'
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start = cleaned_data.get('review_period_start')
+        end = cleaned_data.get('review_period_end')
+        
+        if start and end and start > end:
+            raise forms.ValidationError("Review period end date must be after start date")
+            
         return cleaned_data

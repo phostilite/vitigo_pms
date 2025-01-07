@@ -4,12 +4,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView
 from django.utils import timezone
 from django.db.models import Q
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.views import View
 
 from ..models import PerformanceReview, Employee
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from hr_management.utils import get_template_path
+from ..forms import PerformanceReviewForm
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -109,3 +111,44 @@ class PerformanceListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             logger.exception(f"Error in PerformanceListView get: {str(e)}")
             messages.error(request, "An error occurred while loading performance reviews.")
             return handler500(request, exception=str(e))
+
+class PerformanceReviewCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('performance/review_create.html', self.request.user.role, 'hr_management')
+
+    def get(self, request):
+        try:
+            form = PerformanceReviewForm()
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'page_title': 'Create Performance Review'
+            })
+        except Exception as e:
+            logger.error(f"Error in PerformanceReviewCreateView GET: {str(e)}")
+            messages.error(request, "Error loading performance review form")
+            return redirect('performance_reviews')
+
+    def post(self, request):
+        try:
+            form = PerformanceReviewForm(request.POST)
+            if form.is_valid():
+                review = form.save(commit=False)
+                review.reviewer = request.user
+                review.status = 'DRAFT'
+                review.save()
+                
+                messages.success(request, "Performance review created successfully")
+                return redirect('performance_reviews')
+            
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'page_title': 'Create Performance Review'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in PerformanceReviewCreateView POST: {str(e)}")
+            messages.error(request, "Error creating performance review")
+            return redirect('performance_reviews')
