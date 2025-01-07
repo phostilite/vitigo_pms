@@ -8,7 +8,8 @@ from .views import (
     grievances as grievance_views,
     performance as performance_views,
     documents as document_views,
-    notices as notice_views
+    notices as notice_views,
+    export as export_views
 )
 
 urlpatterns = [
@@ -61,4 +62,6 @@ urlpatterns = [
 
     path('notices/', notice_views.NoticeListView.as_view(), name='notice_list'),
     path('notices/new/', notice_views.NoticeCreateView.as_view(), name='notice_create'),
+
+    path('export/dashboard/', export_views.HRDashboardExportView.as_view(), name='hr_dashboard_export'),
 ]

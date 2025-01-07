@@ -35,9 +35,25 @@
                     <button type="button" onclick="window.location.href='{% url 'new_employee' %}'" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
                         <i class="mr-2 fas fa-plus"></i> New Employee
                     </button>
-                    <button type="button" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 border">
-                        <i class="mr-2 fas fa-download"></i> Export
-                    </button>
+                    
+                    <!-- Export Dropdown -->
+                    <div class="dropdown relative">
+                        <button id="exportDropdown" data-dropdown-toggle="exportDropdownItems" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 border inline-flex items-center">
+                            <i class="mr-2 fas fa-download"></i>
+                            Export
+                            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+                        </button>
+                        <div id="exportDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
+                            <a href="{% url 'hr_dashboard_export' %}?format=excel" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-file-excel mr-3 text-green-600"></i>
+                                <span class="text-sm text-gray-700">Export to Excel</span>
+                            </a>
+                            <a href="{% url 'hr_dashboard_export' %}?format=pdf" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-file-pdf mr-3 text-red-600"></i>
+                                <span class="text-sm text-gray-700">Export to PDF</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -519,6 +535,23 @@
                             display: false
                         }
                     }
+                }
+            });
+        }
+
+        // Handle export dropdown
+        const exportDropdown = document.getElementById('exportDropdown');
+        const exportMenu = document.getElementById('exportDropdownItems');
+        
+        if (exportDropdown && exportMenu) {
+            exportDropdown.addEventListener('click', function() {
+                exportMenu.classList.toggle('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!exportDropdown.contains(event.target)) {
+                    exportMenu.classList.add('hidden');
                 }
             });
         }
