@@ -11,11 +11,13 @@ from django.db import models
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
+from django.views.generic import DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 
 # Local imports
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
-from hr_management.models import Department, Employee
+from hr_management.models import Department, Employee, Document, Leave, TrainingParticipant, PerformanceReview
 from hr_management.forms import EmployeeCreationForm
 from hr_management.utils import get_template_path
 
@@ -169,3 +171,40 @@ class BulkActionsView(LoginRequiredMixin, UserPassesTestMixin, View):
             messages.error(request, "Error performing bulk action")
             
         return redirect('employee_bulk_actions')
+
+class EmployeeDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    model = Employee
+    template_name = 'administrator/hr_management/employees/employee_detail.html'
+    context_object_name = 'employee'
+    permission_required = 'hr_management.view_employee'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        employee = self.object
+        
+        try:
+            # Get documents with error handling
+            documents = Document.objects.filter(employee=employee)
+            context['documents'] = documents
+            context['has_documents'] = documents.exists()
+            
+            # Get leaves with error handling
+            leaves = Leave.objects.filter(employee=employee).order_by('-created_at')[:5]
+            context['leaves'] = leaves
+            context['has_leaves'] = leaves.exists()
+            
+            # Get trainings with error handling
+            trainings = TrainingParticipant.objects.filter(employee=employee)
+            context['trainings'] = trainings
+            context['has_trainings'] = trainings.exists()
+            
+            # Get performance reviews with error handling
+            performance_reviews = PerformanceReview.objects.filter(employee=employee).order_by('-review_date')[:3]
+            context['performance_reviews'] = performance_reviews
+            context['has_performance_reviews'] = performance_reviews.exists()
+            
+        except Exception as e:
+            logger.error(f"Error fetching employee details for {employee.id}: {str(e)}")
+            messages.error(self.request, "Some employee data could not be loaded")
+        
+        return context
