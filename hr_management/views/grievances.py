@@ -16,6 +16,7 @@ from django.views import View
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from hr_management.models import Grievance
+from hr_management.forms import GrievanceEditForm
 from hr_management.utils import get_template_path
 
 # Initialize logger
@@ -92,6 +93,63 @@ class GrievanceDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'priority_choices': dict(Grievance.PRIORITY_CHOICES)
             }
             
+            return render(request, self.get_template_name(), context)
+            
+        except Grievance.DoesNotExist:
+            messages.error(request, "Grievance not found")
+            return redirect('grievance_list')
+
+class GrievanceEditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('grievances/grievance_edit.html', self.request.user.role, 'hr_management')
+
+    def get(self, request, pk):
+        try:
+            grievance = Grievance.objects.select_related(
+                'employee__user',
+                'employee__department'
+            ).get(pk=pk)
+            
+            if grievance.status == 'CLOSED':
+                messages.error(request, "Cannot edit closed grievances")
+                return redirect('grievance_detail', pk=pk)
+                
+            form = GrievanceEditForm(instance=grievance)
+            context = {
+                'form': form,
+                'grievance': grievance
+            }
+            return render(request, self.get_template_name(), context)
+            
+        except Grievance.DoesNotExist:
+            messages.error(request, "Grievance not found")
+            return redirect('grievance_list')
+
+    def post(self, request, pk):
+        try:
+            grievance = Grievance.objects.get(pk=pk)
+            
+            if grievance.status == 'CLOSED':
+                messages.error(request, "Cannot edit closed grievances")
+                return redirect('grievance_detail', pk=pk)
+                
+            form = GrievanceEditForm(request.POST, instance=grievance)
+            if form.is_valid():
+                grievance = form.save(commit=False)
+                if grievance.status in ['RESOLVED', 'CLOSED']:
+                    grievance.resolved_date = timezone.now()
+                grievance.save()
+                
+                messages.success(request, "Grievance updated successfully")
+                return redirect('grievance_detail', pk=pk)
+            
+            context = {
+                'form': form,
+                'grievance': grievance
+            }
             return render(request, self.get_template_name(), context)
             
         except Grievance.DoesNotExist:

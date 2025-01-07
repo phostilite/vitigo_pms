@@ -44,6 +44,7 @@ urlpatterns = [
 
     path('grievances/', grievance_views.GrievanceListView.as_view(), name='grievance_list'),
     path('grievances/<int:pk>/', grievance_views.GrievanceDetailView.as_view(), name='grievance_detail'),
+    path('grievances/<int:pk>/edit/', grievance_views.GrievanceEditView.as_view(), name='grievance_edit'),
     
     path('performance/reviews/', performance_views.PerformanceListView.as_view(), name='performance_reviews'),
 

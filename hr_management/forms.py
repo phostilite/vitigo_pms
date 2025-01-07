@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Employee, Department, Position, Document, Notice, Training
+from .models import Employee, Department, Position, Document, Notice, Training, Grievance
 from django.utils import timezone
 
 User = get_user_model()
@@ -212,3 +212,31 @@ class TrainingForm(forms.ModelForm):
             if materials.size > 10 * 1024 * 1024:  # 10MB
                 raise forms.ValidationError("File size must be no more than 10MB")
         return materials
+
+class GrievanceEditForm(forms.ModelForm):
+    class Meta:
+        model = Grievance
+        fields = ['subject', 'description', 'priority', 'status', 'assigned_to', 'resolution', 'is_confidential']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'resolution': forms.Textarea(attrs={'rows': 4}),
+        }
+        help_texts = {
+            'subject': 'Brief title describing the grievance',
+            'description': 'Detailed explanation of the grievance',
+            'priority': 'Set the urgency level of the grievance',
+            'status': 'Current state of the grievance',
+            'assigned_to': 'Staff member responsible for handling this grievance',
+            'resolution': 'Details of how the grievance was resolved (required for Resolved/Closed status)',
+            'is_confidential': 'Mark if this grievance contains sensitive information'
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('status')
+        resolution = cleaned_data.get('resolution')
+
+        if status in ['RESOLVED', 'CLOSED'] and not resolution:
+            raise forms.ValidationError("Resolution is required when status is Resolved or Closed")
+
+        return cleaned_data
