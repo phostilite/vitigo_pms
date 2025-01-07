@@ -70,3 +70,30 @@ class GrievanceListView(LoginRequiredMixin, UserPassesTestMixin, View):
         }
 
         return render(request, self.get_template_name(), context)
+
+class GrievanceDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('grievances/grievance_detail.html', self.request.user.role, 'hr_management')
+
+    def get(self, request, pk):
+        try:
+            grievance = Grievance.objects.select_related(
+                'employee__user',
+                'employee__department',
+                'assigned_to'
+            ).get(pk=pk)
+            
+            context = {
+                'grievance': grievance,
+                'status_choices': dict(Grievance.STATUS_CHOICES),
+                'priority_choices': dict(Grievance.PRIORITY_CHOICES)
+            }
+            
+            return render(request, self.get_template_name(), context)
+            
+        except Grievance.DoesNotExist:
+            messages.error(request, "Grievance not found")
+            return redirect('grievance_list')
