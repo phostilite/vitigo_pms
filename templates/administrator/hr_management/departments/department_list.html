@@ -129,10 +129,16 @@
                                     <div class="flex space-x-3">
                                         <a href="{% url 'department_detail' department.id %}" class="text-blue-600 hover:text-blue-900"><i class="fas fa-eye"></i></a>
                                         <a href="{% url 'department_edit' department.id %}" class="text-green-600 hover:text-green-900"><i class="fas fa-edit"></i></a>
-                                        <button type="button" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                                        <button type="button" 
+                                                data-modal-target="delete-modal-{{ department.id }}" 
+                                                data-modal-toggle="delete-modal-{{ department.id }}" 
+                                                class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
+                            {% include './modals/department_delete.html' %}
                         {% empty %}
                             <tr>
                                 <td colspan="6" class="px-6 py-4 text-center text-gray-500">

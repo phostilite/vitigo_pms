@@ -25,6 +25,7 @@ urlpatterns = [
     path('new-department/', department_views.NewDepartmentView.as_view(), name='new_department'),
     path('departments/<int:pk>/', department_views.DepartmentDetailView.as_view(), name='department_detail'),
     path('departments/<int:pk>/edit/', department_views.DepartmentEditView.as_view(), name='department_edit'),
+    path('departments/<int:pk>/delete/', department_views.DepartmentDeleteView.as_view(), name='department_delete'),
 
     path('leaves/', leave_views.LeaveListView.as_view(), name='leave_list'),
     path('leaves/pending/', leave_views.PendingLeaveRequestsView.as_view(), name='pending_leave_requests'),

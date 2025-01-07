@@ -186,3 +186,46 @@ class DepartmentEditView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'form': form,
                 'department': department
             })
+
+class DepartmentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to department deletion for user {request.user.id}")
+                messages.error(request, "You don't have permission to delete departments")
+                return handler403(request, exception="Access Denied")
+                
+            if request.method != 'POST':
+                return handler403(request, exception="Method not allowed")
+                
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in department delete dispatch: {str(e)}")
+            messages.error(request, "An error occurred while processing your request")
+            return redirect('department_list')
+
+    def post(self, request, pk):
+        try:
+            department = get_object_or_404(Department, pk=pk)
+            department_name = department.name
+            
+            # Check if department has employees
+            if department.employees.exists():
+                messages.error(request, "Cannot delete department with active employees")
+                return redirect('department_detail', pk=pk)
+                
+            # Check if department has subdepartments
+            if Department.objects.filter(parent=department).exists():
+                messages.error(request, "Cannot delete department with subdepartments")
+                return redirect('department_detail', pk=pk)
+                
+            department.delete()
+            messages.success(request, f"Department '{department_name}' deleted successfully")
+        except Exception as e:
+            logger.error(f"Error deleting department {pk}: {str(e)}")
+            messages.error(request, "Error deleting department")
+        
+        return redirect('department_list')
