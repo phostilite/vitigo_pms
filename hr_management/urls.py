@@ -49,6 +49,7 @@ urlpatterns = [
     path('performance/reviews/', performance_views.PerformanceListView.as_view(), name='performance_reviews'),
     path('performance/reviews/create/', performance_views.PerformanceReviewCreateView.as_view(), name='performance_review_create'),
     path('performance/reviews/<int:pk>/', performance_views.PerformanceReviewDetailView.as_view(), name='performance_review_detail'),
+    path('performance/reviews/<int:pk>/edit/', performance_views.PerformanceReviewEditView.as_view(), name='performance_review_edit'),
     path('performance/reviews/<int:pk>/delete/', performance_views.PerformanceReviewDeleteView.as_view(), name='performance_review_delete'),
     path('performance/reviews/<int:pk>/complete/', performance_views.PerformanceReviewCompleteView.as_view(), name='performance_review_complete'),
 

@@ -259,3 +259,54 @@ class PerformanceReviewCompleteView(LoginRequiredMixin, UserPassesTestMixin, Vie
             logger.error(f"Error completing performance review {pk}: {str(e)}")
             messages.error(request, "Error completing performance review")
             return redirect('performance_review_detail', pk=pk)
+
+class PerformanceReviewEditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('performance/review_edit.html', self.request.user.role, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            self.review = get_object_or_404(PerformanceReview, pk=kwargs['pk'])
+            if self.review.status != 'DRAFT':
+                messages.error(request, "Only draft reviews can be edited")
+                return redirect('performance_review_detail', pk=self.review.pk)
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in PerformanceReviewEditView dispatch: {str(e)}")
+            messages.error(request, "Error accessing review")
+            return redirect('performance_reviews')
+
+    def get(self, request, pk):
+        try:
+            form = PerformanceReviewForm(instance=self.review)
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'review': self.review,
+                'page_title': f'Edit Performance Review - {self.review.employee.user.get_full_name()}'
+            })
+        except Exception as e:
+            logger.error(f"Error in PerformanceReviewEditView GET: {str(e)}")
+            messages.error(request, "Error loading review form")
+            return redirect('performance_review_detail', pk=pk)
+
+    def post(self, request, pk):
+        try:
+            form = PerformanceReviewForm(request.POST, instance=self.review)
+            if form.is_valid():
+                review = form.save()
+                messages.success(request, "Performance review updated successfully")
+                return redirect('performance_review_detail', pk=review.pk)
+                
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'review': self.review,
+                'page_title': f'Edit Performance Review - {self.review.employee.user.get_full_name()}'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in PerformanceReviewEditView POST: {str(e)}")
+            messages.error(request, "Error updating review")
+            return redirect('performance_review_detail', pk=pk)

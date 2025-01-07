@@ -44,7 +44,7 @@
                     <h2 class="text-xl font-semibold text-gray-800">Performance Review Details</h2>
                     <div class="space-x-2">
                         {% if can_edit %}
-                            <a href="#" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            <a href="{% url 'performance_review_edit' review.pk %}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                                 <i class="fas fa-edit mr-2"></i> Edit
                             </a>
                         {% endif %}
