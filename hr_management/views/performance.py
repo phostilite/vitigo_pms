@@ -180,8 +180,7 @@ class PerformanceReviewDetailView(LoginRequiredMixin, UserPassesTestMixin, View)
                     review.reliability
                 ) / 5.0,
                 'can_edit': review.status == 'DRAFT' and (
-                    request.user == review.reviewer or 
-                    request.user.is_superuser
+                    PermissionManager.check_module_modify(self.request.user, 'hr_management')
                 )
             }
             
@@ -230,3 +229,33 @@ class PerformanceReviewDeleteView(LoginRequiredMixin, UserPassesTestMixin, View)
             messages.error(request, "Error deleting performance review")
         
         return redirect('performance_reviews')
+
+class PerformanceReviewCompleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'hr_management')
+
+    def post(self, request, pk):
+        try:
+            review = get_object_or_404(PerformanceReview, pk=pk)
+            
+            if review.status != 'DRAFT':
+                messages.error(request, "Only draft reviews can be completed")
+                return redirect('performance_review_detail', pk=pk)
+                
+            if not (request.user == review.reviewer or request.user.is_superuser):
+                messages.error(request, "You don't have permission to complete this review")
+                return redirect('performance_review_detail', pk=pk)
+                
+            review.status = 'COMPLETED'
+            review.save()
+            
+            messages.success(request, "Performance review completed successfully")
+            return redirect('performance_review_detail', pk=pk)
+            
+        except PerformanceReview.DoesNotExist:
+            messages.error(request, "Performance review not found")
+            return redirect('performance_reviews')
+        except Exception as e:
+            logger.error(f"Error completing performance review {pk}: {str(e)}")
+            messages.error(request, "Error completing performance review")
+            return redirect('performance_review_detail', pk=pk)
