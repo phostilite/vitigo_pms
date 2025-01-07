@@ -40,6 +40,7 @@ urlpatterns = [
     path('trainings/new/', training_views.NewTrainingView.as_view(), name='new_training'),
     path('trainings/<int:pk>/', training_views.TrainingDetailView.as_view(), name='training_detail'),
     path('trainings/<int:pk>/edit/', training_views.TrainingEditView.as_view(), name='training_edit'),
+    path('trainings/<int:pk>/cancel/', training_views.TrainingCancelView.as_view(), name='training_cancel'),
 
     path('grievances/', grievance_views.GrievanceListView.as_view(), name='grievance_list'),
     

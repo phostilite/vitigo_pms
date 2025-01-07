@@ -274,3 +274,28 @@ class TrainingEditView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error updating training: {str(e)}")
             messages.error(request, "Error updating training program")
             return redirect('training_list')
+
+class TrainingCancelView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def post(self, request, pk):
+        try:
+            training = Training.objects.get(pk=pk)
+            if training.status != 'PLANNED':
+                messages.error(request, "Only planned trainings can be cancelled")
+                return redirect('training_detail', pk=pk)
+            
+            training.status = 'CANCELLED'
+            training.save()
+            
+            messages.success(request, "Training program cancelled successfully")
+            return redirect('training_list')
+            
+        except Training.DoesNotExist:
+            messages.error(request, "Training program not found")
+            return redirect('training_list')
+        except Exception as e:
+            logger.error(f"Error cancelling training: {str(e)}")
+            messages.error(request, "Error cancelling training program")
+            return redirect('training_list')

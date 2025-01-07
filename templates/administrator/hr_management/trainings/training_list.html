@@ -142,7 +142,9 @@
                                         <a href="{% url 'training_detail' training.pk %}" class="text-blue-600 hover:text-blue-900"><i class="fas fa-eye"></i></a>
                                         <a href="{% url 'training_edit' training.pk %}" class="text-green-600 hover:text-green-900"><i class="fas fa-edit"></i></a>
                                         {% if training.status == 'PLANNED' %}
-                                            <button type="button" class="text-red-600 hover:text-red-900"><i class="fas fa-times"></i></button>
+                                            <button type="button" data-modal-target="cancel-modal-{{ training.id }}" data-modal-toggle="cancel-modal-{{ training.id }}" class="text-red-600 hover:text-red-900">
+                                                <i class="fas fa-times"></i>
+                                            </button>
                                         {% endif %}
                                     </div>
                                 </td>
@@ -163,4 +165,12 @@
         </div>
     </div>
 </div>
+
+<!-- Include Cancel Modals -->
+{% for training in trainings %}
+    {% if training.status == 'PLANNED' %}
+        {% include './modals/training_cancel.html' %}
+    {% endif %}
+{% endfor %}
+
 {% endblock %}
