@@ -50,6 +50,7 @@ urlpatterns = [
 
     path('documents/', document_views.DocumentListView.as_view(), name='document_list'),
     path('documents/upload/', document_views.DocumentUploadView.as_view(), name='document_upload'),
+    path('documents/edit/<int:document_id>/', document_views.DocumentEditView.as_view(), name='document_edit'),
     path('documents/download/<int:document_id>/', document_views.DocumentDownloadView.as_view(), name='document_download'),
 
     path('notices/', notice_views.NoticeListView.as_view(), name='notice_list'),

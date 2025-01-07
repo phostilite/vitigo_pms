@@ -16,6 +16,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 import os
 import mimetypes
+from ..forms import DocumentEditForm
 
 logger = logging.getLogger(__name__)
 
@@ -160,3 +161,73 @@ class DocumentDownloadView(LoginRequiredMixin, UserPassesTestMixin, View):
         except Exception as e:
             logger.error(f"Error downloading document {document_id}: {str(e)}")
             return HttpResponseServerError("Error downloading document")
+
+class DocumentEditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('documents/edit_document.html', self.request.user.role, 'hr_management')
+
+    def get(self, request, document_id):
+        try:
+            document = get_object_or_404(Document, id=document_id)
+            form = DocumentEditForm(instance=document)
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'document': document
+            })
+        except Exception as e:
+            logger.error(f"Error loading document for edit: {str(e)}")
+            messages.error(request, "Error loading document")
+            return redirect('document_list')
+
+    def post(self, request, document_id):
+        try:
+            document = get_object_or_404(Document, id=document_id)
+            form = DocumentEditForm(
+                request.POST,
+                request.FILES,
+                instance=document
+            )
+            
+            if form.is_valid():
+                keep_file = form.cleaned_data.get('keep_file')
+                new_file = request.FILES.get('file')
+                
+                doc = form.save(commit=False)
+                
+                # Handle file update
+                if not keep_file:
+                    if new_file:
+                        # Delete old file if it exists
+                        if document.file:
+                            try:
+                                old_file_path = document.file.path
+                                if os.path.exists(old_file_path):
+                                    os.remove(old_file_path)
+                            except Exception as e:
+                                logger.warning(f"Error deleting old file: {str(e)}")
+                        doc.file = new_file
+                    else:
+                        form.add_error('file', 'New file is required when not keeping existing file')
+                        return render(request, self.get_template_name(), {
+                            'form': form,
+                            'document': document
+                        })
+                
+                doc.save()
+                messages.success(request, "Document updated successfully")
+                return redirect('document_list')
+            
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'document': document
+            })
+        except Exception as e:
+            logger.error(f"Error updating document: {str(e)}")
+            messages.error(request, "Error updating document")
+            return render(request, self.get_template_name(), {
+                'form': form,
+                'document': document
+            })

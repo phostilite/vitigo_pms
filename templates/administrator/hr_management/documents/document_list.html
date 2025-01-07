@@ -263,7 +263,9 @@
                                                 <i class="fas fa-download"></i>
                                             </span>
                                         {% endif %}
-                                        <a href="#" class="text-green-600 hover:text-green-900" title="Edit">
+                                        <a href="{% url 'document_edit' document.id %}" 
+                                           class="text-green-600 hover:text-green-900" 
+                                           title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <button type="button" class="text-red-600 hover:text-red-900" title="Delete">

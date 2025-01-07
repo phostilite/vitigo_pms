@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model
 from .models import Employee, Department, Position, Document, Notice, Training, Grievance
 from django.utils import timezone
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout, Row, Column, Field, Submit, Button
 
 User = get_user_model()
 
@@ -150,6 +152,51 @@ class DocumentUploadForm(forms.ModelForm):
             if file.size > 5 * 1024 * 1024:  # 5MB
                 raise forms.ValidationError("File size must be no more than 5MB")
         return file
+
+class DocumentEditForm(forms.ModelForm):
+    keep_file = forms.BooleanField(
+        required=False,
+        initial=True,
+        help_text="Uncheck to replace the current file with a new one"
+    )
+    
+    class Meta:
+        model = Document
+        fields = ['document_type', 'title', 'description', 'file', 'expiry_date']
+        widgets = {
+            'expiry_date': forms.DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+        help_texts = {
+            'document_type': 'Type of document',
+            'title': 'Document title',
+            'description': 'Additional details about the document',
+            'file': 'Upload new file (PDF, JPG, JPEG, or PNG format, Max 5MB)',
+            'expiry_date': 'Document expiry date (if applicable)'
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['file'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        keep_file = cleaned_data.get('keep_file')
+        new_file = cleaned_data.get('file')
+        
+        if not keep_file and not new_file:
+            raise forms.ValidationError("You must either keep the existing file or upload a new one")
+            
+        if new_file and new_file.size > 5 * 1024 * 1024:  # 5MB
+            raise forms.ValidationError("File size must be no more than 5MB")
+            
+        return cleaned_data
+
+    def clean_expiry_date(self):
+        expiry_date = self.cleaned_data.get('expiry_date')
+        if expiry_date and expiry_date < timezone.now().date():
+            raise forms.ValidationError("Expiry date cannot be in the past")
+        return expiry_date
 
 class NoticeForm(forms.ModelForm):
     class Meta:
