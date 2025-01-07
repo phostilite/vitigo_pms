@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView
 from django.utils import timezone
 from django.db.models import Q
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 
 from ..models import PerformanceReview, Employee
@@ -194,3 +194,39 @@ class PerformanceReviewDetailView(LoginRequiredMixin, UserPassesTestMixin, View)
             logger.error(f"Error in PerformanceReviewDetailView: {str(e)}")
             messages.error(request, "Error loading performance review")
             return redirect('performance_reviews')
+
+class PerformanceReviewDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to performance review deletion for user {request.user.id}")
+                messages.error(request, "You don't have permission to delete performance reviews")
+                return handler403(request, exception="Access Denied")
+                
+            if request.method != 'POST':
+                return handler403(request, exception="Method not allowed")
+                
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in performance review delete dispatch: {str(e)}")
+            messages.error(request, "An error occurred while processing your request")
+            return redirect('performance_reviews')
+
+    def post(self, request, pk):
+        try:
+            review = get_object_or_404(PerformanceReview, pk=pk)
+            # Only allow deletion of draft reviews or by superuser
+            if review.status != 'DRAFT' and not request.user.is_superuser:
+                messages.error(request, "Only draft reviews can be deleted")
+                return redirect('performance_reviews')
+                
+            review.delete()
+            messages.success(request, "Performance review deleted successfully")
+        except Exception as e:
+            logger.error(f"Error deleting performance review {pk}: {str(e)}")
+            messages.error(request, "Error deleting performance review")
+        
+        return redirect('performance_reviews')
