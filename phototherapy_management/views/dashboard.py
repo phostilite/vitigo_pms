@@ -35,7 +35,8 @@ from phototherapy_management.models import (
     HomePhototherapyLog,
     PatientRFIDCard,
     PhototherapyProgress,
-    PhototherapyPackage
+    PhototherapyPackage,
+    PhototherapyCenter
 )
 from phototherapy_management.forms import TreatmentPlanForm, PhototherapyTypeForm
 from phototherapy_management.utils import get_template_path
@@ -1035,6 +1036,23 @@ def get_therapy_type_details(request, type_id):
         return JsonResponse({'error': 'Phototherapy type not found'}, status=404)
     except Exception as e:
         logger.error(f"Error fetching therapy type details: {str(e)}")
+        return JsonResponse({'error': 'Error fetching details'}, status=500)
+
+def get_center_details(request, center_id):
+    """API endpoint for fetching phototherapy center details"""
+    try:
+        center = PhototherapyCenter.objects.get(id=center_id)
+        return JsonResponse({
+            'address': center.address,
+            'contact_number': center.contact_number,
+            'email': center.email or 'Not provided',
+            'operating_hours': center.operating_hours,
+            'available_devices': center.get_available_device_count(),
+        })
+    except PhototherapyCenter.DoesNotExist:
+        return JsonResponse({'error': 'Center not found'}, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching center details: {str(e)}")
         return JsonResponse({'error': 'Error fetching details'}, status=500)
 
 

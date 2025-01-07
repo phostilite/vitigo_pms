@@ -22,6 +22,7 @@ from .models import (
     PhototherapySession,
     PhototherapyType,
     ProblemReport,
+    PhototherapyCenter
 )
 
 # Configure logging
@@ -282,10 +283,17 @@ class TreatmentPlanForm(forms.ModelForm):
         help_text="Collect first payment now"
     )
 
+    center = forms.ModelChoiceField(
+        queryset=PhototherapyCenter.objects.filter(is_active=True),
+        empty_label="Select Center",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Select the phototherapy center where the treatment will be administered"
+    )
+
     class Meta:
         model = PhototherapyPlan
         fields = [
-            'patient', 'protocol', 'rfid_card', 'start_date', 
+            'patient', 'protocol', 'center', 'rfid_card', 'start_date',  # Added center here
             'total_sessions_planned', 'current_dose', 'total_cost',
             'special_instructions', 'reminder_frequency',
             'payment_type', 'payment_method', 'number_of_installments', 'immediate_payment'
@@ -322,6 +330,24 @@ class TreatmentPlanForm(forms.ModelForm):
                 return str(user)
         
         self.fields['patient'].label_from_instance = get_patient_label
+
+        # Add center queryset with related data
+        center_queryset = PhototherapyCenter.objects.filter(
+            is_active=True
+        ).prefetch_related('available_devices')
+        
+        self.fields['center'].queryset = center_queryset
+        
+        # Enhanced center label with device info
+        def get_center_label(center):
+            try:
+                device_count = center.get_available_device_count()
+                return f"{center.name} ({device_count} active devices)"
+            except Exception as e:
+                logger.error(f"Error generating center label: {str(e)}")
+                return str(center)
+        
+        self.fields['center'].label_from_instance = get_center_label
 
     def clean(self):
         cleaned_data = super().clean()

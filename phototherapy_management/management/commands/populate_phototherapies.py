@@ -10,7 +10,8 @@ from phototherapy_management.models import (
     PhototherapyType, PatientRFIDCard, PhototherapyDevice,
     PhototherapyProtocol, PhototherapyPlan, PhototherapySession,
     HomePhototherapyLog, ProblemReport, PhototherapyPayment,
-    PhototherapyReminder, PhototherapyProgress, DeviceMaintenance
+    PhototherapyReminder, PhototherapyProgress, DeviceMaintenance,
+    PhototherapyCenter  # Add this import
 )
 
 User = get_user_model()
@@ -34,6 +35,7 @@ class Command(BaseCommand):
             PhototherapyPlan.objects.all().delete()
             PatientRFIDCard.objects.all().delete()
             PhototherapyProtocol.objects.all().delete()
+            PhototherapyCenter.objects.all().delete()  # Add this line
             PhototherapyDevice.objects.all().delete()
             PhototherapyType.objects.all().delete()
             
@@ -63,8 +65,12 @@ class Command(BaseCommand):
 
         self.stdout.write(f'Working with {len(therapy_types)} therapy types')
 
-        # Create Devices
-        devices = self._create_devices(therapy_types)
+        # Create Centers
+        centers = self._create_centers()
+        self.stdout.write('Created phototherapy centers')
+
+        # Create Devices (modified to associate with centers)
+        devices = self._create_devices(therapy_types, centers)
         self.stdout.write('Created devices')
 
         # Create Protocols
@@ -119,7 +125,55 @@ class Command(BaseCommand):
                 continue
         return types
 
-    def _create_devices(self, therapy_types):
+    def _create_centers(self):
+        """Create sample phototherapy centers"""
+        centers = []
+        
+        center_data = [
+            {
+                'name': 'Main Phototherapy Center',
+                'address': '123 Medical Plaza, Downtown Medical District',
+                'contact_number': '+91 98765 43210',
+                'email': 'main.center@vitigo.com',
+                'operating_hours': 'Mon-Sat: 9:00 AM - 6:00 PM, Sun: Closed',
+            },
+            {
+                'name': 'North Branch Clinic',
+                'address': '45 North Healthcare Avenue, Suburban Medical Hub',
+                'contact_number': '+91 98765 43211',
+                'email': 'north.clinic@vitigo.com',
+                'operating_hours': 'Mon-Fri: 8:00 AM - 8:00 PM, Sat-Sun: 9:00 AM - 1:00 PM',
+            },
+            {
+                'name': 'South Wing Treatment Center',
+                'address': '789 South Medical Complex, Central Hospital Zone',
+                'contact_number': '+91 98765 43212',
+                'email': 'south.wing@vitigo.com',
+                'operating_hours': 'Mon-Sun: 24 Hours',
+            },
+            {
+                'name': 'Express Phototherapy Clinic',
+                'address': '321 East Healthcare Street, Business District',
+                'contact_number': '+91 98765 43213',
+                'email': 'express.clinic@vitigo.com',
+                'operating_hours': 'Mon-Sat: 7:00 AM - 9:00 PM',
+            }
+        ]
+
+        try:
+            for data in center_data:
+                center = PhototherapyCenter.objects.create(**data)
+                centers.append(center)
+                self.stdout.write(f'Created center: {center.name}')
+        except Exception as e:
+            self.stdout.write(
+                self.style.WARNING(f'Error creating center: {str(e)}')
+            )
+
+        return centers
+
+    def _create_devices(self, therapy_types, centers):
+        """Modified to associate devices with centers"""
         if not therapy_types:
             self.stdout.write(self.style.ERROR('No therapy types available for device creation'))
             return []
@@ -138,10 +192,18 @@ class Command(BaseCommand):
                     last_maintenance_date=fake.date_between(start_date='-6m'),
                     next_maintenance_date=fake.date_between(start_date='today')
                 )
+                # Assign device to random center(s)
+                num_centers = random.randint(1, 2)  # Device can be in 1-2 centers
+                selected_centers = random.sample(centers, num_centers)
+                for center in selected_centers:
+                    center.available_devices.add(device)
+                
                 devices.append(device)
-                self.stdout.write(f'Created device: {device.name}')
+                self.stdout.write(f'Created device: {device.name} in {num_centers} center(s)')
         except Exception as e:
-            self.stdout.write(self.style.WARNING(f'Error creating device: {str(e)}'))
+            self.stdout.write(
+                self.style.WARNING(f'Error creating device: {str(e)}')
+            )
         
         return devices
 
@@ -176,7 +238,10 @@ class Command(BaseCommand):
         return cards
 
     def _create_treatment_plans(self, users, protocols, rfid_cards):
+        """Modified to include center assignment"""
         plans = []
+        centers = list(PhototherapyCenter.objects.all())
+        
         for user in random.sample(users, len(users)//3):
             plan = PhototherapyPlan.objects.create(
                 patient=user,
@@ -187,7 +252,8 @@ class Command(BaseCommand):
                 total_sessions_planned=random.randint(20, 40),
                 total_cost=Decimal(random.uniform(1000, 5000)),
                 billing_status=random.choice(['PENDING', 'PARTIAL', 'PAID']),
-                special_instructions=fake.text()
+                special_instructions=fake.text(),
+                center=random.choice(centers)  # Assign a random center
             )
             plans.append(plan)
         return plans

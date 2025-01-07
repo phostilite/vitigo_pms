@@ -265,6 +265,15 @@ class PhototherapyPlan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    center = models.ForeignKey(
+        'PhototherapyCenter',
+        on_delete=models.PROTECT,
+        related_name='treatment_plans',
+        null=True,
+        blank=True,
+        help_text="Select the phototherapy center where treatment will be administered"
+    )
+
     class Meta:
         indexes = [
             models.Index(fields=['patient', 'is_active']),
@@ -761,3 +770,31 @@ class DeviceMaintenance(models.Model):
         elif self.maintenance_type == 'CALIBRATION':
             self.next_maintenance_due = self.maintenance_date + timedelta(days=180)
         self.save()
+
+class PhototherapyCenter(models.Model):
+    """Represents different phototherapy treatment centers/locations"""
+    name = models.CharField(max_length=100, unique=True)
+    address = models.TextField()
+    contact_number = models.CharField(max_length=20)
+    email = models.EmailField(blank=True)
+    is_active = models.BooleanField(default=True)
+    operating_hours = models.TextField(help_text="Describe the center's operating hours")
+    available_devices = models.ManyToManyField(
+        PhototherapyDevice,
+        related_name='centers',
+        blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def get_available_device_count(self):
+        return self.available_devices.filter(is_active=True).count()
