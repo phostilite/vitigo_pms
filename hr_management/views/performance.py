@@ -152,3 +152,45 @@ class PerformanceReviewCreateView(LoginRequiredMixin, UserPassesTestMixin, View)
             logger.error(f"Error in PerformanceReviewCreateView POST: {str(e)}")
             messages.error(request, "Error creating performance review")
             return redirect('performance_reviews')
+
+class PerformanceReviewDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('performance/review_detail.html', self.request.user.role, 'hr_management')
+
+    def get(self, request, pk):
+        try:
+            review = PerformanceReview.objects.select_related(
+                'employee__user', 
+                'employee__department',
+                'employee__position',
+                'reviewer'
+            ).get(pk=pk)
+
+            context = {
+                'review': review,
+                'page_title': f'Performance Review - {review.employee.user.get_full_name()}',
+                'average_rating': (
+                    review.technical_skills + 
+                    review.communication + 
+                    review.teamwork + 
+                    review.productivity + 
+                    review.reliability
+                ) / 5.0,
+                'can_edit': review.status == 'DRAFT' and (
+                    request.user == review.reviewer or 
+                    request.user.is_superuser
+                )
+            }
+            
+            return render(request, self.get_template_name(), context)
+            
+        except PerformanceReview.DoesNotExist:
+            messages.error(request, "Performance review not found")
+            return redirect('performance_reviews')
+        except Exception as e:
+            logger.error(f"Error in PerformanceReviewDetailView: {str(e)}")
+            messages.error(request, "Error loading performance review")
+            return redirect('performance_reviews')

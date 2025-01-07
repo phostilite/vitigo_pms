@@ -1,0 +1,306 @@
+{% extends '../../base.html' %}
+{% load static %}
+{% load performance_tags %}  <!-- Add this line at the top -->
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="flex px-5 py-3 mb-4 bg-white shadow-sm" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <li class="inline-flex items-center">
+                <a href="{% url 'dashboard' %}" class="text-gray-700 hover:text-blue-600">
+                    <i class="mr-2 fas fa-home"></i> Home
+                </a>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <i class="fas fa-chevron-right text-gray-400"></i>
+                    <a href="{% url 'hr_management' %}" class="ml-1 text-gray-700 hover:text-blue-600 md:ml-2">HR Management</a>
+                </div>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <i class="fas fa-chevron-right text-gray-400"></i>
+                    <a href="{% url 'performance_reviews' %}" class="ml-1 text-gray-700 hover:text-blue-600 md:ml-2">Performance Reviews</a>
+                </div>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <i class="fas fa-chevron-right text-gray-400"></i>
+                    <span class="ml-1 text-gray-500 md:ml-2">Review Details</span>
+                </div>
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-800">Performance Review Details</h2>
+                    <div class="space-x-2">
+                        {% if can_edit %}
+                            <a href="#" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                <i class="fas fa-edit mr-2"></i> Edit
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'performance_reviews' %}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            <i class="fas fa-arrow-left mr-2"></i> Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employee Info -->
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Employee</h3>
+                        <p class="mt-1 text-sm text-gray-900">{{ review.employee.user.get_full_name }}</p>
+                        <p class="text-xs text-gray-500">{{ review.employee.employee_id }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Department</h3>
+                        <p class="mt-1 text-sm text-gray-900">{{ review.employee.department.name }}</p>
+                        <p class="text-xs text-gray-500">{{ review.employee.position.title }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Review Status</h3>
+                        <p class="mt-1">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                {% if review.status == 'COMPLETED' %}bg-green-100 text-green-800
+                                {% elif review.status == 'DRAFT' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {{ review.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Details -->
+            <div class="px-6 py-4">
+                <!-- Review Period -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900">Review Period</h3>
+                    <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Review Date</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ review.review_date|date:"M d, Y" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Period Start</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ review.review_period_start|date:"M d, Y" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Period End</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ review.review_period_end|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900">Performance Metrics</h3>
+                    <div class="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Direct metric display without using get_performance_metrics filter -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500">Technical Skills</h4>
+                            <div class="mt-2 flex items-center">
+                                <span class="text-2xl font-bold text-gray-900">{{ review.technical_skills }}/5</span>
+                                <div class="ml-2 flex">
+                                    {% for i in "12345"|make_list %}
+                                        <i class="fas fa-star text-{% if forloop.counter <= review.technical_skills %}yellow-400{% else %}gray-300{% endif %}"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500">Communication</h4>
+                            <div class="mt-2 flex items-center">
+                                <span class="text-2xl font-bold text-gray-900">{{ review.communication }}/5</span>
+                                <div class="ml-2 flex">
+                                    {% for i in "12345"|make_list %}
+                                        <i class="fas fa-star text-{% if forloop.counter <= review.communication %}yellow-400{% else %}gray-300{% endif %}"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500">Teamwork</h4>
+                            <div class="mt-2 flex items-center">
+                                <span class="text-2xl font-bold text-gray-900">{{ review.teamwork }}/5</span>
+                                <div class="ml-2 flex">
+                                    {% for i in "12345"|make_list %}
+                                        <i class="fas fa-star text-{% if forloop.counter <= review.teamwork %}yellow-400{% else %}gray-300{% endif %}"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500">Productivity</h4>
+                            <div class="mt-2 flex items-center">
+                                <span class="text-2xl font-bold text-gray-900">{{ review.productivity }}/5</span>
+                                <div class="ml-2 flex">
+                                    {% for i in "12345"|make_list %}
+                                        <i class="fas fa-star text-{% if forloop.counter <= review.productivity %}yellow-400{% else %}gray-300{% endif %}"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-500">Reliability</h4>
+                            <div class="mt-2 flex items-center">
+                                <span class="text-2xl font-bold text-gray-900">{{ review.reliability }}/5</span>
+                                <div class="ml-2 flex">
+                                    {% for i in "12345"|make_list %}
+                                        <i class="fas fa-star text-{% if forloop.counter <= review.reliability %}yellow-400{% else %}gray-300{% endif %}"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-blue-700">Overall Rating</h4>
+                            <div class="mt-2 flex items-center">
+                                <span class="text-2xl font-bold text-blue-700">{{ average_rating|floatformat:1 }}/5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Feedback -->
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Key Achievements</h3>
+                        <div class="mt-2 prose max-w-none">
+                            {{ review.achievements|linebreaks }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Areas for Improvement</h3>
+                        <div class="mt-2 prose max-w-none">
+                            {{ review.areas_for_improvement|linebreaks }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Goals</h3>
+                        <div class="mt-2 prose max-w-none">
+                            {{ review.goals|linebreaks }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Overall Comments</h3>
+                        <div class="mt-2 prose max-w-none">
+                            {{ review.overall_comments|linebreaks }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review Metadata -->
+                <div class="mt-8 border-t border-gray-200 pt-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="font-medium text-gray-500">Reviewer</p>
+                            <p class="mt-1 text-gray-900">{{ review.reviewer.get_full_name }}</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Last Updated</p>
+                            <p class="mt-1 text-gray-900">{{ review.updated_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                        {% if review.acknowledged_at %}
+                            <div>
+                                <p class="font-medium text-gray-500">Acknowledged On</p>
+                                <p class="mt-1 text-gray-900">{{ review.acknowledged_at|date:"M d, Y H:i" }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                {% if review.status == 'DRAFT' %}
+                    <div class="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-6">
+                        {% if can_edit %}
+                            <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700">
+                                <i class="fas fa-check mr-2"></i> Complete Review
+                            </button>
+                        {% endif %}
+                    </div>
+                {% elif review.status == 'COMPLETED' and review.employee.user == request.user %}
+                    <div class="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-6">
+                        <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                            <i class="fas fa-signature mr-2"></i> Acknowledge Review
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if can_edit %}
+    <!-- Complete Review Confirmation Modal -->
+    <div id="completeReviewModal" class="hidden fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="fas fa-check text-green-600"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                Complete Performance Review
+                            </h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">
+                                    Are you sure you want to complete this review? Once completed, it cannot be edited.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <form method="post" action="{% url 'performance_review_complete' review.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Complete Review
+                        </button>
+                        <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm" onclick="closeModal()">
+                            Cancel
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openModal() {
+        document.getElementById('completeReviewModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('completeReviewModal').classList.add('hidden');
+    }
+
+    // Add event listener to Complete Review button
+    document.addEventListener('DOMContentLoaded', function() {
+        const completeButton = document.querySelector('[data-action="complete"]');
+        if (completeButton) {
+            completeButton.addEventListener('click', openModal);
+        }
+    });
+</script>
+{% endblock %}
