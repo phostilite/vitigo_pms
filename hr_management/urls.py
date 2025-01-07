@@ -38,6 +38,7 @@ urlpatterns = [
     path('trainings/schedule/', training_views.TrainingScheduleView.as_view(), name='training_schedule'),
     path('trainings/skill-matrix/', training_views.SkillMatrixView.as_view(), name='skill_matrix'),
     path('trainings/new/', training_views.NewTrainingView.as_view(), name='new_training'),
+    path('trainings/<int:pk>/', training_views.TrainingDetailView.as_view(), name='training_detail'),
 
     path('grievances/', grievance_views.GrievanceListView.as_view(), name='grievance_list'),
     

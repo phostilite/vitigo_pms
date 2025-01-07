@@ -196,3 +196,31 @@ class NewTrainingView(LoginRequiredMixin, UserPassesTestMixin, View):
                 return render(request, self.get_template_name(), {'form': form})
         
         return render(request, self.get_template_name(), {'form': form})
+
+class TrainingDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def get_template_name(self):
+        return get_template_path('trainings/training_detail.html', self.request.user.role, 'hr_management')
+
+    def get(self, request, pk):
+        try:
+            training = Training.objects.prefetch_related('participants').get(pk=pk)
+            participants = training.participants.select_related('employee__user', 'employee__department').all()
+
+            context = {
+                'training': training,
+                'participants': participants,
+                'total_participants': participants.count(),
+                'spots_available': max(0, training.max_participants - participants.count()),
+            }
+            return render(request, self.get_template_name(), context)
+            
+        except Training.DoesNotExist:
+            messages.error(request, "Training program not found")
+            return redirect('training_list')
+        except Exception as e:
+            logger.error(f"Error viewing training details: {str(e)}")
+            messages.error(request, "Error retrieving training details")
+            return redirect('training_list')
