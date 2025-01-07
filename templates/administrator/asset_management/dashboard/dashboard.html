@@ -1,4 +1,4 @@
-{% extends '../base.html' %}
+{% extends '../../base.html' %}
 {% load static %}
 {% load widget_tweaks %}
 
@@ -31,9 +31,9 @@
 
                 <!-- Quick Actions -->
                 <div class="flex items-center space-x-4">
-                    <button type="button" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
+                    <a href="{% url 'add_asset' %}" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2">
                         <i class="mr-2 fas fa-plus"></i> New Asset
-                    </button>
+                    </a>
                     <!-- Quick Actions Dropdown -->
                     <div class="relative">
                         <button id="dropdownDefaultButton" data-dropdown-toggle="dropdown" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 border inline-flex items-center" type="button">

@@ -14,6 +14,7 @@ from django.views import View
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from .models import Asset, MaintenanceSchedule, AssetAudit, InsurancePolicy, AssetCategory
+from .forms import AssetForm
 from .utils import get_template_path
 from .constants import (
     DEFAULT_DASHBOARD_STATS, 
@@ -42,7 +43,7 @@ class AssetDashboardView(LoginRequiredMixin, UserPassesTestMixin, View):
     def get_template_name(self):
         """Get appropriate template based on user role"""
         try:
-            return get_template_path('asset_dashboard.html', self.request.user.role, 'asset_management')
+            return get_template_path('dashboard/dashboard.html', self.request.user.role, 'asset_management')
         except Exception as e:
             logger.error(f"Error getting template path: {str(e)}")
             return None
@@ -107,3 +108,50 @@ class AssetDashboardView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error in asset dashboard view: {str(e)}")
             messages.error(request, "An error occurred while loading the dashboard")
             return handler500(request)
+
+class AddAssetView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        """Check if user has permission to add assets"""
+        return PermissionManager.check_module_modify(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        """Handle unauthorized access"""
+        try:
+            if not self.test_func():
+                messages.error(request, "You don't have permission to add assets")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in add asset dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the page")
+            return redirect('asset_dashboard')
+
+    def get_template_name(self):
+        """Get appropriate template based on user role"""
+        try:
+            return get_template_path('assets/add_asset.html', self.request.user.role, 'asset_management')
+        except Exception as e:
+            logger.error(f"Error getting template path: {str(e)}")
+            return None
+
+    def get(self, request):
+        try:
+            form = AssetForm()
+            return render(request, self.get_template_name(), {'form': form})
+        except Exception as e:
+            logger.error(f"Error in add asset view: {str(e)}")
+            messages.error(request, "An error occurred while loading the form")
+            return redirect('asset_dashboard')
+
+    def post(self, request):
+        try:
+            form = AssetForm(request.POST, request.FILES)
+            if form.is_valid():
+                asset = form.save()
+                messages.success(request, f"Asset {asset.name} was created successfully")
+                return redirect('asset_dashboard')
+            return render(request, self.get_template_name(), {'form': form})
+        except Exception as e:
+            logger.error(f"Error saving asset: {str(e)}")
+            messages.error(request, "An error occurred while saving the asset")
+            return render(request, self.get_template_name(), {'form': form})
