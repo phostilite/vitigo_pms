@@ -235,3 +235,56 @@ class LeaveDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
             messages.error(self.request, "Some leave data could not be loaded")
         
         return context
+
+class LeaveActionView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to leave actions for user {request.user.id}")
+                messages.error(request, "You don't have permission to process leave requests")
+                return handler403(request, exception="Access Denied")
+                
+            if request.method != 'POST':
+                return handler403(request, exception="Method not allowed")
+                
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in leave action dispatch: {str(e)}")
+            messages.error(request, "An error occurred while processing your request")
+            return redirect('leave_list')
+
+    def post(self, request, pk, action):
+        try:
+            leave = Leave.objects.get(pk=pk)
+            
+            if leave.status != 'PENDING':
+                messages.error(request, "This leave request has already been processed")
+                return redirect('leave_detail', pk=pk)
+            
+            if action == 'approve':
+                leave.status = 'APPROVED'
+                message = "Leave request approved successfully"
+            elif action == 'reject':
+                leave.status = 'REJECTED'
+                message = "Leave request rejected successfully"
+            else:
+                messages.error(request, "Invalid action")
+                return redirect('leave_detail', pk=pk)
+            
+            leave.approved_by = request.user
+            leave.approved_at = timezone.now()
+            leave.save()
+            
+            messages.success(request, message)
+            
+        except Leave.DoesNotExist:
+            logger.error(f"Leave request {pk} not found")
+            messages.error(request, "Leave request not found")
+        except Exception as e:
+            logger.error(f"Error processing leave action: {str(e)}")
+            messages.error(request, "Error processing leave request")
+        
+        return redirect('leave_detail', pk=pk)

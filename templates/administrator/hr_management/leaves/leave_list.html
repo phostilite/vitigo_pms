@@ -130,11 +130,13 @@
                                         <a href="{% url 'leave_detail' leave.id %}" class="text-blue-600 hover:text-blue-900"><i class="fas fa-eye"></i></a>
                                         {% if leave.status == 'PENDING' %}
                                             <button type="button" class="text-green-600 hover:text-green-900"
-                                                    onclick="approveLeave({{ leave.id }})">
+                                                    data-modal-target="approve-modal-{{ leave.id }}" 
+                                                    data-modal-toggle="approve-modal-{{ leave.id }}">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             <button type="button" class="text-red-600 hover:text-red-900"
-                                                    onclick="rejectLeave({{ leave.id }})">
+                                                    data-modal-target="reject-modal-{{ leave.id }}" 
+                                                    data-modal-toggle="reject-modal-{{ leave.id }}">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         {% endif %}
@@ -158,36 +160,29 @@
     </div>
 </div>
 
+<!-- Include Modals at the end of the file -->
+{% for leave in leaves %}
+    {% include './modals/leave_actions.html' %}
+{% endfor %}
+
 <!-- JavaScript for leave actions -->
 <script>
-    function approveLeave(leaveId) {
-        if (confirm('Are you sure you want to approve this leave request?')) {
-            fetch(`/hr/leaves/${leaveId}/approve/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            }).then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                }
-            });
-        }
-    }
-
-    function rejectLeave(leaveId) {
-        if (confirm('Are you sure you want to reject this leave request?')) {
-            fetch(`/hr/leaves/${leaveId}/reject/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            }).then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                }
-            });
-        }
+    function submitLeaveAction(leaveId, action) {
+        fetch(`/hr/leaves/${leaveId}/${action}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Error processing leave request');
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('Error processing leave request');
+        });
     }
 
     function getCookie(name) {
