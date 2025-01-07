@@ -10,11 +10,13 @@ from django.db import models
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
+from django.views.generic import DetailView
+from django.shortcuts import get_object_or_404
 
 # Local imports
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
-from hr_management.models import Department
+from hr_management.models import Department, Employee, Position
 from hr_management.forms import DepartmentForm
 from hr_management.utils import get_template_path
 
@@ -86,3 +88,59 @@ class NewDepartmentView(LoginRequiredMixin, UserPassesTestMixin, View):
                 return render(request, self.get_template_name(), {'form': form})
         
         return render(request, self.get_template_name(), {'form': form})
+
+class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    model = Department
+    context_object_name = 'department'
+
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'hr_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to department details for user {request.user.id}")
+                messages.error(request, "You don't have permission to view department details")
+                return handler403(request, exception="Access Denied")
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in department detail dispatch: {str(e)}")
+            messages.error(request, "An error occurred while accessing the department details")
+            return redirect('dashboard')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'departments/department_detail.html',
+                self.request.user.role,
+                'hr_management'
+            )]
+        except Exception as e:
+            logger.error(f"Error getting template: {str(e)}")
+            return ['hr_management/default_department_detail.html']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        department = self.object
+        
+        try:
+            # Get employees in this department
+            employees = Employee.objects.filter(department=department)
+            context['employees'] = employees
+            context['employee_count'] = employees.count()
+            
+            # Get positions in this department
+            positions = Position.objects.filter(department=department)
+            context['positions'] = positions
+            context['position_count'] = positions.count()
+            
+            # Get subdepartments
+            subdepartments = Department.objects.filter(parent=department)
+            context['subdepartments'] = subdepartments
+            context['subdepartment_count'] = subdepartments.count()
+            
+        except Exception as e:
+            logger.error(f"Error fetching department details for {department.id}: {str(e)}")
+            messages.error(self.request, "Some department data could not be loaded")
+        
+        return context

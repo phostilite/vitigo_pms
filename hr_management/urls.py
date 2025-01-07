@@ -23,6 +23,7 @@ urlpatterns = [
     
     path('departments/', department_views.DepartmentListView.as_view(), name='department_list'),
     path('new-department/', department_views.NewDepartmentView.as_view(), name='new_department'),
+    path('departments/<int:pk>/', department_views.DepartmentDetailView.as_view(), name='department_detail'),
 
     path('leaves/', leave_views.LeaveListView.as_view(), name='leave_list'),
     path('leaves/pending/', leave_views.PendingLeaveRequestsView.as_view(), name='pending_leave_requests'),
