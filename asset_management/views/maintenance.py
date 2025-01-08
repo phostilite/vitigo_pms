@@ -10,12 +10,14 @@ from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.http import JsonResponse
 
 # Local imports
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from ..models import MaintenanceSchedule
 from ..utils import get_template_path
+from ..forms import MaintenanceScheduleForm
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -82,3 +84,39 @@ class MaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error in maintenance schedule view: {str(e)}")
             messages.error(request, "An error occurred while loading maintenance schedules")
             return redirect('asset_dashboard')
+
+class CreateMaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'asset_management')
+
+    def get(self, request):
+        form = MaintenanceScheduleForm()
+        return render(request, 'administrator/asset_management/maintenance/maintenance_schedule_form.html', {
+            'form': form
+        })
+
+    def post(self, request):
+        form = MaintenanceScheduleForm(request.POST)
+        if form.is_valid():
+            try:
+                maintenance = form.save()
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Maintenance scheduled successfully',
+                    'data': {
+                        'id': maintenance.id,
+                        'asset': maintenance.asset.name,
+                        'scheduled_date': maintenance.scheduled_date.strftime('%Y-%m-%d')
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error creating maintenance schedule: {str(e)}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Failed to schedule maintenance'
+                }, status=500)
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid form data',
+            'errors': form.errors
+        }, status=400)

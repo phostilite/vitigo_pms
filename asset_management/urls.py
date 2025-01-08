@@ -12,4 +12,5 @@ urlpatterns = [
     path('assets/total/', assets.TotalAssetsView.as_view(), name='total_assets'),
     
     path('maintenance/schedule/', maintenance.MaintenanceScheduleView.as_view(), name='maintenance_schedule'),
+    path('maintenance/schedule/create/', maintenance.CreateMaintenanceScheduleView.as_view(), name='create_maintenance_schedule'),
 ]

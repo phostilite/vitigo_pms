@@ -1,5 +1,6 @@
 from django import forms
-from .models import Asset
+from .models import Asset, MaintenanceSchedule
+from datetime import date
 
 class AssetForm(forms.ModelForm):
     class Meta:
@@ -110,5 +111,77 @@ class AssetForm(forms.ModelForm):
 
         if warranty_expiry and purchase_date and warranty_expiry < purchase_date:
             raise forms.ValidationError("Warranty expiry date cannot be earlier than purchase date")
+        
+        return cleaned_data
+
+class MaintenanceScheduleForm(forms.ModelForm):
+    class Meta:
+        model = MaintenanceSchedule
+        fields = [
+            'asset', 'maintenance_type', 'description', 'scheduled_date',
+            'priority', 'estimated_duration_hours', 'cost_estimate', 'vendor'
+        ]
+        widgets = {
+            'asset': forms.Select(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'maintenance_type': forms.TextInput(attrs={
+                'placeholder': 'e.g., Preventive, Corrective, Inspection',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'description': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Detailed description of maintenance work',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'scheduled_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'priority': forms.Select(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'estimated_duration_hours': forms.NumberInput(attrs={
+                'step': '0.5',
+                'placeholder': 'Enter estimated hours',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'cost_estimate': forms.NumberInput(attrs={
+                'step': '0.01',
+                'placeholder': 'Enter estimated cost',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'vendor': forms.TextInput(attrs={
+                'placeholder': 'Enter vendor/service provider name',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            })
+        }
+        help_texts = {
+            'asset': 'Select the asset that requires maintenance',
+            'maintenance_type': 'Type of maintenance to be performed (e.g., Preventive, Corrective, Inspection)',
+            'description': 'Provide a detailed description of the maintenance work to be performed',
+            'scheduled_date': 'Date when the maintenance is planned to be performed',
+            'priority': 'Priority level of the maintenance task (High/Medium/Low)',
+            'estimated_duration_hours': 'Estimated time required to complete the maintenance (in hours)',
+            'cost_estimate': 'Estimated cost for the maintenance work',
+            'vendor': 'Name of the vendor or service provider who will perform the maintenance'
+        }
+        labels = {
+            'asset': 'Asset',
+            'maintenance_type': 'Maintenance Type',
+            'description': 'Maintenance Description',
+            'scheduled_date': 'Scheduled Date',
+            'priority': 'Priority Level',
+            'estimated_duration_hours': 'Estimated Duration (hours)',
+            'cost_estimate': 'Estimated Cost',
+            'vendor': 'Vendor/Service Provider'
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        scheduled_date = cleaned_data.get('scheduled_date')
+        
+        if scheduled_date and scheduled_date < date.today():
+            raise forms.ValidationError("Scheduled date cannot be in the past")
         
         return cleaned_data
