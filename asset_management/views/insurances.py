@@ -5,10 +5,13 @@ from django.shortcuts import render
 from django.views import View
 from django.db.models import Q
 from django.utils import timezone
+from django.http import JsonResponse
+from django.urls import reverse
 
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from ..models import InsurancePolicy
+from ..forms import InsurancePolicyForm
 from ..utils import get_template_path
 
 import logging
@@ -88,3 +91,60 @@ class TotalInsurancesView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error in total insurances view: {str(e)}")
             messages.error(request, "An error occurred while loading insurance policies")
             return handler500(request, exception=str(e))
+
+class CreateInsurancePolicyView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to add insurance policies")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('insurances/create_insurance.html', self.request.user.role, 'asset_management')
+
+    def get(self, request):
+        try:
+            template_path = self.get_template_name()
+            if not template_path:
+                return handler403(request, exception="Unauthorized access")
+
+            form = InsurancePolicyForm()
+            context = {
+                'form': form,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': 'Add Insurance Policy'
+            }
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in CreateInsurancePolicyView GET: {str(e)}")
+            messages.error(request, "An error occurred while loading the insurance form.")
+            return handler500(request, exception=str(e))
+
+    def post(self, request):
+        try:
+            form = InsurancePolicyForm(request.POST)
+            if form.is_valid():
+                policy = form.save()
+                messages.success(request, "Insurance policy added successfully")
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Insurance policy added successfully',
+                    'redirect_url': reverse('total_insurances')
+                })
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid form data',
+                'errors': form.errors
+            }, status=400)
+            
+        except Exception as e:
+            logger.error(f"Error in CreateInsurancePolicyView POST: {str(e)}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to add insurance policy'
+            }, status=500)

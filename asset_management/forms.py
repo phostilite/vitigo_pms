@@ -1,5 +1,5 @@
 from django import forms
-from .models import Asset, MaintenanceSchedule
+from .models import Asset, MaintenanceSchedule, InsurancePolicy
 from datetime import date
 
 class AssetForm(forms.ModelForm):
@@ -183,5 +183,81 @@ class MaintenanceScheduleForm(forms.ModelForm):
         
         if scheduled_date and scheduled_date < date.today():
             raise forms.ValidationError("Scheduled date cannot be in the past")
+        
+        return cleaned_data
+
+class InsurancePolicyForm(forms.ModelForm):
+    class Meta:
+        model = InsurancePolicy
+        fields = [
+            'asset', 'policy_number', 'provider', 'coverage_type',
+            'coverage_amount', 'premium_amount', 'start_date', 'end_date',
+            'deductible', 'documents', 'notes'
+        ]
+        widgets = {
+            'asset': forms.Select(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'policy_number': forms.TextInput(attrs={
+                'placeholder': 'Enter policy number',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'provider': forms.TextInput(attrs={
+                'placeholder': 'Enter insurance provider name',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'coverage_type': forms.TextInput(attrs={
+                'placeholder': 'e.g., Comprehensive, Third Party',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'coverage_amount': forms.NumberInput(attrs={
+                'step': '0.01',
+                'placeholder': 'Enter coverage amount',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'premium_amount': forms.NumberInput(attrs={
+                'step': '0.01',
+                'placeholder': 'Enter premium amount',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'start_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'end_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'deductible': forms.NumberInput(attrs={
+                'step': '0.01',
+                'placeholder': 'Enter deductible amount',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'notes': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Additional notes or remarks',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            })
+        }
+        help_texts = {
+            'asset': 'Select the asset to be insured',
+            'policy_number': 'Unique policy number from insurance provider',
+            'provider': 'Name of the insurance provider',
+            'coverage_type': 'Type of insurance coverage',
+            'coverage_amount': 'Total amount covered by the policy',
+            'premium_amount': 'Premium amount to be paid',
+            'start_date': 'Policy start date',
+            'end_date': 'Policy end date',
+            'deductible': 'Deductible amount for claims',
+            'notes': 'Any additional notes about the policy'
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+
+        if start_date and end_date and end_date <= start_date:
+            raise forms.ValidationError("End date must be after start date")
         
         return cleaned_data
