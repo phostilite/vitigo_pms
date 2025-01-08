@@ -142,3 +142,68 @@ class CreateMaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, Vie
                 'status': 'error',
                 'message': 'Failed to schedule maintenance'
             }, status=500)
+
+class EditMaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to edit maintenance schedules")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('maintenance/edit_maintenance.html', self.request.user.role, 'asset_management')
+
+    def get(self, request, schedule_id):
+        try:
+            schedule = MaintenanceSchedule.objects.get(id=schedule_id)
+            form = MaintenanceScheduleForm(instance=schedule)
+            context = {
+                'form': form,
+                'schedule': schedule,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': f'Edit Maintenance - {schedule.maintenance_type}'
+            }
+            return render(request, self.get_template_name(), context)
+        except MaintenanceSchedule.DoesNotExist:
+            messages.error(request, "Maintenance schedule not found")
+            return redirect('maintenance_schedule')
+        except Exception as e:
+            logger.error(f"Error in edit maintenance view: {str(e)}")
+            messages.error(request, "An error occurred while loading the maintenance schedule")
+            return handler500(request, exception=str(e))
+
+    def post(self, request, schedule_id):
+        try:
+            schedule = MaintenanceSchedule.objects.get(id=schedule_id)
+            form = MaintenanceScheduleForm(request.POST, instance=schedule)
+            if form.is_valid():
+                updated_schedule = form.save()
+                messages.success(request, "Maintenance schedule updated successfully")
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Maintenance schedule updated successfully',
+                    'redirect_url': reverse('maintenance_schedule')
+                })
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid form data',
+                'errors': form.errors
+            }, status=400)
+            
+        except MaintenanceSchedule.DoesNotExist:
+            messages.error(request, "Maintenance schedule not found")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Maintenance schedule not found'
+            }, status=404)
+        except Exception as e:
+            logger.error(f"Error updating maintenance schedule: {str(e)}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to update maintenance schedule'
+            }, status=500)

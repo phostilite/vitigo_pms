@@ -18,6 +18,7 @@ urlpatterns = [
     
     path('maintenance/schedule/', maintenance.MaintenanceScheduleView.as_view(), name='maintenance_schedule'),
     path('maintenance/schedule/create/', maintenance.CreateMaintenanceScheduleView.as_view(), name='create_maintenance_schedule'),
+    path('maintenance/<int:schedule_id>/edit/', maintenance.EditMaintenanceScheduleView.as_view(), name='edit_maintenance'),
     
     path('audits/total/', audits.TotalAuditsView.as_view(), name='total_audits'),
     
