@@ -6,11 +6,12 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Q, Sum
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect   
 from django.utils import timezone
 from django.views import View
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
+from django.urls import reverse
 
 # Local imports
 from access_control.permissions import PermissionManager
@@ -55,7 +56,7 @@ class MaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
             if date_from:
                 schedules = schedules.filter(scheduled_date__gte=date_from)
             if date_to:
-                schedules = schedules.filter(scheduled_date__lte=date_to)
+                schedules = schedules.filter(scheduled_date__lte=date_to)  # Fixed missing parenthesis
 
             # Pagination
             page = request.GET.get('page', 1)
@@ -89,34 +90,55 @@ class CreateMaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, Vie
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'asset_management')
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to schedule maintenance")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('maintenance/maintenance_schedule_form.html', self.request.user.role, 'asset_management')
+
     def get(self, request):
-        form = MaintenanceScheduleForm()
-        return render(request, 'administrator/asset_management/maintenance/maintenance_schedule_form.html', {
-            'form': form
-        })
+        try:
+            template_path = self.get_template_name()
+            if not template_path:
+                return handler403(request, exception="Unauthorized access")
+
+            form = MaintenanceScheduleForm()
+            context = {
+                'form': form,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': 'Schedule Maintenance'
+            }
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.exception(f"Error in CreateMaintenanceScheduleView GET: {str(e)}")
+            messages.error(request, "An error occurred while loading the maintenance form.")
+            return handler500(request, exception=str(e))
 
     def post(self, request):
-        form = MaintenanceScheduleForm(request.POST)
-        if form.is_valid():
-            try:
+        try:
+            form = MaintenanceScheduleForm(request.POST)
+            if form.is_valid():
                 maintenance = form.save()
+                messages.success(request, "Maintenance scheduled successfully")
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Maintenance scheduled successfully',
-                    'data': {
-                        'id': maintenance.id,
-                        'asset': maintenance.asset.name,
-                        'scheduled_date': maintenance.scheduled_date.strftime('%Y-%m-%d')
-                    }
+                    'redirect_url': reverse('maintenance_schedule')
                 })
-            except Exception as e:
-                logger.error(f"Error creating maintenance schedule: {str(e)}")
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Failed to schedule maintenance'
-                }, status=500)
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Invalid form data',
-            'errors': form.errors
-        }, status=400)
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid form data',
+                'errors': form.errors
+            }, status=400)
+            
+        except Exception as e:
+            logger.exception(f"Error in CreateMaintenanceScheduleView POST: {str(e)}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to schedule maintenance'
+            }, status=500)

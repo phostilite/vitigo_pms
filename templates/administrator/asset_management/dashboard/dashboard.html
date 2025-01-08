@@ -108,7 +108,7 @@
                     </div>
                     <p class="mt-2 text-2xl font-semibold text-gray-900">{{ dashboard_stats.assets_in_use|default:"0" }}</p>
                     <div class="mt-2">
-                        <a href="#" class="text-sm text-gray-600 hover:text-blue-600 flex items-center">
+                        <a href="{% url 'total_assets' %}?status=IN_USE" class="text-sm text-gray-600 hover:text-blue-600 flex items-center">
                             Currently deployed
                             <i class="fas fa-chevron-right ml-1 text-xs"></i>
                         </a>
@@ -138,7 +138,7 @@
                     </div>
                     <p class="mt-2 text-2xl font-semibold text-gray-900">{{ dashboard_stats.pending_audits|default:"0" }}</p>
                     <div class="mt-2">
-                        <a href="#" class="text-sm text-gray-600 hover:text-blue-600 flex items-center">
+                        <a href="{% url 'total_audits' %}" class="text-sm text-gray-600 hover:text-blue-600 flex items-center">
                             Awaiting verification
                             <i class="fas fa-chevron-right ml-1 text-xs"></i>
                         </a>
