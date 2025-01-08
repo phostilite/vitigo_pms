@@ -44,9 +44,10 @@
                     <a href="{% url 'edit_asset' asset.id %}" class="text-gray-700 hover:text-blue-600">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-                    <a href="#" class="text-red-600 hover:text-red-700">
+                    <button type="button" data-modal-target="deleteModal-{{ asset.id }}" data-modal-toggle="deleteModal-{{ asset.id }}" 
+                            class="text-red-600 hover:text-red-700">
                         <i class="fas fa-trash"></i> Delete
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
@@ -292,4 +293,8 @@
         </div>
     </div>
 </div>
+
+<!-- Include Delete Modal -->
+{% include './modals/delete_asset.html' %}
+
 {% endblock %}

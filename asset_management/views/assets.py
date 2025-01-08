@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Q, Sum
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views import View
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -245,3 +245,36 @@ class EditAssetView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error updating asset: {str(e)}")
             messages.error(request, "An error occurred while updating the asset")
             return handler500(request, exception=str(e))
+
+
+class AssetDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to asset deletion for user {request.user.id}")
+                messages.error(request, "You don't have permission to delete assets")
+                return handler403(request, exception="Access Denied")
+                
+            if request.method != 'POST':
+                return handler403(request, exception="Method not allowed")
+                
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in asset delete dispatch: {str(e)}")
+            messages.error(request, "An error occurred while processing your request")
+            return redirect('total_assets')
+
+    def post(self, request, asset_id):
+        try:
+            asset = get_object_or_404(Asset, pk=asset_id)
+            asset_name = asset.name
+            asset.delete()
+            messages.success(request, f"Asset '{asset_name}' deleted successfully")
+        except Exception as e:
+            logger.error(f"Error deleting asset {asset_id}: {str(e)}")
+            messages.error(request, "Error deleting asset")
+        
+        return redirect('total_assets')
