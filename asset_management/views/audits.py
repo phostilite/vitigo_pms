@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db.models import Q
 from django.http import JsonResponse
@@ -226,3 +226,31 @@ class UpdateAssetAuditView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'status': 'error',
                 'message': 'Failed to update audit'
             }, status=500)
+
+class CompleteAssetAuditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to complete audits")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, audit_id):
+        try:
+            audit = get_object_or_404(AssetAudit, pk=audit_id)
+            
+            if audit.status == 'COMPLETED':
+                messages.error(request, "Audit is already completed")
+            else:
+                audit.status = 'COMPLETED'
+                audit.save()
+                messages.success(request, f"Audit for {audit.asset.name} completed successfully")
+            
+            return redirect('audit_detail', audit_id=audit_id)
+            
+        except Exception as e:
+            logger.error(f"Error completing audit {audit_id}: {str(e)}")
+            messages.error(request, "Error completing audit")
+            return redirect('total_audits')
