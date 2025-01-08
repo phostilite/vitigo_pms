@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views import View
 from django.db.models import Q
 from django.http import JsonResponse
@@ -139,3 +139,33 @@ class CreateAssetAuditView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'status': 'error',
                 'message': 'Failed to create audit'
             }, status=500)
+
+class AssetAuditDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to view audit details")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('audits/audit_detail.html', self.request.user.role, 'asset_management')
+
+    def get(self, request, audit_id):
+        try:
+            audit = get_object_or_404(AssetAudit.objects.select_related('asset'), pk=audit_id)
+            
+            context = {
+                'audit': audit,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': f'Audit Details - {audit.asset.name}'
+            }
+
+            return render(request, self.get_template_name(), context)
+        except Exception as e:
+            logger.error(f"Error in audit detail view: {str(e)}")
+            messages.error(request, "An error occurred while loading audit details")
+            return handler500(request, exception=str(e))

@@ -23,6 +23,7 @@ urlpatterns = [
     
     path('audits/total/', audits.TotalAuditsView.as_view(), name='total_audits'),
     path('audits/create/', audits.CreateAssetAuditView.as_view(), name='create_audit'),
+    path('audits/<int:audit_id>/', audits.AssetAuditDetailView.as_view(), name='audit_detail'),
     
     path('insurances/total/', insurances.TotalInsurancesView.as_view(), name='total_insurances'),
     path('insurances/create/', insurances.CreateInsurancePolicyView.as_view(), name='create_insurance'),
