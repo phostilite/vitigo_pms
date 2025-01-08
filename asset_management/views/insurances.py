@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views import View
 from django.db.models import Q
 from django.utils import timezone
@@ -148,3 +148,33 @@ class CreateInsurancePolicyView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'status': 'error',
                 'message': 'Failed to add insurance policy'
             }, status=500)
+
+class InsurancePolicyDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to view insurance details")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('insurances/insurance_detail.html', self.request.user.role, 'asset_management')
+
+    def get(self, request, policy_id):
+        try:
+            policy = get_object_or_404(InsurancePolicy.objects.select_related('asset'), pk=policy_id)
+            
+            context = {
+                'policy': policy,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': f'Insurance Details - {policy.policy_number}'
+            }
+
+            return render(request, self.get_template_name(), context)
+        except Exception as e:
+            logger.error(f"Error in insurance detail view: {str(e)}")
+            messages.error(request, "An error occurred while loading insurance details")
+            return handler500(request, exception=str(e))
