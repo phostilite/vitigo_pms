@@ -134,3 +134,55 @@ class AddAssetView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error saving asset: {str(e)}")
             messages.error(request, "An error occurred while saving the asset")
             return render(request, self.get_template_name(), {'form': form})
+
+
+class AssetDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to view asset details")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('assets/asset_detail.html', self.request.user.role, 'asset_management')
+
+    def get(self, request, asset_id):
+        try:
+            # Get the asset with related data
+            asset = Asset.objects.select_related('category').get(id=asset_id)
+            
+            # Get maintenance history
+            maintenance_history = asset.maintenance_schedules.all().order_by('-scheduled_date')[:5]
+            
+            # Get audit history
+            audit_history = asset.audits.all().order_by('-audit_date')[:5]
+            
+            # Get insurance policies
+            insurance_policies = asset.insurance_policies.all().order_by('-start_date')
+            
+            # Get depreciation history
+            depreciation_history = asset.depreciation_records.all().order_by('-date')[:5]
+
+            context = {
+                'asset': asset,
+                'maintenance_history': maintenance_history,
+                'audit_history': audit_history,
+                'insurance_policies': insurance_policies,
+                'depreciation_history': depreciation_history,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': f'Asset Details - {asset.name}',
+            }
+
+            return render(request, self.get_template_name(), context)
+            
+        except Asset.DoesNotExist:
+            messages.error(request, "Asset not found")
+            return redirect('total_assets')
+        except Exception as e:
+            logger.error(f"Error in asset detail view: {str(e)}")
+            messages.error(request, "An error occurred while loading asset details")
+            return handler500(request, exception=str(e))
