@@ -186,3 +186,62 @@ class AssetDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error in asset detail view: {str(e)}")
             messages.error(request, "An error occurred while loading asset details")
             return handler500(request, exception=str(e))
+
+
+class EditAssetView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to edit assets")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('assets/edit_asset.html', self.request.user.role, 'asset_management')
+
+    def get(self, request, asset_id):
+        try:
+            asset = Asset.objects.get(id=asset_id)
+            form = AssetForm(instance=asset)
+            context = {
+                'form': form,
+                'asset': asset,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': f'Edit Asset - {asset.name}'
+            }
+            return render(request, self.get_template_name(), context)
+        except Asset.DoesNotExist:
+            messages.error(request, "Asset not found")
+            return redirect('total_assets')
+        except Exception as e:
+            logger.error(f"Error in edit asset view: {str(e)}")
+            messages.error(request, "An error occurred while loading the asset")
+            return handler500(request, exception=str(e))
+
+    def post(self, request, asset_id):
+        try:
+            asset = Asset.objects.get(id=asset_id)
+            form = AssetForm(request.POST, request.FILES, instance=asset)
+            if form.is_valid():
+                updated_asset = form.save()
+                messages.success(request, f"Asset {updated_asset.name} was updated successfully")
+                return redirect('asset_detail', asset_id=asset_id)
+            
+            context = {
+                'form': form,
+                'asset': asset,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': f'Edit Asset - {asset.name}'
+            }
+            return render(request, self.get_template_name(), context)
+        except Asset.DoesNotExist:
+            messages.error(request, "Asset not found")
+            return redirect('total_assets')
+        except Exception as e:
+            logger.error(f"Error updating asset: {str(e)}")
+            messages.error(request, "An error occurred while updating the asset")
+            return handler500(request, exception=str(e))

@@ -13,6 +13,7 @@ urlpatterns = [
     path('asset/add/', assets.AddAssetView.as_view(), name='add_asset'),
     path('assets/total/', assets.TotalAssetsView.as_view(), name='total_assets'),
     path('asset/<int:asset_id>/', assets.AssetDetailView.as_view(), name='asset_detail'),
+    path('asset/<int:asset_id>/edit/', assets.EditAssetView.as_view(), name='edit_asset'),
     
     path('maintenance/schedule/', maintenance.MaintenanceScheduleView.as_view(), name='maintenance_schedule'),
     path('maintenance/schedule/create/', maintenance.CreateMaintenanceScheduleView.as_view(), name='create_maintenance_schedule'),
