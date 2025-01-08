@@ -147,6 +147,9 @@
                                 <a href="{% url 'audit_detail' audit.id %}" class="text-blue-600 hover:text-blue-900 mr-3" title="View Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
+                                <a href="{% url 'update_audit' audit.id %}" class="text-yellow-600 hover:text-yellow-900 mr-3" title="Edit Audit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
                                 {% if audit.status != 'COMPLETED' %}
                                 <a href="#" class="text-green-600 hover:text-green-900 mr-3" title="Complete Audit">
                                     <i class="fas fa-check"></i>
