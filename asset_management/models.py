@@ -291,6 +291,13 @@ class AssetAudit(models.Model):
 
 class InsurancePolicy(models.Model):
     """Insurance information for valuable assets"""
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Active'),
+        ('EXPIRED', 'Expired'),
+        ('CANCELLED', 'Cancelled'),
+        ('RENEWED', 'Renewed')
+    ]
+
     asset = models.ForeignKey(
         Asset,
         on_delete=models.CASCADE,
@@ -322,12 +329,7 @@ class InsurancePolicy(models.Model):
     )
     status = models.CharField(
         max_length=20,
-        choices=[
-            ('ACTIVE', 'Active'),
-            ('EXPIRED', 'Expired'),
-            ('CANCELLED', 'Cancelled'),
-            ('RENEWED', 'Renewed')
-        ],
+        choices=STATUS_CHOICES,
         default='ACTIVE'
     )
     notes = models.TextField(blank=True)
