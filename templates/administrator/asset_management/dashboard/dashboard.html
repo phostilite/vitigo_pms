@@ -123,7 +123,7 @@
                     </div>
                     <p class="mt-2 text-2xl font-semibold text-gray-900">{{ dashboard_stats.maintenance_due|default:"0" }}</p>
                     <div class="mt-2">
-                        <a href="#" class="text-sm text-gray-600 hover:text-blue-600 flex items-center">
+                        <a href="{% url 'maintenance_schedule' %}" class="text-sm text-gray-600 hover:text-blue-600 flex items-center">
                             Next 30 days
                             <i class="fas fa-chevron-right ml-1 text-xs"></i>
                         </a>
