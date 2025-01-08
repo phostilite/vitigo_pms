@@ -76,7 +76,7 @@
           <li>
              <a href="{% url 'clinic_management:clinic_dashboard' %}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
                 <i class="fa-solid fa-hospital w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900"></i>
-                <span class="ms-3">Clinic Management</span>
+                <span class="ms-3">Clinic</span>
              </a>
           </li>
           {% endif %}
@@ -166,7 +166,15 @@
           <li>
              <a href="{% url 'asset_dashboard' %}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
                 <i class="fa-solid fa-box-archive w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900"></i>
-                <span class="ms-3">Asset Management</span>
+                <span class="ms-3">Assets</span>
+             </a>
+          </li>
+          {% endif %}
+          {% if request.user|has_module_access:'compliance_management' %}
+          <li>
+             <a href="{% url 'compliance_management:compliance_dashboard' %}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+                <i class="fa-solid fa-clipboard-check w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900"></i>
+                <span class="ms-3">Compliance</span>
              </a>
           </li>
           {% endif %}

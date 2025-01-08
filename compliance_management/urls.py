@@ -1,3 +1,8 @@
 from django.urls import path
+from .views import ComplianceManagementDashboardView
 
-urlpatterns = []
+app_name = 'compliance_management'
+
+urlpatterns = [
+    path('dashboard/', ComplianceManagementDashboardView.as_view(), name='compliance_dashboard'),
+]
