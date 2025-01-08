@@ -141,9 +141,12 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 {% if insurance.status == 'ACTIVE' %}
-                                <a href="#" class="text-green-600 hover:text-green-900 mr-3" title="Renew Policy">
+                                <button data-modal-target="renewModal-{{ insurance.id }}" 
+                                        data-modal-toggle="renewModal-{{ insurance.id }}"
+                                        class="text-green-600 hover:text-green-900 mr-3" title="Renew Policy">
                                     <i class="fas fa-sync-alt"></i>
-                                </a>
+                                </button>
+                                {% include './modals/renew_insurance_modal.html' %}
                                 {% endif %}
                                 <a href="#" class="text-red-600 hover:text-red-900" title="Cancel Policy">
                                     <i class="fas fa-times"></i>

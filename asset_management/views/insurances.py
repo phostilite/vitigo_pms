@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db.models import Q
 from django.utils import timezone
@@ -167,7 +167,7 @@ class InsurancePolicyDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
             policy = get_object_or_404(InsurancePolicy.objects.select_related('asset'), pk=policy_id)
             
             context = {
-                'policy': policy,
+                'insurance': policy,
                 'user_role': request.user.role.name if request.user.role else None,
                 'module_name': 'Asset Management',
                 'page_title': f'Insurance Details - {policy.policy_number}'
@@ -178,3 +178,49 @@ class InsurancePolicyDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error in insurance detail view: {str(e)}")
             messages.error(request, "An error occurred while loading insurance details")
             return handler500(request, exception=str(e))
+
+class RenewInsurancePolicyView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to renew insurance policies")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, policy_id):
+        try:
+            policy = get_object_or_404(InsurancePolicy, pk=policy_id)
+            
+            if policy.status != 'ACTIVE':
+                messages.error(request, "Only active policies can be renewed")
+            else:
+                # Create new policy with extended dates
+                new_policy = InsurancePolicy.objects.create(
+                    asset=policy.asset,
+                    policy_number=f"{policy.policy_number}-R",  # Add suffix for renewed policy
+                    provider=policy.provider,
+                    coverage_type=policy.coverage_type,
+                    coverage_amount=policy.coverage_amount,
+                    premium_amount=policy.premium_amount,
+                    start_date=policy.end_date,  # Start from previous end date
+                    end_date=policy.end_date + timezone.timedelta(days=365),  # Add one year
+                    deductible=policy.deductible,
+                    documents=policy.documents,
+                    status='ACTIVE',
+                    notes=f"Renewed from policy {policy.policy_number}"
+                )
+                
+                # Update old policy status
+                policy.status = 'RENEWED'
+                policy.save()
+                
+                messages.success(request, f"Insurance policy renewed successfully. New policy number: {new_policy.policy_number}")
+            
+            return redirect('insurance_detail', policy_id=new_policy.id)
+            
+        except Exception as e:
+            logger.error(f"Error renewing policy {policy_id}: {str(e)}")
+            messages.error(request, "Error renewing insurance policy")
+            return redirect('total_insurances')
