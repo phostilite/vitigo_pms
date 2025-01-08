@@ -46,23 +46,36 @@
                         <div id="dropdown" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-44">
                             <ul class="py-2 text-sm text-gray-700" aria-labelledby="dropdownDefaultButton">
                                 <li>
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-100"><i class="mr-2 fas fa-calendar"></i> Schedule Maintenance</a>
+                                    <a href="{% url 'create_maintenance_schedule' %}" class="block px-4 py-2 hover:bg-gray-100"><i class="mr-2 fas fa-calendar"></i> Schedule Maintenance</a>
                                 </li>
                                 <li>
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-100"><i class="mr-2 fas fa-clipboard-check"></i> Start Audit</a>
+                                    <a href="{% url 'create_audit' %}" class="block px-4 py-2 hover:bg-gray-100"><i class="mr-2 fas fa-clipboard-check"></i> Start Audit</a>
                                 </li>
                                 <li>
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-100"><i class="mr-2 fas fa-file-invoice"></i> Insurance Renewal</a>
-                                </li>
-                                <li>
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-100"><i class="mr-2 fas fa-chart-bar"></i> Generate Report</a>
+                                    <a href="{% url 'total_insurances' %}" class="block px-4 py-2 hover:bg-gray-100"><i class="mr-2 fas fa-file-invoice"></i> Insurance Renewal</a>
                                 </li>
                             </ul>
                         </div>
                     </div>
-                    <button type="button" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 border">
-                        <i class="mr-2 fas fa-download"></i> Export
-                    </button>
+                    
+                    <!-- Export Dropdown -->
+                    <div class="dropdown relative">
+                        <button id="exportDropdown" data-dropdown-toggle="exportDropdownItems" class="text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-4 py-2 border inline-flex items-center">
+                            <i class="mr-2 fas fa-download"></i>
+                            Export
+                            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+                        </button>
+                        <div id="exportDropdownItems" class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
+                            <a href="{% url 'asset_dashboard_export' %}?format=excel" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-file-excel mr-3 text-green-600"></i>
+                                <span class="text-sm text-gray-700">Export to Excel</span>
+                            </a>
+                            <a href="{% url 'asset_dashboard_export' %}?format=pdf" class="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                                <i class="fas fa-file-pdf mr-3 text-red-600"></i>
+                                <span class="text-sm text-gray-700">Export to PDF</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -283,6 +296,25 @@
                     }
                 }
             }
+        }
+    });
+
+    // Handle export dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        const exportDropdown = document.getElementById('exportDropdown');
+        const exportMenu = document.getElementById('exportDropdownItems');
+        
+        if (exportDropdown && exportMenu) {
+            exportDropdown.addEventListener('click', function() {
+                exportMenu.classList.toggle('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!exportDropdown.contains(event.target)) {
+                    exportMenu.classList.add('hidden');
+                }
+            });
         }
     });
 </script>

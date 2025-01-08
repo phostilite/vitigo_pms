@@ -5,10 +5,12 @@ from .views import (
     maintenance,
     audits,
     insurances,
+    export,
 )
 
 urlpatterns = [
     path('dashboard/', dashboard.AssetDashboardView.as_view(), name='asset_dashboard'),
+    path('dashboard/export/', export.AssetDashboardExportView.as_view(), name='asset_dashboard_export'),
     
     path('asset/add/', assets.AddAssetView.as_view(), name='add_asset'),
     path('assets/total/', assets.TotalAssetsView.as_view(), name='total_assets'),
