@@ -155,8 +155,13 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ schedule.duration }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <a href="{% url 'edit_maintenance' schedule.id %}" class="text-blue-600 hover:text-blue-900">Edit</a>
-                                <a href="#" class="ml-4 text-red-600 hover:text-red-900">Delete</a>
+                                <a href="{% url 'edit_maintenance' schedule.id %}" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
+                                <button type="button" 
+                                        data-modal-target="deleteModal-{{ schedule.id }}" 
+                                        data-modal-toggle="deleteModal-{{ schedule.id }}" 
+                                        class="text-red-600 hover:text-red-900">
+                                    Delete
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -166,4 +171,10 @@
         </div>
     </div>
 </div>
+
+<!-- Include Delete Modals -->
+{% for schedule in schedules %}
+    {% include './modals/delete_maintenance.html' %}
+{% endfor %}
+
 {% endblock %}

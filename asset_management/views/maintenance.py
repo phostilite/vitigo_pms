@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Q, Sum
-from django.shortcuts import render, redirect   
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views import View
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -207,3 +207,36 @@ class EditMaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, View)
                 'status': 'error',
                 'message': 'Failed to update maintenance schedule'
             }, status=500)
+
+class DeleteMaintenanceScheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_delete(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not self.test_func():
+                logger.warning(f"Access denied to maintenance deletion for user {request.user.id}")
+                messages.error(request, "You don't have permission to delete maintenance schedules")
+                return handler403(request, exception="Access Denied")
+                
+            if request.method != 'POST':
+                return handler403(request, exception="Method not allowed")
+                
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in maintenance delete dispatch: {str(e)}")
+            messages.error(request, "An error occurred while processing your request")
+            return redirect('maintenance_schedule')
+
+    def post(self, request, schedule_id):
+        try:
+            schedule = get_object_or_404(MaintenanceSchedule, pk=schedule_id)
+            maintenance_type = schedule.maintenance_type
+            asset_name = schedule.asset.name
+            schedule.delete()
+            messages.success(request, f"Maintenance schedule '{maintenance_type}' for '{asset_name}' deleted successfully")
+        except Exception as e:
+            logger.error(f"Error deleting maintenance schedule {schedule_id}: {str(e)}")
+            messages.error(request, "Error deleting maintenance schedule")
+        
+        return redirect('maintenance_schedule')
