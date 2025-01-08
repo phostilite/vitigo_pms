@@ -224,3 +224,31 @@ class RenewInsurancePolicyView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error renewing policy {policy_id}: {str(e)}")
             messages.error(request, "Error renewing insurance policy")
             return redirect('total_insurances')
+
+class CancelInsurancePolicyView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to cancel insurance policies")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, policy_id):
+        try:
+            policy = get_object_or_404(InsurancePolicy, pk=policy_id)
+            
+            if policy.status != 'ACTIVE':
+                messages.error(request, "Only active policies can be cancelled")
+            else:
+                policy.status = 'CANCELLED'
+                policy.save()
+                messages.success(request, f"Insurance policy {policy.policy_number} cancelled successfully")
+            
+            return redirect('insurance_detail', policy_id=policy_id)
+            
+        except Exception as e:
+            logger.error(f"Error cancelling policy {policy_id}: {str(e)}")
+            messages.error(request, "Error cancelling insurance policy")
+            return redirect('total_insurances')

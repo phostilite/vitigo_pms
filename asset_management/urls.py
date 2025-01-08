@@ -32,4 +32,5 @@ urlpatterns = [
     path('insurances/create/', insurances.CreateInsurancePolicyView.as_view(), name='create_insurance'),
     path('insurances/<int:policy_id>/', insurances.InsurancePolicyDetailView.as_view(), name='insurance_detail'),
     path('insurances/<int:policy_id>/renew/', insurances.RenewInsurancePolicyView.as_view(), name='renew_insurance'),
+    path('insurances/<int:policy_id>/cancel/', insurances.CancelInsurancePolicyView.as_view(), name='cancel_insurance'),
 ]
