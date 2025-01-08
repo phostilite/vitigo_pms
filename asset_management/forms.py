@@ -1,5 +1,5 @@
 from django import forms
-from .models import Asset, MaintenanceSchedule, InsurancePolicy
+from .models import Asset, MaintenanceSchedule, InsurancePolicy, AssetAudit
 from datetime import date
 
 class AssetForm(forms.ModelForm):
@@ -259,5 +259,68 @@ class InsurancePolicyForm(forms.ModelForm):
 
         if start_date and end_date and end_date <= start_date:
             raise forms.ValidationError("End date must be after start date")
+        
+        return cleaned_data
+
+class AssetAuditForm(forms.ModelForm):
+    class Meta:
+        model = AssetAudit
+        fields = [
+            'asset', 'audit_date', 'location_verified', 'condition_verified',
+            'discrepancies', 'status', 'conducted_by', 'verified_by',
+            'notes', 'photos'
+        ]
+        widgets = {
+            'asset': forms.Select(attrs={
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'audit_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'location_verified': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded'
+            }),
+            'condition_verified': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded'
+            }),
+            'discrepancies': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'List any discrepancies found during audit',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'conducted_by': forms.TextInput(attrs={
+                'placeholder': 'Name of person conducting the audit',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'verified_by': forms.TextInput(attrs={
+                'placeholder': 'Name of person verifying the audit',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            }),
+            'notes': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Additional notes or observations',
+                'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+            })
+        }
+        help_texts = {
+            'asset': 'Select the asset to be audited',
+            'audit_date': 'Date when the audit is conducted',
+            'location_verified': 'Confirm if asset location matches records',
+            'condition_verified': 'Confirm if asset condition matches records',
+            'discrepancies': 'Note any differences from recorded asset information',
+            'status': 'Current status of the audit',
+            'conducted_by': 'Person conducting the audit',
+            'verified_by': 'Person verifying the audit findings',
+            'notes': 'Any additional observations or comments',
+            'photos': 'Upload photos taken during audit'
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        audit_date = cleaned_data.get('audit_date')
+        
+        if audit_date and audit_date > date.today():
+            raise forms.ValidationError("Audit date cannot be in the future")
         
         return cleaned_data

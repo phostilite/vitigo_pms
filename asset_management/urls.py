@@ -22,6 +22,7 @@ urlpatterns = [
     path('maintenance/<int:schedule_id>/delete/', maintenance.DeleteMaintenanceScheduleView.as_view(), name='delete_maintenance'),
     
     path('audits/total/', audits.TotalAuditsView.as_view(), name='total_audits'),
+    path('audits/create/', audits.CreateAssetAuditView.as_view(), name='create_audit'),
     
     path('insurances/total/', insurances.TotalInsurancesView.as_view(), name='total_insurances'),
     path('insurances/create/', insurances.CreateInsurancePolicyView.as_view(), name='create_insurance'),

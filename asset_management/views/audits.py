@@ -4,10 +4,13 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render
 from django.views import View
 from django.db.models import Q
+from django.http import JsonResponse
+from django.urls import reverse
 
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler500
 from ..models import AssetAudit
+from ..forms import AssetAuditForm
 from ..utils import get_template_path
 
 import logging
@@ -79,3 +82,60 @@ class TotalAuditsView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error in total audits view: {str(e)}")
             messages.error(request, "An error occurred while loading asset audits")
             return handler500(request, exception=str(e))
+
+class CreateAssetAuditView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return PermissionManager.check_module_modify(self.request.user, 'asset_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to create audits")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('audits/create_audit.html', self.request.user.role, 'asset_management')
+
+    def get(self, request):
+        try:
+            template_path = self.get_template_name()
+            if not template_path:
+                return handler403(request, exception="Unauthorized access")
+
+            form = AssetAuditForm()
+            context = {
+                'form': form,
+                'user_role': request.user.role.name if request.user.role else None,
+                'module_name': 'Asset Management',
+                'page_title': 'Create Asset Audit'
+            }
+            return render(request, template_path, context)
+        except Exception as e:
+            logger.error(f"Error in create audit view: {str(e)}")
+            messages.error(request, "An error occurred while loading the audit form")
+            return handler500(request, exception=str(e))
+
+    def post(self, request):
+        try:
+            form = AssetAuditForm(request.POST, request.FILES)
+            if form.is_valid():
+                audit = form.save()
+                messages.success(request, "Asset audit created successfully")
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Asset audit created successfully',
+                    'redirect_url': reverse('total_audits')
+                })
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid form data',
+                'errors': form.errors
+            }, status=400)
+            
+        except Exception as e:
+            logger.error(f"Error creating audit: {str(e)}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to create audit'
+            }, status=500)
