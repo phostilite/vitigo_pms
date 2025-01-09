@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, UpdateView, DeleteView, CreateView
 from django.urls import reverse_lazy
+from django.contrib.auth import get_user_model
 
 # Local/Relative imports
 from access_control.utils import PermissionManager
@@ -183,3 +184,30 @@ class ComplianceReminderDeleteView(LoginRequiredMixin, DeleteView):
             logger.error(f"Error deleting reminder: {str(e)}")
             messages.error(request, "Error deleting reminder")
             return handler500(request, exception="Error deleting reminder")
+
+class ReminderHistoryView(LoginRequiredMixin, ListView):
+    """View for displaying reminder history for a patient"""
+    model = ComplianceReminder
+    template_name = 'administrator/compliance_management/reminders/reminder_history.html'
+    context_object_name = 'reminders'
+    paginate_by = 10
+
+    def get_queryset(self):
+        patient_id = self.kwargs.get('patient_id')
+        return ComplianceReminder.objects.filter(
+            patient_id=patient_id
+        ).select_related('patient').order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        patient = get_user_model().objects.get(id=self.kwargs.get('patient_id'))
+        context.update({
+            'patient': patient,
+            'reminder_stats': {
+                'total': self.get_queryset().count(),
+                'sent': self.get_queryset().filter(status='SENT').count(),
+                'failed': self.get_queryset().filter(status='FAILED').count(),
+                'pending': self.get_queryset().filter(status='PENDING').count(),
+            }
+        })
+        return context

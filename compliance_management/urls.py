@@ -36,4 +36,5 @@ urlpatterns = [
     path('reminders/<int:pk>/', reminder_views.ComplianceReminderDetailView.as_view(), name='reminder_detail'),
     path('reminders/<int:pk>/edit/', reminder_views.ComplianceReminderUpdateView.as_view(), name='reminder_edit'),
     path('reminders/<int:pk>/delete/', reminder_views.ComplianceReminderDeleteView.as_view(), name='reminder_delete'),
+    path('reminders/history/<int:patient_id>/', reminder_views.ReminderHistoryView.as_view(), name='reminder_history'),
 ]
