@@ -14,6 +14,7 @@ from django.urls import reverse_lazy
 from access_control.utils import PermissionManager
 from error_handling.views import handler403, handler500, handler401
 from ..models import ComplianceMetric
+from ..forms import ComplianceMetricForm
 from ..utils import get_template_path
 
 # Configure logging
@@ -146,3 +147,34 @@ class ComplianceMetricDetailView(LoginRequiredMixin, DetailView):
             'value': difference,
             'is_positive': difference > 0
         }
+
+class ComplianceMetricCreateView(LoginRequiredMixin, CreateView):
+    """View for creating new compliance metrics"""
+    model = ComplianceMetric
+    form_class = ComplianceMetricForm
+    
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'metrics/metric_create.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(self.request, exception="Error loading metric form template")
+
+    def form_valid(self, form):
+        try:
+            form.instance.evaluated_by = self.request.user
+            form.instance.evaluation_date = timezone.now().date()
+            response = super().form_valid(form)
+            messages.success(self.request, "Compliance metric created successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error creating metric: {str(e)}")
+            messages.error(self.request, "Error creating metric")
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('compliance_management:metric_detail', kwargs={'pk': self.object.pk})
