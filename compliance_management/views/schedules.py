@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.utils import timezone
-from django.views.generic import ListView, DetailView, UpdateView
+from django.views.generic import ListView, DetailView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 
 # Local/Relative imports
@@ -294,3 +294,44 @@ class ComplianceScheduleUpdateView(LoginRequiredMixin, UpdateView):
             logger.error(f"Error in schedule edit context: {str(e)}", exc_info=True)
             messages.error(self.request, "Error loading form data")
             return {}
+
+class ComplianceScheduleDeleteView(LoginRequiredMixin, DeleteView):
+    """View for deleting compliance schedules"""
+    model = ComplianceSchedule
+    success_url = reverse_lazy('compliance_management:schedule_list')
+    
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not request.user.is_authenticated:
+                return handler401(request, exception="Authentication required")
+            
+            if not PermissionManager.check_module_access(request.user, 'compliance_management'):
+                logger.warning(
+                    f"Access denied for user {request.user.email} (ID: {request.user.id}) "
+                    f"to delete schedule {kwargs.get('pk')}"
+                )
+                return handler403(request, exception="Access denied to delete schedule")
+
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(
+                f"Error in schedule delete dispatch: {str(e)} "
+                f"[User: {request.user.email}, Schedule: {kwargs.get('pk')}]",
+                exc_info=True
+            )
+            return handler500(request, exception="Error accessing schedule delete")
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            schedule = self.get_object()
+            logger.info(
+                f"Schedule {schedule.pk} deleted by {request.user.get_full_name()} "
+                f"(Email: {request.user.email}, ID: {request.user.id}) "
+                f"at {timezone.localtime().strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            )
+            messages.success(request, "Schedule deleted successfully")
+            return super().delete(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error deleting schedule: {str(e)}", exc_info=True)
+            messages.error(request, "Error deleting schedule")
+            return handler500(request, exception="Error deleting schedule")

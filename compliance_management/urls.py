@@ -11,4 +11,5 @@ urlpatterns = [
     path('schedules/', schedule_views.ComplianceScheduleListView.as_view(), name='schedule_list'),
     path('schedules/<int:pk>/', schedule_views.ComplianceScheduleDetailView.as_view(), name='schedule_detail'),
     path('schedules/<int:pk>/edit/', schedule_views.ComplianceScheduleUpdateView.as_view(), name='schedule_edit'),
+    path('schedules/<int:pk>/delete/', schedule_views.ComplianceScheduleDeleteView.as_view(), name='schedule_delete'),
 ]
