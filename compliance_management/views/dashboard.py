@@ -1,27 +1,32 @@
-from django.shortcuts import render
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import TemplateView
-from django.utils import timezone
-from django.db.models import Count, Q, Avg
-from django.contrib import messages
-from django.core.serializers.json import DjangoJSONEncoder
+# Standard Library imports
 import json
 import logging
 from datetime import timedelta
+
+# Django imports
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Count, Q, Avg
+from django.shortcuts import render
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
+from django.views.generic import TemplateView
 
+# Local/Relative imports
 from access_control.utils import PermissionManager
 from error_handling.views import handler403, handler500, handler401
-from .models import (
-    ComplianceSchedule,
+from ..models import (
+    ComplianceAlert,
     ComplianceIssue,
     ComplianceMetric,
     ComplianceReminder,
-    ComplianceAlert
+    ComplianceSchedule
 )
-from .utils import get_template_path
+from ..utils import get_template_path
 
+# Configure logging
 logger = logging.getLogger(__name__)
 
 class ComplianceManagementDashboardView(LoginRequiredMixin, TemplateView):
