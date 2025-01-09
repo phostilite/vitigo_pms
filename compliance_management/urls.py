@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     dashboard as dashboard_views,
     schedules as schedule_views,
-    issues as issue_views
+    issues as issue_views,
+    metrics as metrics_views
 )
 
 app_name = 'compliance_management'
@@ -20,4 +21,7 @@ urlpatterns = [
     path('issues/<int:pk>/', issue_views.ComplianceIssueDetailView.as_view(), name='issue_detail'),
     path('issues/<int:pk>/edit/', issue_views.ComplianceIssueUpdateView.as_view(), name='issue_edit'),
     path('issues/<int:pk>/delete/', issue_views.ComplianceIssueDeleteView.as_view(), name='issue_delete'),
+
+    # Metrics Management URLs
+    path('metrics/', metrics_views.ComplianceMetricListView.as_view(), name='metric_list'),
 ]
