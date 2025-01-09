@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import ComplianceSchedule
+from .models import ComplianceSchedule, ComplianceIssue
 from datetime import datetime
 from django.utils import timezone
 
@@ -43,3 +43,45 @@ class ComplianceScheduleForm(forms.ModelForm):
             'status': 'Schedule Status',
             'schedule_notes': 'Additional Notes'
         }
+
+class ComplianceIssueForm(forms.ModelForm):
+    """Form for creating and updating compliance issues"""
+    
+    class Meta:
+        model = ComplianceIssue
+        fields = [
+            'patient', 'title', 'description', 'severity', 
+            'status', 'assigned_to', 'resolution'
+        ]
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'resolution': forms.Textarea(attrs={'rows': 3}),
+        }
+        help_texts = {
+            'patient': 'Select the patient this issue relates to',
+            'title': 'Brief title describing the issue',
+            'description': 'Detailed description of the compliance issue',
+            'severity': '''Severity levels:
+                       - High: Immediate attention required
+                       - Medium: Requires attention soon
+                       - Low: Routine follow-up needed''',
+            'status': '''Current state of the issue:
+                     - Open: New issue
+                     - In Progress: Being addressed
+                     - Resolved: Issue has been resolved
+                     - Closed: No further action needed''',
+            'assigned_to': 'Staff member responsible for handling this issue',
+            'resolution': 'Description of how the issue was resolved (required for Resolved/Closed status)'
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('status')
+        resolution = cleaned_data.get('resolution')
+
+        if status in ['RESOLVED', 'CLOSED'] and not resolution:
+            raise ValidationError({
+                'resolution': 'Resolution is required when marking an issue as resolved or closed'
+            })
+
+        return cleaned_data
