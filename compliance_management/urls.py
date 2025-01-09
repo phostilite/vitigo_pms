@@ -26,4 +26,5 @@ urlpatterns = [
     path('metrics/', metrics_views.ComplianceMetricListView.as_view(), name='metric_list'),
     path('metrics/create/', metrics_views.ComplianceMetricCreateView.as_view(), name='metric_create'),
     path('metrics/<int:pk>/', metrics_views.ComplianceMetricDetailView.as_view(), name='metric_detail'),
+    path('metrics/<int:pk>/edit/', metrics_views.ComplianceMetricUpdateView.as_view(), name='metric_edit'),
 ]

@@ -178,3 +178,32 @@ class ComplianceMetricCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse_lazy('compliance_management:metric_detail', kwargs={'pk': self.object.pk})
+
+class ComplianceMetricUpdateView(LoginRequiredMixin, UpdateView):
+    """View for updating compliance metrics"""
+    model = ComplianceMetric
+    form_class = ComplianceMetricForm
+    
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'metrics/metric_edit.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(self.request, exception="Error loading metric form template")
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, "Compliance metric updated successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error updating metric: {str(e)}")
+            messages.error(self.request, "Error updating metric")
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('compliance_management:metric_detail', kwargs={'pk': self.object.pk})
