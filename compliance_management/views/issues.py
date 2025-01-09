@@ -117,7 +117,7 @@ class ComplianceIssueCreateView(LoginRequiredMixin, CreateView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                'issues/issue_form.html',
+                'issues/issue_create.html',
                 self.request.user.role,
                 'compliance_management'
             )]
@@ -143,12 +143,11 @@ class ComplianceIssueUpdateView(LoginRequiredMixin, UpdateView):
     """View for updating issues"""
     model = ComplianceIssue
     form_class = ComplianceIssueForm
-    template_name = 'compliance_management/issues/issue_form.html'
 
     def get_template_names(self):
         try:
             return [get_template_path(
-                'issues/issue_form.html',
+                'issues/issue_edit.html',
                 self.request.user.role,
                 'compliance_management'
             )]

@@ -203,5 +203,6 @@
 
 <!-- Delete Modals -->
 {% for issue in issues %}
+    {% include './modals/issue_delete.html' with issue=issue %}
 {% endfor %}
 {% endblock %}

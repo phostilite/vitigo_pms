@@ -34,3 +34,8 @@ def format_priority(priority):
 @register.filter
 def replace_underscore(value):
     return value.replace('_', ' ')
+
+@register.filter
+def in_list(value, arg):
+    """Check if a value is in a comma-separated list"""
+    return value in arg.split(',')
