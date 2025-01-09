@@ -145,6 +145,27 @@ class ComplianceReminderUpdateView(LoginRequiredMixin, UpdateView):
                 exception="Error loading reminder form template"
             )
 
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            context['is_edit'] = True
+            context['reminder'] = self.get_object()
+            return context
+        except Exception as e:
+            logger.error(f"Error in reminder edit context: {str(e)}")
+            messages.error(self.request, "Error loading form data")
+            return {}
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, "Reminder updated successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error updating reminder: {str(e)}")
+            messages.error(self.request, "Error updating reminder")
+            return self.form_invalid(form)
+
     def get_success_url(self):
         return reverse_lazy('compliance_management:reminder_detail', kwargs={'pk': self.object.pk})
 
