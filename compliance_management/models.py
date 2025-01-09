@@ -40,7 +40,7 @@ class ComplianceSchedule(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='assigned_compliance_schedules',
-        limit_choices_to={'is_staff': True}
+        limit_choices_to=~models.Q(role__name='PATIENT')
     )
     scheduled_date = models.DateField()
     scheduled_time = models.TimeField()

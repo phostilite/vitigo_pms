@@ -7,13 +7,15 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.utils import timezone
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, UpdateView
+from django.urls import reverse_lazy
 
 # Local/Relative imports
 from access_control.utils import PermissionManager
 from error_handling.views import handler403, handler500, handler401
 from ..models import ComplianceSchedule
 from ..utils import get_template_path
+from ..forms import ComplianceScheduleForm
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -210,4 +212,85 @@ class ComplianceScheduleDetailView(LoginRequiredMixin, DetailView):
         except Exception as e:
             logger.error(f"Error in schedule detail context: {str(e)}", exc_info=True)
             messages.error(self.request, "Error loading schedule details")
+            return {}
+
+class ComplianceScheduleUpdateView(LoginRequiredMixin, UpdateView):
+    """View for updating existing compliance schedules"""
+    model = ComplianceSchedule
+    form_class = ComplianceScheduleForm
+    
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'schedules/schedule_form.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(
+                self.request, 
+                exception="Error loading schedule form template"
+            )
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not request.user.is_authenticated:
+                return handler401(request, exception="Authentication required")
+            
+            if not PermissionManager.check_module_access(request.user, 'compliance_management'):
+                logger.warning(
+                    f"Access denied for user {request.user.email} (ID: {request.user.id}) "
+                    f"to edit schedule {kwargs.get('pk')}"
+                )
+                return handler403(request, exception="Access denied to edit schedule")
+
+            # Enhanced audit logging
+            logger.info(
+                f"Schedule edit accessed by {request.user.get_full_name()} "
+                f"(Email: {request.user.email}, ID: {request.user.id}, Role: {request.user.role}) "
+                f"for schedule {kwargs.get('pk')} "
+                f"at {timezone.localtime().strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            )
+            
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(
+                f"Error in schedule edit dispatch: {str(e)} "
+                f"[User: {request.user.email}, Schedule: {kwargs.get('pk')}]", 
+                exc_info=True
+            )
+            return handler500(request, exception="Error accessing schedule edit")
+
+    def get_success_url(self):
+        return reverse_lazy('compliance_management:schedule_detail', kwargs={'pk': self.object.pk})
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            logger.info(
+                f"Schedule {self.object.pk} successfully updated by {self.request.user.get_full_name()} "
+                f"(Email: {self.request.user.email}, ID: {self.request.user.id}) "
+                f"at {timezone.localtime().strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            )
+            messages.success(self.request, "Schedule updated successfully")
+            return response
+        except Exception as e:
+            logger.error(
+                f"Error updating schedule {self.object.pk}: {str(e)} "
+                f"[User: {self.request.user.email}]",
+                exc_info=True
+            )
+            messages.error(self.request, "Error updating schedule")
+            return self.form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            context['is_edit'] = True
+            context['schedule'] = self.get_object()
+            return context
+        except Exception as e:
+            logger.error(f"Error in schedule edit context: {str(e)}", exc_info=True)
+            messages.error(self.request, "Error loading form data")
             return {}
