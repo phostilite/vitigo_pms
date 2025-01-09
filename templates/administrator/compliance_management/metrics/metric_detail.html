@@ -56,11 +56,20 @@
                     Evaluation Period: {{ metric.evaluation_period_start|date:"M d, Y" }} - {{ metric.evaluation_period_end|date:"M d, Y" }}
                 </p>
             </div>
-            <a href="{% url 'compliance_management:metric_edit' metric.pk %}" 
-               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                <i class="fas fa-edit mr-2"></i>
-                Edit Metric
-            </a>
+            <div class="flex space-x-3">
+                <a href="{% url 'compliance_management:metric_edit' metric.pk %}" 
+                   class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                    <i class="fas fa-edit mr-2"></i>
+                    Edit Metric
+                </a>
+                <button type="button"
+                        data-modal-target="deleteModal-{{ metric.id }}" 
+                        data-modal-toggle="deleteModal-{{ metric.id }}"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                    <i class="fas fa-trash mr-2"></i>
+                    Delete Metric
+                </button>
+            </div>
         </div>
 
         <!-- Metric Score Card -->
@@ -151,4 +160,5 @@
         </div>
     </div>
 </div>
+{% include './modals/metric_delete.html' with metric=metric %}
 {% endblock %}

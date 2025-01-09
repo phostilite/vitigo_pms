@@ -27,4 +27,5 @@ urlpatterns = [
     path('metrics/create/', metrics_views.ComplianceMetricCreateView.as_view(), name='metric_create'),
     path('metrics/<int:pk>/', metrics_views.ComplianceMetricDetailView.as_view(), name='metric_detail'),
     path('metrics/<int:pk>/edit/', metrics_views.ComplianceMetricUpdateView.as_view(), name='metric_edit'),
+    path('metrics/<int:pk>/delete/', metrics_views.ComplianceMetricDeleteView.as_view(), name='metric_delete'),
 ]

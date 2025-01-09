@@ -170,10 +170,20 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ metric.evaluated_by.get_full_name }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <a href="{% url 'compliance_management:metric_detail' metric.pk %}" class="text-blue-600 hover:text-blue-900">
-                                    View Details
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                <a href="{% url 'compliance_management:metric_detail' metric.pk %}" 
+                                   class="text-blue-600 hover:text-blue-900">
+                                    View
                                 </a>
+                                <a href="{% url 'compliance_management:metric_edit' metric.pk %}" 
+                                   class="text-green-600 hover:text-green-900">
+                                    Edit
+                                </a>
+                                <button data-modal-target="deleteModal-{{ metric.id }}" 
+                                        data-modal-toggle="deleteModal-{{ metric.id }}"
+                                        class="text-red-600 hover:text-red-900">
+                                    Delete
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
@@ -192,4 +202,9 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Modals -->
+{% for metric in metrics %}
+    {% include './modals/metric_delete.html' with metric=metric %}
+{% endfor %}
 {% endblock %}

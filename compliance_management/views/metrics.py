@@ -207,3 +207,18 @@ class ComplianceMetricUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy('compliance_management:metric_detail', kwargs={'pk': self.object.pk})
+
+class ComplianceMetricDeleteView(LoginRequiredMixin, DeleteView):
+    """View for deleting metrics"""
+    model = ComplianceMetric
+    success_url = reverse_lazy('compliance_management:metric_list')
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            response = super().delete(request, *args, **kwargs)
+            messages.success(request, "Compliance metric deleted successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error deleting metric: {str(e)}")
+            messages.error(request, "Error deleting metric")
+            return handler500(request, exception="Error deleting metric")
