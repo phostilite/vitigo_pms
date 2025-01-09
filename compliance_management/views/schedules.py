@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.utils import timezone
-from django.views.generic import ListView
+from django.views.generic import ListView, DetailView
 
 # Local/Relative imports
 from access_control.utils import PermissionManager
@@ -146,3 +146,68 @@ class ComplianceScheduleListView(LoginRequiredMixin, ListView):
             self.request, 
             exception="You don't have permission to view schedules"
         )
+
+class ComplianceScheduleDetailView(LoginRequiredMixin, DetailView):
+    """View for displaying detailed information about a compliance schedule"""
+    model = ComplianceSchedule
+    context_object_name = 'schedule'
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'schedules/schedule_detail.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(
+                self.request, 
+                exception="Error loading schedule detail template"
+            )
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not request.user.is_authenticated:
+                return handler401(request, exception="Authentication required")
+            
+            if not PermissionManager.check_module_access(request.user, 'compliance_management'):
+                logger.warning(f"Access denied for user {request.user} to schedule details")
+                return handler403(request, exception="Access denied to schedule details")
+
+            return super().dispatch(request, *args, **kwargs)
+            
+        except Exception as e:
+            logger.error(f"Error in schedule detail dispatch: {str(e)}", exc_info=True)
+            return handler500(request, exception="Error accessing schedule details")
+
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            schedule = self.get_object()
+            
+            # Get related data
+            context.update({
+                'notes': schedule.notes.select_related('created_by').order_by('-created_at'),
+                'compliance_metrics': schedule.patient.compliance_metrics.filter(
+                    evaluation_date=schedule.scheduled_date
+                ).first(),
+                'previous_schedules': ComplianceSchedule.objects.filter(
+                    patient=schedule.patient,
+                    scheduled_date__lt=schedule.scheduled_date
+                ).order_by('-scheduled_date')[:3],
+                'upcoming_schedules': ComplianceSchedule.objects.filter(
+                    patient=schedule.patient,
+                    scheduled_date__gt=schedule.scheduled_date
+                ).order_by('scheduled_date')[:3],
+                'related_issues': schedule.patient.compliance_issues.filter(
+                    status__in=['OPEN', 'IN_PROGRESS']
+                ).order_by('-created_at'),
+            })
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"Error in schedule detail context: {str(e)}", exc_info=True)
+            messages.error(self.request, "Error loading schedule details")
+            return {}
