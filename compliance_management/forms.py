@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import ComplianceSchedule, ComplianceIssue, ComplianceMetric, ComplianceReminder
+from .models import ComplianceSchedule, ComplianceIssue, ComplianceMetric, ComplianceReminder, ComplianceAlert
 from datetime import datetime
 from django.utils import timezone
 
@@ -206,3 +206,75 @@ class ComplianceReminderForm(forms.ModelForm):
             if self.instance.status == 'SENT':
                 self.fields['scheduled_datetime'].disabled = True
                 self.fields['message'].disabled = True
+
+class ComplianceAlertForm(forms.ModelForm):
+    """Form for creating and updating compliance alerts"""
+    
+    class Meta:
+        model = ComplianceAlert
+        fields = [
+            'patient', 'alert_type', 'severity', 'message',
+            'is_resolved', 'resolution_notes'
+        ]
+        widgets = {
+            'message': forms.Textarea(attrs={'rows': 4}),
+            'resolution_notes': forms.Textarea(attrs={'rows': 3}),
+        }
+        help_texts = {
+            'patient': 'Select the patient this alert is for',
+            'alert_type': '''Type of alert:
+                         - Missed Appointment: Patient missed scheduled appointment
+                         - Low Compliance: Compliance score below threshold
+                         - Missed Medication: Medication adherence issue
+                         - Follow-up Required: Patient needs follow-up
+                         - Critical Issue: Urgent attention needed''',
+            'severity': '''Urgency level:
+                       - High: Immediate attention required
+                       - Medium: Address within 24 hours
+                       - Low: Handle during routine follow-up''',
+            'message': 'Detailed description of the alert',
+            'is_resolved': 'Mark if the alert has been addressed',
+            'resolution_notes': 'Notes about how the alert was resolved'
+        }
+        labels = {
+            'patient': 'Patient Name',
+            'alert_type': 'Alert Type',
+            'severity': 'Alert Severity',
+            'message': 'Alert Message',
+            'is_resolved': 'Resolved',
+            'resolution_notes': 'Resolution Details'
+        }
+
+    def clean(self):
+        """Validate form data"""
+        cleaned_data = super().clean()
+        is_resolved = cleaned_data.get('is_resolved')
+        resolution_notes = cleaned_data.get('resolution_notes')
+
+        # If alert is marked as resolved, require resolution notes
+        if is_resolved and not resolution_notes:
+            raise ValidationError({
+                'resolution_notes': 'Resolution notes are required when marking an alert as resolved'
+            })
+
+        return cleaned_data
+
+    def __init__(self, *args, **kwargs):
+        """Initialize form with custom modifications"""
+        super().__init__(*args, **kwargs)
+        
+        # Make certain fields required
+        self.fields['message'].required = True
+        
+        # Add CSS classes for styling
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({
+                'class': 'form-control'
+            })
+            
+        # If this is an existing alert that's already resolved,
+        # make certain fields read-only
+        if self.instance and self.instance.pk and self.instance.is_resolved:
+            self.fields['alert_type'].disabled = True
+            self.fields['severity'].disabled = True
+            self.fields['message'].disabled = True

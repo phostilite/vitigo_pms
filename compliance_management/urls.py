@@ -4,7 +4,8 @@ from .views import (
     schedules as schedule_views,
     issues as issue_views,
     metrics as metrics_views,
-    reminders as reminder_views
+    reminders as reminder_views,
+    alerts as alert_views
 )
 
 app_name = 'compliance_management'
@@ -37,4 +38,11 @@ urlpatterns = [
     path('reminders/<int:pk>/edit/', reminder_views.ComplianceReminderUpdateView.as_view(), name='reminder_edit'),
     path('reminders/<int:pk>/delete/', reminder_views.ComplianceReminderDeleteView.as_view(), name='reminder_delete'),
     path('reminders/history/<int:patient_id>/', reminder_views.ReminderHistoryView.as_view(), name='reminder_history'),
+
+    # Alert Management URLs
+    path('alerts/', alert_views.ComplianceAlertListView.as_view(), name='alert_list'),
+    path('alerts/create/', alert_views.ComplianceAlertCreateView.as_view(), name='alert_create'),
+    path('alerts/<int:pk>/', alert_views.ComplianceAlertDetailView.as_view(), name='alert_detail'),
+    path('alerts/<int:pk>/edit/', alert_views.ComplianceAlertUpdateView.as_view(), name='alert_edit'),
+    path('alerts/<int:pk>/delete/', alert_views.ComplianceAlertDeleteView.as_view(), name='alert_delete'),
 ]
