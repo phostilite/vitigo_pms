@@ -91,6 +91,19 @@ class ComplianceReminderDetailView(LoginRequiredMixin, DetailView):
                 exception="Error loading reminder detail template"
             )
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['breadcrumbs'] = [
+            {'name': 'Home', 'url': reverse_lazy('home')},
+            {'name': 'Compliance Management', 'url': reverse_lazy('compliance_management:reminder_list')},
+            {'name': 'Reminder Details'}
+        ]
+        context['action_buttons'] = {
+            'edit_url': reverse_lazy('compliance_management:reminder_update', kwargs={'pk': self.object.pk}),
+            'delete_url': reverse_lazy('compliance_management:reminder_delete', kwargs={'pk': self.object.pk})
+        }
+        return context
+
 class ComplianceReminderCreateView(LoginRequiredMixin, CreateView):
     """View for creating new reminders"""
     model = ComplianceReminder
