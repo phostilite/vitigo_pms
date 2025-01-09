@@ -89,3 +89,60 @@ class ComplianceMetricListView(LoginRequiredMixin, ListView):
         except Exception as e:
             logger.error(f"Error in metrics list context: {str(e)}")
             return {}
+
+class ComplianceMetricDetailView(LoginRequiredMixin, DetailView):
+    """View for displaying metric details"""
+    model = ComplianceMetric
+    context_object_name = 'metric'
+    
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'metrics/metric_detail.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(self.request, exception="Error loading metric detail template")
+
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            metric = self.get_object()
+            
+            # Get historical metrics for the same type
+            historical_metrics = self.model.objects.filter(
+                patient=metric.patient,
+                metric_type=metric.metric_type,
+                evaluation_date__lt=metric.evaluation_date
+            ).order_by('-evaluation_date')[:5]
+
+            # Get related issues
+            related_issues = metric.patient.compliance_issues.filter(
+                created_at__range=[
+                    metric.evaluation_period_start,
+                    metric.evaluation_period_end
+                ]
+            ).order_by('-created_at')
+
+            context.update({
+                'historical_metrics': historical_metrics,
+                'related_issues': related_issues,
+                'improvement': self._calculate_improvement(metric, historical_metrics.first())
+            })
+            return context
+        except Exception as e:
+            logger.error(f"Error in metric detail context: {str(e)}")
+            return {}
+
+    def _calculate_improvement(self, current_metric, previous_metric):
+        """Calculate improvement percentage from previous metric"""
+        if not previous_metric:
+            return None
+        
+        difference = current_metric.compliance_score - previous_metric.compliance_score
+        return {
+            'value': difference,
+            'is_positive': difference > 0
+        }

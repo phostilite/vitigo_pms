@@ -24,4 +24,5 @@ urlpatterns = [
 
     # Metrics Management URLs
     path('metrics/', metrics_views.ComplianceMetricListView.as_view(), name='metric_list'),
+    path('metrics/<int:pk>/', metrics_views.ComplianceMetricDetailView.as_view(), name='metric_detail'),
 ]

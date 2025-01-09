@@ -163,7 +163,7 @@
                                 {{ metric.evaluated_by.get_full_name }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <a href="#" class="text-blue-600 hover:text-blue-900">
+                                <a href="{% url 'compliance_management:metric_detail' metric.pk %}" class="text-blue-600 hover:text-blue-900">
                                     View Details
                                 </a>
                             </td>
