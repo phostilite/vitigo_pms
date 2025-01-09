@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import ComplianceSchedule, ComplianceIssue, ComplianceMetric
+from .models import ComplianceSchedule, ComplianceIssue, ComplianceMetric, ComplianceReminder
 from datetime import datetime
 from django.utils import timezone
 
@@ -127,3 +127,82 @@ class ComplianceMetricForm(forms.ModelForm):
             })
 
         return cleaned_data
+
+class ComplianceReminderForm(forms.ModelForm):
+    """Form for creating and updating compliance reminders"""
+    
+    class Meta:
+        model = ComplianceReminder
+        fields = [
+            'patient', 'reminder_type', 'scheduled_datetime',
+            'message', 'status'
+        ]
+        widgets = {
+            'scheduled_datetime': forms.DateTimeInput(
+                attrs={'type': 'datetime-local'},
+                format='%Y-%m-%dT%H:%M'
+            ),
+            'message': forms.Textarea(attrs={'rows': 4}),
+        }
+        help_texts = {
+            'patient': 'Select the patient for this reminder',
+            'reminder_type': '''Type of reminder:
+                            - Medication: Medication intake reminders
+                            - Appointment: Upcoming appointment reminders
+                            - Follow-up: Follow-up call reminders
+                            - Phototherapy: Session reminders
+                            - General: Other general reminders''',
+            'scheduled_datetime': 'When should this reminder be sent?',
+            'message': 'The message content of the reminder',
+            'status': '''Current status of the reminder:
+                     - Pending: Not yet sent
+                     - Sent: Successfully delivered
+                     - Failed: Delivery failed
+                     - Cancelled: Reminder cancelled'''
+        }
+        labels = {
+            'patient': 'Patient Name',
+            'reminder_type': 'Reminder Type',
+            'scheduled_datetime': 'Schedule Date & Time',
+            'message': 'Reminder Message',
+            'status': 'Reminder Status'
+        }
+
+    def clean_scheduled_datetime(self):
+        """Validate that scheduled datetime is not in the past"""
+        scheduled_datetime = self.cleaned_data.get('scheduled_datetime')
+        if scheduled_datetime and scheduled_datetime < timezone.now():
+            raise ValidationError('Scheduled datetime cannot be in the past')
+        return scheduled_datetime
+
+    def clean(self):
+        """Additional validation for the entire form"""
+        cleaned_data = super().clean()
+        status = cleaned_data.get('status')
+        scheduled_datetime = cleaned_data.get('scheduled_datetime')
+
+        if status == 'SENT' and scheduled_datetime > timezone.now():
+            raise ValidationError({
+                'status': 'Cannot mark a future reminder as sent'
+            })
+
+        return cleaned_data
+
+    def __init__(self, *args, **kwargs):
+        """Initialize form with custom modifications"""
+        super().__init__(*args, **kwargs)
+        
+        # Make some fields required
+        self.fields['message'].required = True
+        
+        # Add CSS classes for styling
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({
+                'class': 'form-control'
+            })
+
+        # If this is an existing reminder, disable certain fields
+        if self.instance and self.instance.pk:
+            if self.instance.status == 'SENT':
+                self.fields['scheduled_datetime'].disabled = True
+                self.fields['message'].disabled = True

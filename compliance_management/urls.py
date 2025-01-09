@@ -3,7 +3,8 @@ from .views import (
     dashboard as dashboard_views,
     schedules as schedule_views,
     issues as issue_views,
-    metrics as metrics_views
+    metrics as metrics_views,
+    reminders as reminder_views
 )
 
 app_name = 'compliance_management'
@@ -28,4 +29,11 @@ urlpatterns = [
     path('metrics/<int:pk>/', metrics_views.ComplianceMetricDetailView.as_view(), name='metric_detail'),
     path('metrics/<int:pk>/edit/', metrics_views.ComplianceMetricUpdateView.as_view(), name='metric_edit'),
     path('metrics/<int:pk>/delete/', metrics_views.ComplianceMetricDeleteView.as_view(), name='metric_delete'),
+
+    # Reminder Management URLs
+    path('reminders/', reminder_views.ComplianceReminderListView.as_view(), name='reminder_list'),
+    path('reminders/create/', reminder_views.ComplianceReminderCreateView.as_view(), name='reminder_create'),
+    path('reminders/<int:pk>/', reminder_views.ComplianceReminderDetailView.as_view(), name='reminder_detail'),
+    path('reminders/<int:pk>/edit/', reminder_views.ComplianceReminderUpdateView.as_view(), name='reminder_edit'),
+    path('reminders/<int:pk>/delete/', reminder_views.ComplianceReminderDeleteView.as_view(), name='reminder_delete'),
 ]
