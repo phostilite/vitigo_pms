@@ -5,7 +5,8 @@ from .views import (
     issues as issue_views,
     metrics as metrics_views,
     reminders as reminder_views,
-    alerts as alert_views
+    alerts as alert_views,
+    reports as report_views
 )
 
 app_name = 'compliance_management'
@@ -45,4 +46,11 @@ urlpatterns = [
     path('alerts/<int:pk>/', alert_views.ComplianceAlertDetailView.as_view(), name='alert_detail'),
     path('alerts/<int:pk>/edit/', alert_views.ComplianceAlertUpdateView.as_view(), name='alert_edit'),
     path('alerts/<int:pk>/delete/', alert_views.ComplianceAlertDeleteView.as_view(), name='alert_delete'),
+
+    # Report Management URLs
+    path('reports/', report_views.ComplianceReportListView.as_view(), name='report_list'),
+    path('reports/create/', report_views.ComplianceReportCreateView.as_view(), name='report_create'),
+    path('reports/<int:pk>/', report_views.ComplianceReportDetailView.as_view(), name='report_detail'),
+    path('reports/<int:pk>/edit/', report_views.ComplianceReportUpdateView.as_view(), name='report_edit'),
+    path('reports/<int:pk>/delete/', report_views.ComplianceReportDeleteView.as_view(), name='report_delete'),
 ]

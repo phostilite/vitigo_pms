@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import ComplianceSchedule, ComplianceIssue, ComplianceMetric, ComplianceReminder, ComplianceAlert
+from .models import ComplianceSchedule, ComplianceIssue, ComplianceMetric, ComplianceReminder, ComplianceAlert, ComplianceReport
 from datetime import datetime
 from django.utils import timezone
 
@@ -278,3 +278,82 @@ class ComplianceAlertForm(forms.ModelForm):
             self.fields['alert_type'].disabled = True
             self.fields['severity'].disabled = True
             self.fields['message'].disabled = True
+
+class ComplianceReportForm(forms.ModelForm):
+    """Form for creating and updating compliance reports"""
+    
+    class Meta:
+        model = ComplianceReport
+        fields = [
+            'report_type', 'title', 'description', 'parameters',
+            'period_start', 'period_end'
+        ]
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'parameters': forms.JSONField(),
+            'period_start': forms.DateInput(attrs={'type': 'date'}),
+            'period_end': forms.DateInput(attrs={'type': 'date'}),
+        }
+        help_texts = {
+            'report_type': '''Type of report:
+                          - Individual: Single patient report
+                          - Group: Multiple patients report
+                          - Summary: Overall compliance summary
+                          - Trend: Compliance trend analysis''',
+            'title': 'Clear, descriptive title for the report',
+            'description': 'Detailed description of report contents and purpose',
+            'parameters': 'JSON parameters used to generate the report',
+            'period_start': 'Start date for the reporting period',
+            'period_end': 'End date for the reporting period'
+        }
+        labels = {
+            'report_type': 'Report Type',
+            'title': 'Report Title',
+            'description': 'Report Description',
+            'parameters': 'Report Parameters',
+            'period_start': 'Period Start Date',
+            'period_end': 'Period End Date'
+        }
+
+    def clean(self):
+        """Validate form data"""
+        cleaned_data = super().clean()
+        period_start = cleaned_data.get('period_start')
+        period_end = cleaned_data.get('period_end')
+
+        # Validate date range
+        if period_start and period_end and period_start > period_end:
+            raise ValidationError({
+                'period_end': 'End date must be after start date'
+            })
+
+        # Validate parameters JSON
+        parameters = cleaned_data.get('parameters')
+        if parameters:
+            try:
+                if not isinstance(parameters, dict):
+                    raise ValidationError({
+                        'parameters': 'Parameters must be a valid JSON object'
+                    })
+            except Exception as e:
+                raise ValidationError({
+                    'parameters': f'Invalid JSON format: {str(e)}'
+                })
+
+        return cleaned_data
+
+    def __init__(self, *args, **kwargs):
+        """Initialize form with custom modifications"""
+        super().__init__(*args, **kwargs)
+        
+        # Make certain fields required
+        self.fields['title'].required = True
+        self.fields['description'].required = True
+        self.fields['period_start'].required = True
+        self.fields['period_end'].required = True
+        
+        # Add CSS classes for styling
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({
+                'class': 'form-control'
+            })
