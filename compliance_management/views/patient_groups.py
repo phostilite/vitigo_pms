@@ -13,6 +13,7 @@ from access_control.utils import PermissionManager
 from error_handling.views import handler403, handler500, handler401
 from ..models import PatientGroup
 from ..forms import PatientGroupForm
+from ..utils import get_template_path
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,33 @@ class PatientGroupListView(LoginRequiredMixin, ListView):
     context_object_name = 'groups'
     paginate_by = 10
     
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'groups/group_list.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(
+                self.request, 
+                exception="Error loading group template"
+            )
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not request.user.is_authenticated:
+                return handler401(request, exception="Authentication required")
+            
+            if not PermissionManager.check_module_access(request.user, 'compliance_management'):
+                return handler403(request, exception="Access denied to patient groups")
+
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in group list dispatch: {str(e)}")
+            return handler500(request, exception="Error accessing patient groups")
+
     def get_queryset(self):
         queryset = PatientGroup.objects.all()
         search = self.request.GET.get('search')
@@ -37,6 +65,20 @@ class PatientGroupDetailView(LoginRequiredMixin, DetailView):
     model = PatientGroup
     context_object_name = 'group'
 
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'groups/group_detail.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(
+                self.request,
+                exception="Error loading group detail template"
+            )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['patient_count'] = self.object.patients.count()
@@ -47,6 +89,20 @@ class PatientGroupCreateView(LoginRequiredMixin, CreateView):
     model = PatientGroup
     form_class = PatientGroupForm
     success_url = reverse_lazy('compliance_management:group_list')
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'groups/group_form.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(
+                self.request,
+                exception="Error loading group form template"
+            )
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -59,6 +115,20 @@ class PatientGroupUpdateView(LoginRequiredMixin, UpdateView):
     model = PatientGroup
     form_class = PatientGroupForm
     
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'groups/group_form.html',
+                self.request.user.role,
+                'compliance_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(
+                self.request,
+                exception="Error loading group form template"
+            )
+
     def get_success_url(self):
         return reverse_lazy('compliance_management:group_detail', kwargs={'pk': self.object.pk})
 
@@ -67,10 +137,34 @@ class PatientGroupUpdateView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, "Patient group updated successfully")
         return response
 
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            context['is_edit'] = True
+            context['group'] = self.get_object()
+            return context
+        except Exception as e:
+            logger.error(f"Error in group edit context: {str(e)}")
+            messages.error(self.request, "Error loading form data")
+            return {}
+
 class PatientGroupDeleteView(LoginRequiredMixin, DeleteView):
     """View for deleting patient groups"""
     model = PatientGroup
     success_url = reverse_lazy('compliance_management:group_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            if not request.user.is_authenticated:
+                return handler401(request, exception="Authentication required")
+            
+            if not PermissionManager.check_module_access(request.user, 'compliance_management'):
+                return handler403(request, exception="Access denied to delete patient groups")
+
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in group delete dispatch: {str(e)}")
+            return handler500(request, exception="Error deleting patient group")
 
     def delete(self, request, *args, **kwargs):
         try:
