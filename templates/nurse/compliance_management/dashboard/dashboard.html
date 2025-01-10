@@ -119,19 +119,19 @@
                 <div id="exportOptions" class="z-10 hidden bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-44">
                     <ul class="py-2 text-sm text-gray-700">
                         <li>
-                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-100">
+                            <a href="{% url 'compliance_management:dashboard_export' %}?format=pdf" class="flex items-center px-4 py-2 hover:bg-gray-100">
                                 <i class="fas fa-file-pdf w-5"></i>
                                 Export as PDF
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-100">
+                            <a href="{% url 'compliance_management:dashboard_export' %}?format=excel" class="flex items-center px-4 py-2 hover:bg-gray-100">
                                 <i class="fas fa-file-excel w-5"></i>
                                 Export as Excel
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-100">
+                            <a href="{% url 'compliance_management:dashboard_export' %}?format=csv" class="flex items-center px-4 py-2 hover:bg-gray-100">
                                 <i class="fas fa-file-csv w-5"></i>
                                 Export as CSV
                             </a>
@@ -264,7 +264,7 @@
                         <i class="fas fa-exclamation-circle text-red-600 mr-2"></i>
                         Recent Issues
                     </h2>
-                    <a href="#" class="text-sm text-blue-600 hover:text-blue-700">View All</a>
+                    <a href="{% url 'compliance_management:issue_list' %}" class="text-sm text-blue-600 hover:text-blue-700">View All</a>
                 </div>
                 <div class="p-4">
                     <div class="space-y-4">

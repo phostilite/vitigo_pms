@@ -8,6 +8,7 @@ from .views import (
     alerts as alert_views,
     reports as report_views,
     patient_groups as group_views,
+    exports as export_views,
 )
 
 app_name = 'compliance_management'
@@ -61,4 +62,6 @@ urlpatterns = [
     path('groups/<int:pk>/', group_views.PatientGroupDetailView.as_view(), name='group_detail'),
     path('groups/<int:pk>/edit/', group_views.PatientGroupUpdateView.as_view(), name='group_edit'),
     path('groups/<int:pk>/delete/', group_views.PatientGroupDeleteView.as_view(), name='group_delete'),
+
+    path('dashboard/export/', export_views.ComplianceDashboardExportView.as_view(), name='dashboard_export'),
 ]
