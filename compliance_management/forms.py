@@ -12,6 +12,7 @@ from .models import (
     ComplianceAlert,
     ComplianceIssue,
     ComplianceMetric,
+    ComplianceNote,  # Add this import
     ComplianceReminder,
     ComplianceReport,
     ComplianceSchedule,
@@ -430,4 +431,108 @@ class PatientGroupForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields:
             self.fields[field].widget.attrs.update({'class': 'form-control'})
+
         self.fields['is_active'].widget.attrs.update({'class': 'form-check-input'})
+class ComplianceNoteForm(forms.ModelForm):
+    """Form for creating and updating compliance notes"""
+    
+    class Meta:
+        model = ComplianceNote
+        fields = [
+            'schedule',
+            'note_type',
+            'content',
+            'is_private'
+        ]
+        widgets = {
+            'content': forms.Textarea(attrs={
+                'rows': 4,
+                'class': 'form-control',
+                'placeholder': 'Enter note content here...'
+            }),
+            'schedule': forms.Select(attrs={
+                'class': 'form-control select2'
+            }),
+            'note_type': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'is_private': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }
+        help_texts = {
+            'schedule': 'Select the compliance schedule this note relates to',
+            'note_type': '''Type of note:
+                        - General: Regular notes
+                        - Follow-up: Follow-up related notes
+                        - Concern: Compliance concerns
+                        - Resolution: Issue resolution notes''',
+            'content': 'Detailed content of the note',
+            'is_private': 'Check if this note should be private (staff-only)'
+        }
+        labels = {
+            'schedule': 'Related Schedule',
+            'note_type': 'Note Type',
+            'content': 'Note Content',
+            'is_private': 'Private Note'
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filter schedules based on user role and permissions
+        if user and not user.is_superuser:
+            if hasattr(user, 'role') and user.role.name == 'DOCTOR':
+                self.fields['schedule'].queryset = ComplianceSchedule.objects.filter(
+                    assigned_to=user
+                ).select_related('patient')
+            elif hasattr(user, 'role') and user.role.name == 'NURSE':
+                self.fields['schedule'].queryset = ComplianceSchedule.objects.filter(
+                    assigned_to=user
+                ).select_related('patient')
+        
+        # Make content field required
+        self.fields['content'].required = True
+        
+        # Set initial value for is_private based on note type
+        if self.instance and self.instance.pk:
+            if self.instance.note_type in ['CONCERN', 'FOLLOW_UP']:
+                self.fields['is_private'].initial = True
+
+    def clean(self):
+        """Validate form data"""
+        cleaned_data = super().clean()
+        note_type = cleaned_data.get('note_type')
+        content = cleaned_data.get('content')
+        is_private = cleaned_data.get('is_private')
+
+        # Validate minimum content length based on note type
+        if content:
+            min_length = 10  # Default minimum length
+            if note_type in ['CONCERN', 'RESOLUTION']:
+                min_length = 20  # Require more detailed content for concerns and resolutions
+            
+            if len(content.strip()) < min_length:
+                self.add_error(
+                    'content',
+                    f'Content must be at least {min_length} characters for {note_type.lower()} notes'
+                )
+
+        # Automatically set certain note types as private
+        if note_type in ['CONCERN', 'FOLLOW_UP'] and not is_private:
+            cleaned_data['is_private'] = True
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        """Override save method to handle additional logic"""
+        note = super().save(commit=False)
+        
+        # Set updated_at timestamp
+        note.updated_at = timezone.now()
+        
+        if commit:
+            note.save()
+        
+        return note

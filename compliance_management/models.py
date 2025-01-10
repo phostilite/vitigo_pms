@@ -76,6 +76,12 @@ class ComplianceSchedule(models.Model):
 
 class ComplianceNote(models.Model):
     """Detailed notes about patient compliance and follow-up actions"""
+    NOTE_TYPE_CHOICES = [
+        ('GENERAL', 'General Note'),
+        ('FOLLOW_UP', 'Follow-up Note'),
+        ('CONCERN', 'Compliance Concern'),
+        ('RESOLUTION', 'Issue Resolution'),
+    ]
     schedule = models.ForeignKey(
         ComplianceSchedule,
         on_delete=models.CASCADE,
@@ -83,12 +89,7 @@ class ComplianceNote(models.Model):
     )
     note_type = models.CharField(
         max_length=20,
-        choices=[
-            ('GENERAL', 'General Note'),
-            ('FOLLOW_UP', 'Follow-up Note'),
-            ('CONCERN', 'Compliance Concern'),
-            ('RESOLUTION', 'Issue Resolution'),
-        ]
+        choices=NOTE_TYPE_CHOICES
     )
     content = models.TextField()
     created_by = models.ForeignKey(

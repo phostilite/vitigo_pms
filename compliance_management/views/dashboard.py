@@ -22,7 +22,8 @@ from ..models import (
     ComplianceIssue,
     ComplianceMetric,
     ComplianceReminder,
-    ComplianceSchedule
+    ComplianceSchedule,
+    ComplianceNote
 )
 from ..utils import get_template_path
 
@@ -57,17 +58,26 @@ class ComplianceManagementDashboardView(LoginRequiredMixin, TemplateView):
             context.update(self.get_compliance_metrics(today))
             context.update(self.get_issues_and_schedules(today))
             context.update(self.get_alerts_and_trends(today))
+            
+            # Add recent notes count with error handling
+            try:
+                recent_notes_count = ComplianceNote.objects.filter(
+                    created_at__gte=timezone.now() - timedelta(days=7)
+                ).count()
+                context['recent_notes_count'] = recent_notes_count
+            except Exception as note_error:
+                logger.error(f"Error getting recent notes count: {str(note_error)}")
+                context['recent_notes_count'] = 0
+
+            return context
 
         except Exception as e:
             logger.error(f"Dashboard data error: {str(e)}", exc_info=True)
             messages.error(self.request, "Error loading dashboard data")
+            # Instead of returning handler500, provide default context
             self.provide_default_context(context)
-            return handler500(
-                self.request, 
-                exception="Error loading dashboard data"
-            )
-
-        return context
+            context['error_message'] = "Error loading dashboard data"
+            return context
 
     def get_key_metrics(self, today):
         try:

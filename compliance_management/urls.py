@@ -9,6 +9,7 @@ from .views import (
     reports as report_views,
     patient_groups as group_views,
     exports as export_views,
+    notes as note_views,
 )
 
 app_name = 'compliance_management'
@@ -64,4 +65,11 @@ urlpatterns = [
     path('groups/<int:pk>/delete/', group_views.PatientGroupDeleteView.as_view(), name='group_delete'),
 
     path('dashboard/export/', export_views.ComplianceDashboardExportView.as_view(), name='dashboard_export'),
+
+    # Note Management URLs
+    path('notes/', note_views.ComplianceNoteListView.as_view(), name='compliance_notes_list'),
+    path('notes/create/', note_views.ComplianceNoteCreateView.as_view(), name='compliance_note_create'),
+    path('notes/<int:pk>/', note_views.ComplianceNoteDetailView.as_view(), name='compliance_note_detail'),
+    path('notes/<int:pk>/edit/', note_views.ComplianceNoteUpdateView.as_view(), name='compliance_note_edit'),
+    path('notes/<int:pk>/delete/', note_views.ComplianceNoteDeleteView.as_view(), name='compliance_note_delete'),
 ]
