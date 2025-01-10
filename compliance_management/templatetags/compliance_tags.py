@@ -2,6 +2,7 @@ from django import template
 from django.utils.html import format_html
 from django.utils import timezone
 from ..models import ComplianceSchedule
+import json
 
 register = template.Library()
 
@@ -39,3 +40,13 @@ def replace_underscore(value):
 def in_list(value, arg):
     """Check if a value is in a comma-separated list"""
     return value in arg.split(',')
+
+@register.filter
+def json_pretty(value):
+    """Format JSON data with proper indentation"""
+    try:
+        if isinstance(value, str):
+            value = json.loads(value)
+        return json.dumps(value, indent=2)
+    except Exception:
+        return value
