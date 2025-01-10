@@ -23,7 +23,9 @@ from ..models import (
     ComplianceMetric,
     ComplianceReminder,
     ComplianceSchedule,
-    ComplianceNote
+    ComplianceNote,
+    ComplianceReport,
+    PatientGroup
 )
 from ..utils import get_template_path
 
@@ -95,7 +97,13 @@ class ComplianceManagementDashboardView(LoginRequiredMixin, TemplateView):
                 ).count(),
                 'active_alerts': ComplianceAlert.objects.filter(
                     is_resolved=False
-                ).count()
+                ).count(),
+                'recent_reports_count': ComplianceReport.objects.filter(
+                    generated_at__gte=timezone.now() - timedelta(days=30)
+                ).count(),
+                'patient_groups_count': PatientGroup.objects.filter(
+                    is_active=True
+                ).count(),
             }
         except Exception as e:
             logger.error(f"Key metrics error: {str(e)}")
@@ -179,7 +187,9 @@ class ComplianceManagementDashboardView(LoginRequiredMixin, TemplateView):
             'recent_issues': [],
             'schedule_summary': [],
             'alerts_distribution': [],
-            'weekly_metrics': '[]'
+            'weekly_metrics': '[]',
+            'recent_reports_count': 0,
+            'patient_groups_count': 0,
         })
 
     def dispatch(self, request, *args, **kwargs):
