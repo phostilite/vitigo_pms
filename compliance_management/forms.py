@@ -290,7 +290,11 @@ class ComplianceReportForm(forms.ModelForm):
         ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
-            'parameters': forms.JSONField(),
+            'parameters': forms.Textarea(attrs={
+                'rows': 4,
+                'class': 'json-field',
+                'placeholder': '{"key": "value"}'
+            }),
             'period_start': forms.DateInput(attrs={'type': 'date'}),
             'period_end': forms.DateInput(attrs={'type': 'date'}),
         }
@@ -341,6 +345,19 @@ class ComplianceReportForm(forms.ModelForm):
                 })
 
         return cleaned_data
+
+    def clean_parameters(self):
+        """Validate that parameters is a valid JSON object"""
+        parameters = self.cleaned_data.get('parameters')
+        try:
+            if isinstance(parameters, str):
+                import json
+                parameters = json.loads(parameters)
+            if not isinstance(parameters, dict):
+                raise ValidationError('Parameters must be a valid JSON object')
+        except Exception as e:
+            raise ValidationError(f'Invalid JSON format: {str(e)}')
+        return parameters
 
     def __init__(self, *args, **kwargs):
         """Initialize form with custom modifications"""

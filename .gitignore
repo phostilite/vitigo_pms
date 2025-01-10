@@ -148,3 +148,8 @@ GitHub.sublime-settings
 test.pdf
 Software_MelanoSite.docx
 explanation.txt
+
+./logs
+/logs
+./logs/*
+logs/*
