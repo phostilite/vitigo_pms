@@ -1,9 +1,22 @@
+# Standard library imports
+from datetime import datetime
+
+# Third-party imports
 from django import forms
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import ComplianceSchedule, ComplianceIssue, ComplianceMetric, ComplianceReminder, ComplianceAlert, ComplianceReport
-from datetime import datetime
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
+
+# Local application imports
+from .models import (
+    ComplianceAlert,
+    ComplianceIssue,
+    ComplianceMetric,
+    ComplianceReminder,
+    ComplianceReport,
+    ComplianceSchedule,
+    PatientGroup,
+)
 
 class ComplianceScheduleForm(forms.ModelForm):
     """Form for creating and updating compliance schedules"""
@@ -374,3 +387,47 @@ class ComplianceReportForm(forms.ModelForm):
             self.fields[field].widget.attrs.update({
                 'class': 'form-control'
             })
+
+class PatientGroupForm(forms.ModelForm):
+    """Form for creating and updating patient groups"""
+    
+    class Meta:
+        model = PatientGroup
+        fields = ['name', 'description', 'patients', 'criteria', 'is_active']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'criteria': forms.Textarea(attrs={
+                'rows': 4,
+                'class': 'json-field',
+                'placeholder': '{"key": "value"}'
+            }),
+            'patients': forms.SelectMultiple(attrs={
+                'class': 'select2-multiple'
+            })
+        }
+        help_texts = {
+            'name': 'Enter a unique name for this patient group',
+            'description': 'Detailed description of the group purpose',
+            'patients': 'Select patients to include in this group',
+            'criteria': 'JSON format criteria used for grouping patients',
+            'is_active': 'Uncheck to deactivate this group'
+        }
+
+    def clean_criteria(self):
+        """Validate that criteria is a valid JSON object"""
+        criteria = self.cleaned_data.get('criteria')
+        try:
+            if isinstance(criteria, str):
+                import json
+                criteria = json.loads(criteria)
+            if not isinstance(criteria, dict):
+                raise ValidationError('Criteria must be a valid JSON object')
+        except Exception as e:
+            raise ValidationError(f'Invalid JSON format: {str(e)}')
+        return criteria
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'form-control'})
+        self.fields['is_active'].widget.attrs.update({'class': 'form-check-input'})

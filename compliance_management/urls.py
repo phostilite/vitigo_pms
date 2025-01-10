@@ -6,7 +6,8 @@ from .views import (
     metrics as metrics_views,
     reminders as reminder_views,
     alerts as alert_views,
-    reports as report_views
+    reports as report_views,
+    patient_groups as group_views,
 )
 
 app_name = 'compliance_management'
@@ -53,4 +54,11 @@ urlpatterns = [
     path('reports/<int:pk>/', report_views.ComplianceReportDetailView.as_view(), name='report_detail'),
     path('reports/<int:pk>/edit/', report_views.ComplianceReportUpdateView.as_view(), name='report_edit'),
     path('reports/<int:pk>/delete/', report_views.ComplianceReportDeleteView.as_view(), name='report_delete'),
+
+    # Patient Group Management URLs
+    path('groups/', group_views.PatientGroupListView.as_view(), name='group_list'),
+    path('groups/create/', group_views.PatientGroupCreateView.as_view(), name='group_create'),
+    path('groups/<int:pk>/', group_views.PatientGroupDetailView.as_view(), name='group_detail'),
+    path('groups/<int:pk>/edit/', group_views.PatientGroupUpdateView.as_view(), name='group_edit'),
+    path('groups/<int:pk>/delete/', group_views.PatientGroupDeleteView.as_view(), name='group_delete'),
 ]
