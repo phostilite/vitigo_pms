@@ -38,10 +38,10 @@ class ProcedureManagementView(LoginRequiredMixin, TemplateView):
             return handler401(self.request, "Authentication required")
 
         context = super().get_context_data(**kwargs)
-        today = timezone.now().date()
-
+        
         try:
-            context.update({
+            today = timezone.now().date()
+            additional_context = {
                 # Key metrics
                 'total_procedures': Procedure.objects.count(),
                 'today_procedures': Procedure.objects.filter(scheduled_date=today).count(),
@@ -81,13 +81,15 @@ class ProcedureManagementView(LoginRequiredMixin, TemplateView):
                 
                 # Add status distribution data
                 'status_distribution': json.dumps(self.get_status_distribution()),
-            })
-            
+            }
+            context.update(additional_context)
             return context
 
         except Exception as e:
             logger.error(f"Dashboard data error: {str(e)}", exc_info=True)
-            return self.get_default_context()
+            default_context = self.get_default_context()
+            context.update(default_context)
+            return context
 
     def get_weekly_trends(self):
         try:
@@ -152,8 +154,8 @@ class ProcedureManagementView(LoginRequiredMixin, TemplateView):
         }
 
     def get_default_context(self):
-        context = super().get_default_context()
-        context.update({
+        """Provide default values for context in case of errors"""
+        return {
             'total_procedures': 0,
             'today_procedures': 0,
             'pending_consents': 0,
@@ -179,8 +181,7 @@ class ProcedureManagementView(LoginRequiredMixin, TemplateView):
                 'labels': [],
                 'datasets': [{'data': [], 'backgroundColor': []}]
             }),
-        })
-        return context
+        }
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
