@@ -9,11 +9,11 @@ find . -name "db.sqlite3" -delete
 
 # Deactivate and remove virtual environment
 deactivate 2>/dev/null
-rm -rf .venv
+rm -rf env
 
 # Create new virtual environment
-python3.12 -m venv .venv
-source .venv/bin/activate
+python3.12 -m venv env
+source env/bin/activate
 
 # Install requirements
 if [ -f "requirements.txt" ]; then
@@ -33,7 +33,7 @@ python manage.py shell << EOF
 from django.contrib.auth import get_user_model
 User = get_user_model()
 try:
-    User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
+    User.objects.create_superuser('admin@test.com', 'Test@123')
     print('Superuser created successfully')
 except Exception as e:
     print(f'Failed to create superuser: {str(e)}')

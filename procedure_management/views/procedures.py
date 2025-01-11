@@ -127,18 +127,52 @@ class ProcedureDetailView(LoginRequiredMixin, DetailView):
             context = super().get_context_data(**kwargs)
             procedure = self.get_object()
             
+            # Get consent form safely
+            try:
+                consent_form = procedure.consent_form
+            except Procedure.consent_form.RelatedObjectDoesNotExist:
+                consent_form = None
+
+            # Get checklists safely
+            checklists = procedure.checklists.all() if hasattr(procedure, 'checklists') else []
+            
+            # Get media files safely
+            media_files = procedure.media_files.all() if hasattr(procedure, 'media_files') else []
+
+            # Get prerequisites safely
+            prerequisites = (
+                procedure.procedure_type.prerequisites.all() 
+                if hasattr(procedure.procedure_type, 'prerequisites') 
+                else []
+            )
+
+            # Get instructions safely
+            instructions = (
+                procedure.procedure_type.instructions.all()
+                if hasattr(procedure.procedure_type, 'instructions')
+                else []
+            )
+
             context.update({
-                'consent_form': procedure.consent_form,
-                'checklists': procedure.checklists.all(),
-                'media_files': procedure.media_files.all(),
-                'prerequisites': procedure.procedure_type.prerequisites.all(),
-                'instructions': procedure.procedure_type.instructions.all(),
+                'consent_form': consent_form,
+                'checklists': checklists,
+                'media_files': media_files,
+                'prerequisites': prerequisites,
+                'instructions': instructions,
             })
             return context
         except Exception as e:
             logger.error(f"Error in procedure detail context: {str(e)}", exc_info=True)
             messages.error(self.request, "Error loading procedure details")
-            return {}
+            return {
+                'procedure': procedure,
+                'consent_form': None,
+                'checklists': [],
+                'media_files': [],
+                'prerequisites': [],
+                'instructions': [],
+                'error_message': "Some data could not be loaded"
+            }
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
