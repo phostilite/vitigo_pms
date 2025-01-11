@@ -225,6 +225,51 @@
             </ul>
         </div>
 
+        <!-- Recent Media -->
+        <div class="bg-white rounded-lg shadow-sm">
+            <div class="px-4 py-5 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Recent Media</h3>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-2 gap-4">
+                    {% for media in recent_media %}
+                    <div class="relative group">
+                        <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-100">
+                            {% if media.file_type == 'IMAGE' and media.file %}
+                                <img src="{{ media.file.url }}" alt="{{ media.title }}" class="object-cover">
+                            {% else %}
+                                <div class="flex items-center justify-center h-full">
+                                    {% if media.file_type == 'DOCUMENT' %}
+                                        <i class="fas fa-file-pdf text-4xl text-gray-400"></i>
+                                    {% elif media.file_type == 'VIDEO' %}
+                                        <i class="fas fa-file-video text-4xl text-gray-400"></i>
+                                    {% else %}
+                                        <i class="fas fa-file text-4xl text-gray-400"></i>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mt-2">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ media.title }}</p>
+                            <p class="text-xs text-gray-500">
+                                {% if media.file %}
+                                    {{ media.uploaded_at|timesince }} ago
+                                {% else %}
+                                    No file uploaded
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-span-2 text-center text-gray-500 py-4">
+                        <i class="fas fa-images text-4xl mb-2"></i>
+                        <p>No media files uploaded yet</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
         <!-- Pagination -->
         {% include '../common/pagination.html' with page_obj=page_obj %}
     </div>
