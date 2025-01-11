@@ -1,16 +1,15 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView
-from django.db.models import Q
-from django.core.paginator import Paginator
+from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.db.models import Q
 import logging
 
 from access_control.utils import PermissionManager
 from error_handling.views import handler403, handler500, handler401
-from ..models import (
-    Procedure, ProcedureType, ProcedureCategory,
-    ProcedurePrerequisite, ProcedureInstruction
-)
+from ..models import Procedure, ProcedureType, ProcedureCategory
+from ..forms import ProcedureForm
 from ..utils import get_template_path
 
 logger = logging.getLogger(__name__)
@@ -106,3 +105,196 @@ class ProcedureListView(LoginRequiredMixin, ListView):
         except Exception as e:
             logger.error(f"Dispatch error: {str(e)}", exc_info=True)
             return handler500(request, "Error accessing procedure list")
+
+class ProcedureDetailView(LoginRequiredMixin, DetailView):
+    """View for displaying detailed information about a procedure"""
+    model = Procedure
+    context_object_name = 'procedure'
+
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'procedures/detail.html',
+                self.request.user.role,
+                'procedure_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(self.request, "Error loading procedure detail template")
+
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            procedure = self.get_object()
+            
+            context.update({
+                'consent_form': procedure.consent_form,
+                'checklists': procedure.checklists.all(),
+                'media_files': procedure.media_files.all(),
+                'prerequisites': procedure.procedure_type.prerequisites.all(),
+                'instructions': procedure.procedure_type.instructions.all(),
+            })
+            return context
+        except Exception as e:
+            logger.error(f"Error in procedure detail context: {str(e)}", exc_info=True)
+            messages.error(self.request, "Error loading procedure details")
+            return {}
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return handler401(request, "Authentication required")
+            
+        try:
+            if not PermissionManager.check_module_access(request.user, 'procedure_management'):
+                logger.warning(f"Access denied for user {request.user} to view procedure")
+                return handler403(request, "Access denied to view procedure")
+
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Dispatch error: {str(e)}", exc_info=True)
+            return handler500(request, "Error accessing procedure details")
+
+class ProcedureCreateView(LoginRequiredMixin, CreateView):
+    """View for creating new procedures"""
+    model = Procedure
+    form_class = ProcedureForm
+    
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'procedures/form.html',
+                self.request.user.role,
+                'procedure_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(self.request, "Error loading procedure form template")
+
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            context.update({
+                'is_create': True,
+                'procedure_types': ProcedureType.objects.all(),
+                'title': 'Create New Procedure'
+            })
+            return context
+        except Exception as e:
+            logger.error(f"Error in procedure create context: {str(e)}", exc_info=True)
+            messages.error(self.request, "Error loading form")
+            return {}
+
+    def form_valid(self, form):
+        try:
+            form.instance.created_by = self.request.user
+            response = super().form_valid(form)
+            messages.success(self.request, "Procedure created successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error creating procedure: {str(e)}", exc_info=True)
+            messages.error(self.request, "Error creating procedure")
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('procedure_management:procedure_detail', kwargs={'pk': self.object.pk})
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return handler401(request, "Authentication required")
+            
+        try:
+            if not PermissionManager.check_module_access(request.user, 'procedure_management'):
+                logger.warning(f"Access denied for user {request.user} to create procedure")
+                return handler403(request, "Access denied to create procedure")
+
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Dispatch error: {str(e)}", exc_info=True)
+            return handler500(request, "Error accessing procedure creation")
+
+class ProcedureUpdateView(LoginRequiredMixin, UpdateView):
+    """View for updating existing procedures"""
+    model = Procedure
+    form_class = ProcedureForm
+    
+    def get_template_names(self):
+        try:
+            return [get_template_path(
+                'procedures/form.html',
+                self.request.user.role,
+                'procedure_management'
+            )]
+        except Exception as e:
+            logger.error(f"Template retrieval error: {str(e)}")
+            return handler500(self.request, "Error loading procedure form template")
+
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            context.update({
+                'is_edit': True,
+                'procedure': self.get_object(),
+                'title': 'Edit Procedure'
+            })
+            return context
+        except Exception as e:
+            logger.error(f"Error in procedure update context: {str(e)}", exc_info=True)
+            messages.error(self.request, "Error loading form")
+            return {}
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, "Procedure updated successfully")
+            return response
+        except Exception as e:
+            logger.error(f"Error updating procedure: {str(e)}", exc_info=True)
+            messages.error(self.request, "Error updating procedure")
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('procedure_management:procedure_detail', kwargs={'pk': self.object.pk})
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return handler401(request, "Authentication required")
+            
+        try:
+            if not PermissionManager.check_module_access(request.user, 'procedure_management'):
+                logger.warning(f"Access denied for user {request.user} to edit procedure")
+                return handler403(request, "Access denied to edit procedure")
+
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Dispatch error: {str(e)}", exc_info=True)
+            return handler500(request, "Error accessing procedure edit")
+
+class ProcedureDeleteView(LoginRequiredMixin, DeleteView):
+    """View for deleting procedures"""
+    model = Procedure
+    success_url = reverse_lazy('procedure_management:procedure_list')
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            procedure = self.get_object()
+            logger.info(f"Procedure {procedure.pk} deleted by {request.user}")
+            messages.success(request, "Procedure deleted successfully")
+            return super().delete(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error deleting procedure: {str(e)}", exc_info=True)
+            messages.error(request, "Error deleting procedure")
+            return handler500(request, "Error deleting procedure")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return handler401(request, "Authentication required")
+            
+        try:
+            if not PermissionManager.check_module_access(request.user, 'procedure_management'):
+                logger.warning(f"Access denied for user {request.user} to delete procedure")
+                return handler403(request, "Access denied to delete procedure")
+
+            return super().dispatch(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Dispatch error: {str(e)}", exc_info=True)
+            return handler500(request, "Error accessing procedure deletion")
