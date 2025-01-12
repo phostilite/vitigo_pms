@@ -15,8 +15,29 @@
         </ol>
     </nav>
 
+    <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Schedule Phototherapy Session</h2>
+        <div class="flex items-center">
+            <h2 class="text-2xl font-bold text-gray-800">Schedule Phototherapy Session</h2>
+            <div class="relative ml-2 group">
+                <i class="fas fa-info-circle text-gray-400 hover:text-blue-500 cursor-help text-lg"></i>
+                <div class="hidden group-hover:block absolute left-0 top-6 w-96 p-4 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div class="text-sm text-gray-600 space-y-2">
+                        <p class="font-medium text-gray-700 mb-2">About Phototherapy Session Scheduling</p>
+                        <p>Create a new phototherapy treatment session by:</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>Selecting an active treatment plan for a patient</li>
+                            <li>Choosing an available device compatible with the treatment protocol</li>
+                            <li>Setting the date and time for the session</li>
+                            <li>Specifying the planned radiation dose</li>
+                            <li>Assigning a qualified staff member to administer the treatment</li>
+                        </ul>
+                        <p class="mt-2 text-blue-600">Note: All fields marked with * are required</p>
+                    </div>
+                    <div class="absolute -top-2 left-2 w-4 h-4 bg-white border-t border-l border-gray-200 transform rotate-45"></div>
+                </div>
+            </div>
+        </div>
         <a href="{% url 'phototherapy_management' %}" 
            class="text-blue-500 hover:text-blue-600 flex items-center">
             <i class="fas fa-arrow-left mr-2"></i>
@@ -48,81 +69,197 @@
         {% csrf_token %}
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Treatment Plan -->
-            <div>
-                {{ form.plan|as_crispy_field }}
-                {% if form.plan.errors %}
-                <div class="mt-1 text-red-600 text-sm">
-                    {% for error in form.plan.errors %}
-                        {{ error }}
-                    {% endfor %}
+            <!-- Treatment Plan with Search -->
+            <div class="form-group">
+                <label for="{{ form.plan.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Treatment Plan*
+                </label>
+                <div class="relative">
+                    <input type="text" 
+                        id="plan-search" 
+                        placeholder="Search plans by patient name or protocol..." 
+                        class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                    <select name="plan" 
+                            id="{{ form.plan.auto_id }}"
+                            size="5"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                            required>
+                        {% if form.plan.field.choices %}
+                            {% for value, label in form.plan.field.choices %}
+                                {% if value and label %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No active treatment plans available</option>
+                        {% endif %}
+                    </select>
                 </div>
+                {% if form.plan.help_text %}
+                <p class="mt-2 text-sm text-gray-500">{{ form.plan.help_text }}</p>
                 {% endif %}
+                {% if form.plan.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.plan.errors.0 }}</p>
+                {% endif %}
+                
+                <!-- Add Treatment Plan Instructions -->
+                <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-sm text-blue-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Can't find the treatment plan you need? 
+                        <a href="{% url 'new_treatment_plan' %}" 
+                           class="font-medium text-blue-600 hover:text-blue-800 underline">
+                            Create a new treatment plan
+                        </a>
+                    </p>
+                </div>
             </div>
 
-            <!-- Protocol Details -->
-            <div id="protocol-details" class="hidden p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 class="text-sm font-medium text-blue-800 mb-2">Protocol Details</h3>
+            <!-- Plan Details -->
+            <div id="plan-details" class="hidden p-4 mb-4 bg-white rounded-lg border border-gray-200">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-sm font-medium text-gray-800">Treatment Plan Details</h3>
+                    <a href="#" id="plan-detail-link" class="text-sm text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-external-link-alt mr-1"></i>View Full Details
+                    </a>
+                </div>
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <p class="text-gray-600">Initial Dose:</p>
-                        <p class="font-medium" id="protocol-initial-dose">-</p>
+                        <p class="text-gray-600">Patient:</p>
+                        <p class="font-medium" id="plan-patient-name">-</p>
                     </div>
                     <div>
-                        <p class="text-gray-600">Max Dose:</p>
-                        <p class="font-medium" id="protocol-max-dose">-</p>
+                        <p class="text-gray-600">Protocol:</p>
+                        <p class="font-medium" id="plan-protocol-name">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Sessions:</p>
+                        <p class="font-medium">
+                            <span id="plan-completed-sessions">-</span> / 
+                            <span id="plan-total-sessions">-</span>
+                        </p>
                     </div>
                     <div>
                         <p class="text-gray-600">Current Dose:</p>
-                        <p class="font-medium" id="protocol-current-dose">-</p>
+                        <p class="font-medium" id="plan-current-dose">-</p>
                     </div>
                     <div>
-                        <p class="text-gray-600">Increment:</p>
-                        <p class="font-medium" id="protocol-increment">-</p>
+                        <p class="text-gray-600">Last Session:</p>
+                        <p class="font-medium" id="plan-last-session-date">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Last Dose Given:</p>
+                        <p class="font-medium" id="plan-last-dose">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Last Payment:</p>
+                        <p class="font-medium" id="plan-last-payment">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Next Payment Due:</p>
+                        <p class="font-medium" id="plan-next-payment">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Administered By:</p>
+                        <p class="font-medium" id="plan-last-administrator">-</p>
+                    </div>
+                </div>
+                <!-- Protocol Details Collapsible -->
+                <div class="mt-3">
+                    <button type="button" 
+                            class="flex items-center justify-between w-full px-4 py-2 text-sm text-left text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            onclick="toggleProtocolDetails()">
+                        <span>Protocol Details</span>
+                        <i class="fas fa-chevron-down" id="protocol-chevron"></i>
+                    </button>
+                    <div id="protocol-details" class="hidden mt-2 p-3 bg-gray-50 rounded-lg">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-600">Initial Dose:</p>
+                                <p class="font-medium" id="protocol-initial-dose">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Max Dose:</p>
+                                <p class="font-medium" id="protocol-max-dose">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Increment:</p>
+                                <p class="font-medium" id="protocol-increment">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Frequency:</p>
+                                <p class="font-medium" id="protocol-frequency">-</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Device -->
-            <div>
-                {{ form.device|as_crispy_field }}
-                {% if not form.device.field.queryset.exists %}
-                <div class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p class="text-sm text-yellow-700">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        No devices are currently available. Some devices may be due for maintenance.
-                        Please contact the maintenance team.
-                    </p>
+            <div class="form-group">
+                <label for="{{ form.device.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Device*
+                </label>
+                <div class="relative">
+                    <input type="text" 
+                        id="device-search" 
+                        placeholder="Search devices by name or location..." 
+                        class="mt-1 mb-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base">
+                    <select name="device" 
+                            id="{{ form.device.auto_id }}"
+                            size="5"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                            required>
+                        {% if form.device.field.choices %}
+                            {% for value, label in form.device.field.choices %}
+                                {% if value and label %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No devices available</option>
+                        {% endif %}
+                    </select>
                 </div>
+                {% if form.device.help_text %}
+                <p class="mt-2 text-sm text-gray-500">{{ form.device.help_text }}</p>
                 {% endif %}
                 {% if form.device.errors %}
-                <div class="mt-1 text-red-600 text-sm">
-                    {% for error in form.device.errors %}
-                        {{ error }}
-                    {% endfor %}
-                </div>
+                <p class="mt-1 text-sm text-red-600">{{ form.device.errors.0 }}</p>
                 {% endif %}
+                
+                <!-- Add Device Instructions -->
+                <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-sm text-blue-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Need to register a new device? 
+                        <a href="{% url 'register_device' %}" 
+                           class="font-medium text-blue-600 hover:text-blue-800 underline">
+                            Register new device
+                        </a>
+                    </p>
+                </div>
+            </div>
 
-                <!-- Add Device Details Box -->
-                <div id="device-details" class="hidden p-4 mt-2 bg-gray-50 rounded-lg border border-gray-200">
-                    <h3 class="text-sm font-medium text-gray-800 mb-2">Device Details</h3>
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <p class="text-gray-600">Location:</p>
-                            <p class="font-medium" id="device-location">-</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Last Maintenance:</p>
-                            <p class="font-medium" id="device-last-maintenance">-</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Status:</p>
-                            <p class="font-medium" id="device-status">-</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Next Maintenance:</p>
-                            <p class="font-medium" id="device-next-maintenance">-</p>
-                        </div>
+            <!-- Device Details -->
+            <div id="device-details" class="hidden p-4 mt-2 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 class="text-sm font-medium text-gray-800 mb-2">Device Details</h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-600">Location:</p>
+                        <p class="font-medium" id="device-location">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Last Maintenance:</p>
+                        <p class="font-medium" id="device-last-maintenance">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Status:</p>
+                        <p class="font-medium" id="device-status">-</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Next Maintenance:</p>
+                        <p class="font-medium" id="device-next-maintenance">-</p>
                     </div>
                 </div>
             </div>
@@ -204,9 +341,15 @@
                             size="5"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
                             required>
-                        {% for choice in form.administered_by %}
-                            {{ choice }}
-                        {% endfor %}
+                        {% if form.administered_by.field.choices %}
+                            {% for value, label in form.administered_by.field.choices %}
+                                {% if value and label %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No staff members available</option>
+                        {% endif %}
                     </select>
                 </div>
                 {% if form.administered_by.help_text %}
@@ -216,19 +359,39 @@
                 <p class="mt-1 text-sm text-red-600">{{ form.administered_by.errors.0 }}</p>
                 {% endif %}
             </div>
-        </div>
 
-        <!-- Submit Button -->
-        <div class="flex justify-end space-x-4">
-            <button type="button" 
-                    onclick="window.location.href='{% url 'phototherapy_management' %}'"
-                    class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Cancel
-            </button>
-            <button type="submit"
-                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                Schedule Session
-            </button>
+            <!-- Add Remarks Field -->
+            <div class="col-span-2">
+                <label for="remarks" class="block text-sm font-medium text-gray-700">
+                    Session Remarks
+                </label>
+                <div class="mt-1">
+                    <textarea id="remarks" 
+                            name="remarks" 
+                            rows="3"
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            placeholder="Enter any additional remarks or special instructions for this session"></textarea>
+                </div>
+                {% if form.remarks.help_text %}
+                <p class="mt-2 text-sm text-gray-500">{{ form.remarks.help_text }}</p>
+                {% endif %}
+                {% if form.remarks.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.remarks.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <div class="col-span-2 flex justify-end space-x-4">
+                <button type="button" 
+                        onclick="window.location.href='{% url 'phototherapy_management' %}'"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                    Schedule Session
+                </button>
+            </div>
         </div>
     </form>
 </div>
@@ -265,35 +428,122 @@
                 staffSelectElement.appendChild(noResults);
             }
         });
+
+        // Plan search functionality
+        const planSearchInput = document.getElementById('plan-search');
+        const planSelectElement = document.getElementById('{{ form.plan.auto_id }}');
+        const originalPlanOptions = Array.from(planSelectElement.options);
+        
+        planSearchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            planSelectElement.innerHTML = '';
+            
+            originalPlanOptions.forEach(option => {
+                if (option.text.toLowerCase().includes(searchTerm)) {
+                    planSelectElement.appendChild(option.cloneNode(true));
+                }
+            });
+            
+            if (planSelectElement.options.length === 0) {
+                const noResults = new Option('No treatment plans found', '');
+                noResults.disabled = true;
+                planSelectElement.appendChild(noResults);
+            }
+        });
+
+        // Device search functionality
+        const deviceSearchInput = document.getElementById('device-search');
+        const deviceSelectElement = document.getElementById('{{ form.device.auto_id }}');
+        const originalDeviceOptions = Array.from(deviceSelectElement.options);
+        
+        deviceSearchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            deviceSelectElement.innerHTML = '';
+            
+            originalDeviceOptions.forEach(option => {
+                if (option.text.toLowerCase().includes(searchTerm)) {
+                    deviceSelectElement.appendChild(option.cloneNode(true));
+                }
+            });
+            
+            if (deviceSelectElement.options.length === 0) {
+                const noResults = new Option('No devices found', '');
+                noResults.disabled = true;
+                deviceSelectElement.appendChild(noResults);
+            }
+        });
     });
 
     // Add this to your existing JavaScript
     document.getElementById('id_plan').addEventListener('change', function() {
         const planId = this.value;
+        const planDetails = document.getElementById('plan-details');
         if (planId) {
             fetch(`/phototherapy/treatment-plan/${planId}/details/`)
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('protocol-details').classList.remove('hidden');
+                    planDetails.classList.remove('hidden');
+                    
+                    // Update plan details
+                    document.getElementById('plan-patient-name').textContent = data.patient_name;
+                    document.getElementById('plan-protocol-name').textContent = data.protocol_name;
+                    document.getElementById('plan-completed-sessions').textContent = data.sessions_completed;
+                    document.getElementById('plan-total-sessions').textContent = data.total_sessions;
+                    document.getElementById('plan-current-dose').textContent = `${data.current_dose} joules/cm²`;
+                    document.getElementById('plan-last-session-date').textContent = data.last_session_date;
+                    document.getElementById('plan-last-dose').textContent = data.last_dose;
+                    
+                    // Update payment information
+                    if (data.last_payment.date) {
+                        document.getElementById('plan-last-payment').textContent = 
+                            `₹${data.last_payment.amount} (${data.last_payment.date})`;
+                    } else {
+                        document.getElementById('plan-last-payment').textContent = 'No payments yet';
+                    }
+                    
+                    if (data.next_payment.amount) {
+                        document.getElementById('plan-next-payment').textContent = 
+                            `₹${data.next_payment.amount} (${data.next_payment.status})`;
+                    } else {
+                        document.getElementById('plan-next-payment').textContent = 'All payments completed';
+                    }
+                    
+                    // Update protocol details
                     document.getElementById('protocol-initial-dose').textContent = `${data.protocol.initial_dose} joules/cm²`;
                     document.getElementById('protocol-max-dose').textContent = `${data.protocol.max_dose} joules/cm²`;
-                    document.getElementById('protocol-current-dose').textContent = `${data.current_dose} joules/cm²`;
                     document.getElementById('protocol-increment').textContent = `${data.protocol.increment_percentage}%`;
+                    document.getElementById('protocol-frequency').textContent = `${data.protocol.frequency_per_week}x per week`;
+                    
+                    // Update plan details link
+                    document.getElementById('plan-detail-link').href = `/phototherapy/treatment-plans/${planId}/`;
                     
                     // Automatically set planned dose to current dose
                     document.getElementById('id_planned_dose').value = data.current_dose;
                     
                     // Update dose presets based on protocol
                     updateDosePresets(data.protocol.initial_dose, data.protocol.max_dose);
+
+                    // Update administrator information
+                    document.getElementById('plan-last-administrator').textContent = data.administrator;
                 })
                 .catch(error => {
-                    console.error('Error fetching protocol details:', error);
-                    document.getElementById('protocol-details').classList.add('hidden');
+                    console.error('Error fetching plan details:', error);
+                    planDetails.classList.add('hidden');
                 });
         } else {
-            document.getElementById('protocol-details').classList.add('hidden');
+            planDetails.classList.add('hidden');
         }
     });
+
+    function toggleProtocolDetails() {
+        const protocolDetails = document.getElementById('protocol-details');
+        const chevron = document.getElementById('protocol-chevron');
+        const isHidden = protocolDetails.classList.contains('hidden');
+        
+        protocolDetails.classList.toggle('hidden');
+        chevron.classList.toggle('fa-chevron-down');
+        chevron.classList.toggle('fa-chevron-up');
+    }
 
     function updateDosePresets(initialDose, maxDose) {
         // Calculate intermediate doses
