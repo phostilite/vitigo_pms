@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction, ProcedureMedia, ProcedureChecklist, CompletedChecklistItem
+from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction, ProcedureMedia, ProcedureChecklist, CompletedChecklistItem, ProcedureChecklistTemplate
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Submit, Div
 
@@ -293,4 +293,29 @@ class ProcedureChecklistForm(forms.ModelForm):
             Field('procedure', css_class='select2'),
             Field('template', css_class='select2'),
             Field('notes', rows=3),
+        )
+
+class ProcedureChecklistTemplateForm(forms.ModelForm):
+    class Meta:
+        model = ProcedureChecklistTemplate
+        fields = ['procedure_type', 'name', 'description', 'is_active']
+        help_texts = {
+            'procedure_type': 'Select the procedure type this template is for',
+            'name': 'Name of the checklist template',
+            'description': 'Detailed description of the template',
+            'is_active': 'Whether this template is currently active'
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_tag = False
+        self.helper.layout = Layout(
+            Field('procedure_type', css_class='select2'),
+            Field('name'),
+            Field('description', rows=3),
+            Field('is_active'),
         )
