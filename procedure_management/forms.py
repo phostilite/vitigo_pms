@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory
+from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite
 
 class ProcedureForm(forms.ModelForm):
     scheduled_date = forms.DateField(
@@ -170,3 +170,25 @@ class ProcedureTypeForm(forms.ModelForm):
         if len(code) < 2:
             raise ValidationError("Code must be at least 2 characters long")
         return code.upper()
+
+class ProcedurePrerequisiteForm(forms.ModelForm):
+    class Meta:
+        model = ProcedurePrerequisite
+        fields = ['procedure_type', 'name', 'description', 'is_mandatory', 'order']
+        help_texts = {
+            'procedure_type': 'Select the procedure type this prerequisite belongs to',
+            'name': 'Name of the prerequisite',
+            'description': 'Detailed description of the prerequisite',
+            'is_mandatory': 'Whether this prerequisite is mandatory',
+            'order': 'Order in which this prerequisite should be displayed'
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'order': forms.NumberInput(attrs={'min': '0'})
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if len(name) < 3:
+            raise ValidationError("Prerequisite name must be at least 3 characters long")
+        return name

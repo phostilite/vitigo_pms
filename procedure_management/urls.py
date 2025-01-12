@@ -5,6 +5,7 @@ from .views import (
     consents as consent_views,
     categories as category_views,
     types as types_views,
+    prerequisites as prerequisites_views,
 )
 
 app_name = 'procedure_management'
@@ -40,4 +41,11 @@ urlpatterns = [
     path('types/<int:pk>/', types_views.ProcedureTypeDetailView.as_view(), name='type_detail'),
     path('types/<int:pk>/edit/', types_views.ProcedureTypeUpdateView.as_view(), name='type_update'),
     path('types/<int:pk>/delete/', types_views.ProcedureTypeDeleteView.as_view(), name='type_delete'),
+    
+    # Prerequisites URLs
+    path('prerequisites/', prerequisites_views.PrerequisiteListView.as_view(), name='prerequisite_list'),
+    path('prerequisites/create/', prerequisites_views.PrerequisiteCreateView.as_view(), name='prerequisite_create'),
+    path('prerequisites/<int:pk>/', prerequisites_views.PrerequisiteDetailView.as_view(), name='prerequisite_detail'),
+    path('prerequisites/<int:pk>/edit/', prerequisites_views.PrerequisiteUpdateView.as_view(), name='prerequisite_update'),
+    path('prerequisites/<int:pk>/delete/', prerequisites_views.PrerequisiteDeleteView.as_view(), name='prerequisite_delete'),
 ]
