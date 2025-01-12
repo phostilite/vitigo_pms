@@ -20,7 +20,7 @@ from error_handling.views import handler401, handler403, handler500
 
 # Local application imports
 from ..models import ProcedureChecklist, ProcedureChecklistTemplate, CompletedChecklistItem
-from ..forms import ProcedureChecklistForm, CompletedChecklistItemForm
+from ..forms import ProcedureChecklistForm
 from ..utils import get_template_path
 
 # Configure logging
@@ -35,7 +35,7 @@ class ChecklistListView(LoginRequiredMixin, ListView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                '_checklists/list.html',
+                'checklists/list.html',
                 self.request.user.role,
                 'procedure_management'
             )]
@@ -84,7 +84,7 @@ class ChecklistDetailView(LoginRequiredMixin, DetailView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                '_checklists/detail.html',
+                'checklists/detail.html',
                 self.request.user.role,
                 'procedure_management'
             )]
@@ -119,7 +119,7 @@ class ChecklistCreateView(LoginRequiredMixin, CreateView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                '_checklists/form.html',
+                'checklists/form.html',
                 self.request.user.role,
                 'procedure_management'
             )]
@@ -176,7 +176,7 @@ class ChecklistUpdateView(LoginRequiredMixin, UpdateView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                '_checklists/form.html',
+                'checklists/form.html',
                 self.request.user.role,
                 'procedure_management'
             )]
