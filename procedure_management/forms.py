@@ -134,3 +134,39 @@ class ProcedureCategoryForm(forms.ModelForm):
         if len(name) < 3:
             raise ValidationError("Category name must be at least 3 characters long")
         return name
+
+class ProcedureTypeForm(forms.ModelForm):
+    class Meta:
+        model = ProcedureType
+        fields = [
+            'category', 'name', 'code', 'description', 
+            'duration_minutes', 'base_cost', 'priority',
+            'requires_consent', 'requires_fasting',
+            'recovery_time_minutes', 'risk_level', 'is_active'
+        ]
+        help_texts = {
+            'category': 'Select the category this procedure type belongs to',
+            'name': 'Name of the procedure type',
+            'code': 'Unique code for identifying this procedure type',
+            'description': 'Detailed description of the procedure type',
+            'duration_minutes': 'Expected duration in minutes',
+            'base_cost': 'Base cost for this procedure type',
+            'priority': 'Priority level of this procedure type',
+            'requires_consent': 'Whether this procedure requires patient consent',
+            'requires_fasting': 'Whether this procedure requires fasting',
+            'recovery_time_minutes': 'Expected recovery time in minutes',
+            'risk_level': 'Risk level associated with this procedure type',
+            'is_active': 'Whether this procedure type is currently active'
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'base_cost': forms.NumberInput(attrs={'min': '0.01', 'step': '0.01'}),
+            'duration_minutes': forms.NumberInput(attrs={'min': '1'}),
+            'recovery_time_minutes': forms.NumberInput(attrs={'min': '0'})
+        }
+
+    def clean_code(self):
+        code = self.cleaned_data.get('code')
+        if len(code) < 2:
+            raise ValidationError("Code must be at least 2 characters long")
+        return code.upper()

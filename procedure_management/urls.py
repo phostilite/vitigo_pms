@@ -4,6 +4,7 @@ from .views import (
     procedures as procedure_views,
     consents as consent_views,
     categories as category_views,
+    types as types_views,
 )
 
 app_name = 'procedure_management'
@@ -32,4 +33,11 @@ urlpatterns = [
     path('categories/<int:pk>/', category_views.ProcedureCategoryDetailView.as_view(), name='category_detail'),
     path('categories/<int:pk>/edit/', category_views.ProcedureCategoryUpdateView.as_view(), name='category_update'),
     path('categories/<int:pk>/delete/', category_views.ProcedureCategoryDeleteView.as_view(), name='category_delete'),
+    
+    # Procedure Type URLs
+    path('types/', types_views.ProcedureTypeListView.as_view(), name='type_list'),
+    path('types/create/', types_views.ProcedureTypeCreateView.as_view(), name='type_create'),
+    path('types/<int:pk>/', types_views.ProcedureTypeDetailView.as_view(), name='type_detail'),
+    path('types/<int:pk>/edit/', types_views.ProcedureTypeUpdateView.as_view(), name='type_update'),
+    path('types/<int:pk>/delete/', types_views.ProcedureTypeDeleteView.as_view(), name='type_delete'),
 ]
