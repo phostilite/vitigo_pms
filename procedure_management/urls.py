@@ -6,6 +6,7 @@ from .views import (
     categories as category_views,
     types as types_views,
     prerequisites as prerequisites_views,
+    instructions as instructions_views,
 )
 
 app_name = 'procedure_management'
@@ -48,4 +49,11 @@ urlpatterns = [
     path('prerequisites/<int:pk>/', prerequisites_views.PrerequisiteDetailView.as_view(), name='prerequisite_detail'),
     path('prerequisites/<int:pk>/edit/', prerequisites_views.PrerequisiteUpdateView.as_view(), name='prerequisite_update'),
     path('prerequisites/<int:pk>/delete/', prerequisites_views.PrerequisiteDeleteView.as_view(), name='prerequisite_delete'),
+    
+    # Instructions URLs
+    path('instructions/', instructions_views.InstructionListView.as_view(), name='instruction_list'),
+    path('instructions/create/', instructions_views.InstructionCreateView.as_view(), name='instruction_create'),
+    path('instructions/<int:pk>/', instructions_views.InstructionDetailView.as_view(), name='instruction_detail'),
+    path('instructions/<int:pk>/edit/', instructions_views.InstructionUpdateView.as_view(), name='instruction_update'),
+    path('instructions/<int:pk>/delete/', instructions_views.InstructionDeleteView.as_view(), name='instruction_delete'),
 ]

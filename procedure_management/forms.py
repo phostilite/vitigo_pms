@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite
+from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction
 
 class ProcedureForm(forms.ModelForm):
     scheduled_date = forms.DateField(
@@ -192,3 +192,26 @@ class ProcedurePrerequisiteForm(forms.ModelForm):
         if len(name) < 3:
             raise ValidationError("Prerequisite name must be at least 3 characters long")
         return name
+
+class ProcedureInstructionForm(forms.ModelForm):
+    class Meta:
+        model = ProcedureInstruction
+        fields = ['procedure_type', 'instruction_type', 'title', 'description', 'order', 'is_active']
+        help_texts = {
+            'procedure_type': 'Select the procedure type this instruction belongs to',
+            'instruction_type': 'Whether this is a pre or post-procedure instruction',
+            'title': 'Title of the instruction',
+            'description': 'Detailed description of the instruction',
+            'order': 'Order in which this instruction should be displayed',
+            'is_active': 'Whether this instruction is currently active'
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'order': forms.NumberInput(attrs={'min': '0'})
+        }
+
+    def clean_title(self):
+        title = self.cleaned_data.get('title')
+        if len(title) < 3:
+            raise ValidationError("Instruction title must be at least 3 characters long")
+        return title
