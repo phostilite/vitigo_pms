@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Procedure, ProcedureType, ConsentForm
+from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory
 
 class ProcedureForm(forms.ModelForm):
     scheduled_date = forms.DateField(
@@ -107,3 +107,30 @@ class ConsentFormForm(forms.ModelForm):
             if document.size > 5 * 1024 * 1024:
                 raise ValidationError("File size must be no more than 5MB")
         return document
+
+class ProcedureCategoryForm(forms.ModelForm):
+    class Meta:
+        model = ProcedureCategory
+        fields = ['name', 'description', 'is_active']
+        help_texts = {
+            'name': 'Name of the procedure category',
+            'description': 'Detailed description of the category',
+            'is_active': 'Whether this category is currently active'
+        }
+        labels = {
+            'name': 'Category Name',
+            'description': 'Description',
+            'is_active': 'Active Status'
+        }
+        error_messages = {
+            'name': {
+                'required': 'Please enter a category name',
+                'unique': 'A category with this name already exists'
+            }
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if len(name) < 3:
+            raise ValidationError("Category name must be at least 3 characters long")
+        return name

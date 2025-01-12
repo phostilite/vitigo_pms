@@ -3,6 +3,7 @@ from .views import (
     dashboard as dashboard_views,
     procedures as procedure_views,
     consents as consent_views,
+    categories as category_views,
 )
 
 app_name = 'procedure_management'
@@ -24,4 +25,11 @@ urlpatterns = [
     path('consents/<int:pk>/', consent_views.ConsentFormDetailView.as_view(), name='consent_detail'),
     path('consents/<int:pk>/edit/', consent_views.ConsentFormUpdateView.as_view(), name='consent_update'),
     path('consents/<int:pk>/delete/', consent_views.ConsentFormDeleteView.as_view(), name='consent_delete'),
+    
+    # Category URLs
+    path('categories/', category_views.ProcedureCategoryListView.as_view(), name='category_list'),
+    path('categories/create/', category_views.ProcedureCategoryCreateView.as_view(), name='category_create'),
+    path('categories/<int:pk>/', category_views.ProcedureCategoryDetailView.as_view(), name='category_detail'),
+    path('categories/<int:pk>/edit/', category_views.ProcedureCategoryUpdateView.as_view(), name='category_update'),
+    path('categories/<int:pk>/delete/', category_views.ProcedureCategoryDeleteView.as_view(), name='category_delete'),
 ]
