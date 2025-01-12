@@ -1,17 +1,30 @@
-from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy
-from django.utils import timezone
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from django.db.models import Q
+# Standard library imports
 import logging
 
+# Django core imports
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
+)
+
+# Third-party app imports
 from access_control.utils import PermissionManager
-from error_handling.views import handler403, handler500, handler401
-from ..models import Procedure, ProcedureType, ProcedureCategory
+from error_handling.views import handler401, handler403, handler500
+
+# Local application imports
 from ..forms import ProcedureForm
+from ..models import Procedure, ProcedureCategory, ProcedureType
 from ..utils import get_template_path
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
 
 class ProcedureListView(LoginRequiredMixin, ListView):
