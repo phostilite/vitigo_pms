@@ -2,6 +2,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction, ProcedureMedia
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout, Field, Submit, Div
 
 class ProcedureForm(forms.ModelForm):
     scheduled_date = forms.DateField(
@@ -231,6 +233,27 @@ class ProcedureMediaForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_tag = False
+        self.helper.layout = Layout(
+            Field('procedure', css_class='select2'),
+            Field('title'),
+            Field('description', rows=3),
+            Field('file_type', css_class='select2'),
+            Field('file'),
+            Div(
+                Field('is_private', wrapper_class='flex h-5'),
+                css_class='flex items-start'
+            )
+        )
+        
+        # Add custom attributes to fields
+        self.fields['procedure'].widget.attrs.update({'class': 'select2'})
+        self.fields['file_type'].widget.attrs.update({'class': 'select2'})
+        self.fields['description'].widget.attrs.update({'rows': 3})
 
     def clean_file(self):
         file = self.cleaned_data.get('file')
