@@ -35,7 +35,7 @@ class MediaListView(LoginRequiredMixin, ListView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                'media/list.html',
+                '_media/list.html',
                 self.request.user.role,
                 'procedure_management'
             )]
@@ -99,7 +99,7 @@ class MediaDetailView(LoginRequiredMixin, DetailView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                'media/detail.html',
+                '_media/detail.html',
                 self.request.user.role,
                 'procedure_management'
             )]
@@ -129,7 +129,7 @@ class MediaCreateView(LoginRequiredMixin, CreateView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                'media/form.html',
+                '_media/form.html',
                 self.request.user.role,
                 'procedure_management'
             )]
@@ -177,7 +177,7 @@ class MediaUpdateView(LoginRequiredMixin, UpdateView):
     def get_template_names(self):
         try:
             return [get_template_path(
-                'media/form.html',
+                '_media/form.html',
                 self.request.user.role,
                 'procedure_management'
             )]
