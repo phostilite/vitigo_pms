@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction, ProcedureMedia
+from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction, ProcedureMedia, ProcedureChecklist, CompletedChecklistItem
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Submit, Div
 
@@ -271,3 +271,26 @@ class ProcedureMediaForm(forms.ModelForm):
             elif file_type == 'DOCUMENT' and not file.name.lower().endswith('.pdf'):
                 raise ValidationError("Invalid document format. Use PDF")
         return file
+
+class ProcedureChecklistForm(forms.ModelForm):
+    class Meta:
+        model = ProcedureChecklist
+        fields = ['procedure', 'template', 'notes']
+        help_texts = {
+            'procedure': 'Select the procedure this checklist is for',
+            'template': 'Select the checklist template to use',
+            'notes': 'Any additional notes about the checklist'
+        }
+        widgets = {
+            'notes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_tag = False
+        self.helper.layout = Layout(
+            Field('procedure', css_class='select2'),
+            Field('template', css_class='select2'),
+            Field('notes', rows=3),
+        )

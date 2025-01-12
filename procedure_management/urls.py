@@ -8,6 +8,7 @@ from .views import (
     prerequisites as prerequisites_views,
     instructions as instructions_views,
     media as media_views,
+    checklists as checklist_views,
 )
 
 app_name = 'procedure_management'
@@ -64,4 +65,11 @@ urlpatterns = [
     path('media/<int:pk>/', media_views.MediaDetailView.as_view(), name='media_detail'),
     path('media/<int:pk>/edit/', media_views.MediaUpdateView.as_view(), name='media_update'),
     path('media/<int:pk>/delete/', media_views.MediaDeleteView.as_view(), name='media_delete'),
+    
+    # Checklist URLs
+    path('checklists/', checklist_views.ChecklistListView.as_view(), name='checklist_list'),
+    path('checklists/create/', checklist_views.ChecklistCreateView.as_view(), name='checklist_create'),
+    path('checklists/<int:pk>/', checklist_views.ChecklistDetailView.as_view(), name='checklist_detail'),
+    path('checklists/<int:pk>/edit/', checklist_views.ChecklistUpdateView.as_view(), name='checklist_update'),
+    path('checklists/<int:pk>/delete/', checklist_views.ChecklistDeleteView.as_view(), name='checklist_delete'),
 ]
