@@ -22,6 +22,7 @@ from error_handling.views import handler401, handler403, handler500
 # Local application imports
 from ..models import Procedure, ProcedureCategory, ProcedureType, ConsentForm
 from ..utils import get_template_path
+from ..forms import ConsentFormForm
 
 # Configure logging for this module
 logger = logging.getLogger(__name__)
@@ -105,8 +106,14 @@ class ConsentFormDetailView(LoginRequiredMixin, DetailView):
 class ConsentFormCreateView(LoginRequiredMixin, CreateView):
     """View for creating new consent forms"""
     model = ConsentForm
-    fields = ['procedure', 'witness_name', 'notes', 'scanned_document']
+    form_class = ConsentFormForm
+    template_name_suffix = '_form'
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_edit'] = False
+        return context
+
     def get_template_names(self):
         try:
             return [get_template_path(
@@ -148,8 +155,15 @@ class ConsentFormCreateView(LoginRequiredMixin, CreateView):
 class ConsentFormUpdateView(LoginRequiredMixin, UpdateView):
     """View for updating consent forms"""
     model = ConsentForm
-    fields = ['witness_name', 'notes', 'scanned_document']
+    form_class = ConsentFormForm
+    template_name_suffix = '_form'
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_edit'] = True
+        context['consent_form'] = self.get_object()
+        return context
+
     def get_template_names(self):
         try:
             return [get_template_path(

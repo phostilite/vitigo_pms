@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Procedure, ProcedureType
+from .models import Procedure, ProcedureType, ConsentForm
 
 class ProcedureForm(forms.ModelForm):
     scheduled_date = forms.DateField(
@@ -74,3 +74,36 @@ class ProcedureForm(forms.ModelForm):
                 'min_value': 'Cost cannot be negative',
             },
         }
+
+class ConsentFormForm(forms.ModelForm):
+    class Meta:
+        model = ConsentForm
+        fields = ['procedure', 'witness_name', 'notes', 'scanned_document']
+        help_texts = {
+            'procedure': 'Select the procedure this consent form is for',
+            'witness_name': 'Name of the witness present during consent',
+            'notes': 'Any additional notes or comments about the consent',
+            'scanned_document': 'Upload the scanned consent document (PDF, JPG, PNG)',
+        }
+        labels = {
+            'procedure': 'Procedure',
+            'witness_name': 'Witness Name',
+            'notes': 'Additional Notes',
+            'scanned_document': 'Scanned Document',
+        }
+        error_messages = {
+            'procedure': {
+                'required': 'Please select a procedure',
+            },
+            'scanned_document': {
+                'invalid': 'Please upload a valid document file (PDF, JPG, PNG)',
+            },
+        }
+
+    def clean_scanned_document(self):
+        document = self.cleaned_data.get('scanned_document')
+        if document:
+            # Add file size validation (e.g., max 5MB)
+            if document.size > 5 * 1024 * 1024:
+                raise ValidationError("File size must be no more than 5MB")
+        return document
