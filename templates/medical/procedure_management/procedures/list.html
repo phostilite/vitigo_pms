@@ -211,6 +211,10 @@
                                        class="text-blue-600 hover:text-blue-900">
                                         <i class="fas fa-edit"></i>
                                     </a>
+                                    <button data-modal-target="deleteModal-{{ procedure.id }}" data-modal-toggle="deleteModal-{{ procedure.id }}"
+                                            class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -274,4 +278,11 @@
         {% include '../common/pagination.html' with page_obj=page_obj %}
     </div>
 </div>
+
+{% for procedure in procedures %}
+    <!-- Delete Confirmation Modal -->
+    {% include './modals/delete.html' with procedure=procedure %}
+{% endfor %}
+
+
 {% endblock %}

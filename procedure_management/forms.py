@@ -4,6 +4,13 @@ from django.utils import timezone
 from .models import Procedure, ProcedureType
 
 class ProcedureForm(forms.ModelForm):
+    scheduled_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+    scheduled_time = forms.TimeField(
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'})
+    )
+
     class Meta:
         model = Procedure
         fields = [
@@ -19,76 +26,6 @@ class ProcedureForm(forms.ModelForm):
             'final_cost',
             'payment_status'
         ]
-        widgets = {
-            'procedure_type': forms.Select(
-                attrs={
-                    'class': 'form-control',
-                    'placeholder': 'Select procedure type',
-                }
-            ),
-            'patient': forms.Select(
-                attrs={
-                    'class': 'form-control',
-                    'placeholder': 'Select patient',
-                }
-            ),
-            'appointment': forms.Select(
-                attrs={
-                    'class': 'form-control',
-                    'placeholder': 'Select associated appointment',
-                }
-            ),
-            'primary_doctor': forms.Select(
-                attrs={
-                    'class': 'form-control',
-                    'placeholder': 'Select primary doctor',
-                }
-            ),
-            'assisting_staff': forms.SelectMultiple(
-                attrs={
-                    'class': 'form-control',
-                    'placeholder': 'Select assisting staff members',
-                }
-            ),
-            'scheduled_date': forms.DateInput(
-                attrs={
-                    'type': 'date',
-                    'class': 'form-control',
-                    'placeholder': 'YYYY-MM-DD',
-                }
-            ),
-            'scheduled_time': forms.TimeInput(
-                attrs={
-                    'type': 'time',
-                    'class': 'form-control',
-                    'placeholder': 'HH:MM',
-                }
-            ),
-            'status': forms.Select(
-                attrs={
-                    'class': 'form-control',
-                }
-            ),
-            'notes': forms.Textarea(
-                attrs={
-                    'class': 'form-control',
-                    'rows': 3,
-                    'placeholder': 'Enter any additional notes or comments...',
-                }
-            ),
-            'final_cost': forms.NumberInput(
-                attrs={
-                    'class': 'form-control',
-                    'placeholder': '0.00',
-                    'step': '0.01',
-                }
-            ),
-            'payment_status': forms.Select(
-                attrs={
-                    'class': 'form-control',
-                }
-            ),
-        }
         help_texts = {
             'procedure_type': 'Select the type of medical procedure to be performed',
             'patient': 'Select the patient undergoing the procedure',

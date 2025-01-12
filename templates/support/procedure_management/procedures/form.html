@@ -122,7 +122,7 @@
                     </div>
 
                     <!-- Scheduling -->
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
                         <!-- Date -->
                         <div>
                             {{ form.scheduled_date|as_crispy_field }}
@@ -131,11 +131,6 @@
                         <!-- Time -->
                         <div>
                             {{ form.scheduled_time|as_crispy_field }}
-                        </div>
-
-                        <!-- Status -->
-                        <div>
-                            {{ form.status|as_crispy_field }}
                         </div>
                     </div>
 
