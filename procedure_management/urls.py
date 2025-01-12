@@ -7,6 +7,7 @@ from .views import (
     types as types_views,
     prerequisites as prerequisites_views,
     instructions as instructions_views,
+    media as media_views,
 )
 
 app_name = 'procedure_management'
@@ -56,4 +57,11 @@ urlpatterns = [
     path('instructions/<int:pk>/', instructions_views.InstructionDetailView.as_view(), name='instruction_detail'),
     path('instructions/<int:pk>/edit/', instructions_views.InstructionUpdateView.as_view(), name='instruction_update'),
     path('instructions/<int:pk>/delete/', instructions_views.InstructionDeleteView.as_view(), name='instruction_delete'),
+    
+    # Media URLs
+    path('media/', media_views.MediaListView.as_view(), name='media_list'),
+    path('media/create/', media_views.MediaCreateView.as_view(), name='media_create'),
+    path('media/<int:pk>/', media_views.MediaDetailView.as_view(), name='media_detail'),
+    path('media/<int:pk>/edit/', media_views.MediaUpdateView.as_view(), name='media_update'),
+    path('media/<int:pk>/delete/', media_views.MediaDeleteView.as_view(), name='media_delete'),
 ]

@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction
+from .models import Procedure, ProcedureType, ConsentForm, ProcedureCategory, ProcedurePrerequisite, ProcedureInstruction, ProcedureMedia
 
 class ProcedureForm(forms.ModelForm):
     scheduled_date = forms.DateField(
@@ -215,3 +215,36 @@ class ProcedureInstructionForm(forms.ModelForm):
         if len(title) < 3:
             raise ValidationError("Instruction title must be at least 3 characters long")
         return title
+
+class ProcedureMediaForm(forms.ModelForm):
+    class Meta:
+        model = ProcedureMedia
+        fields = ['procedure', 'title', 'description', 'file_type', 'file', 'is_private']
+        help_texts = {
+            'procedure': 'Select the procedure this media belongs to',
+            'title': 'Title of the media file',
+            'description': 'Description of the media content',
+            'file_type': 'Type of media file being uploaded',
+            'file': 'Select file to upload (PDF, JPG, PNG, MP4, MOV)',
+            'is_private': 'Whether this file should be private'
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if file:
+            # Add file size validation (e.g., max 50MB)
+            if file.size > 50 * 1024 * 1024:
+                raise ValidationError("File size must be no more than 50MB")
+            
+            # Validate file extension based on file_type
+            file_type = self.cleaned_data.get('file_type')
+            if file_type == 'IMAGE' and not file.name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                raise ValidationError("Invalid image format. Use JPG or PNG")
+            elif file_type == 'VIDEO' and not file.name.lower().endswith(('.mp4', '.mov')):
+                raise ValidationError("Invalid video format. Use MP4 or MOV")
+            elif file_type == 'DOCUMENT' and not file.name.lower().endswith('.pdf'):
+                raise ValidationError("Invalid document format. Use PDF")
+        return file
