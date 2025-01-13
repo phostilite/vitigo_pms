@@ -80,7 +80,7 @@ class AppointmentDashboardView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
-        return [get_template_path('appointment_dashboard.html', self.request.user.role, 'appointment_management')]
+        return [get_template_path('dashboard/dashboard.html', self.request.user.role, 'appointment_management')]
 
     def get_queryset(self):
         queryset = Appointment.objects.select_related(

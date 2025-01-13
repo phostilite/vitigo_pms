@@ -126,7 +126,17 @@ class Appointment(models.Model):
     @property
     def is_fully_acknowledged(self):
         """Check if both parties have acknowledged the appointment"""
-        return self.acknowledgements.count() == 2
+        patient_ack = self.acknowledgements.filter(user__role__name='PATIENT').exists()
+        staff_ack = self.acknowledgements.filter(~Q(user__role__name='PATIENT')).exists()
+        return patient_ack and staff_ack
+
+    def get_patient_acknowledgement(self):
+        """Get patient's acknowledgement if exists"""
+        return self.acknowledgements.filter(user__role__name='PATIENT').first()
+
+    def get_staff_acknowledgement(self):
+        """Get staff's acknowledgement if exists"""
+        return self.acknowledgements.filter(~Q(user__role__name='PATIENT')).first()
 
 
 class ReminderTemplate(models.Model):
@@ -289,7 +299,7 @@ class CancellationReason(models.Model):
 
 
 class AppointmentAcknowledgement(models.Model):
-    """Track acknowledgements for confirmed appointments"""
+    """Track acknowledgements for appointments"""
     appointment = models.ForeignKey(
         Appointment,
         on_delete=models.CASCADE,
@@ -311,12 +321,22 @@ class AppointmentAcknowledgement(models.Model):
         return f"Acknowledgement by {self.user} for {self.appointment}"
 
     def clean(self):
-        if self.appointment.status != 'CONFIRMED':
-            raise ValidationError("Can only acknowledge confirmed appointments")
-        
         if self.appointment.acknowledgements.filter(user=self.user).exists():
             raise ValidationError("User has already acknowledged this appointment")
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+        
+        # After saving, check if both patient and any staff member have acknowledged
+        patient_ack = self.appointment.acknowledgements.filter(
+            user__role__name='PATIENT'
+        ).exists()
+        staff_ack = self.appointment.acknowledgements.filter(
+            ~Q(user__role__name='PATIENT')  # Any user who is not a patient
+        ).exists()
+        
+        # If both patient and staff have acknowledged, update appointment status to CONFIRMED
+        if patient_ack and staff_ack:
+            self.appointment.status = 'CONFIRMED'
+            self.appointment.save(update_fields=['status'])

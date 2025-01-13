@@ -1,4 +1,4 @@
-{% extends '../base.html' %}
+{% extends '../../base.html' %}
 
 {% block content %}
     <div class="p-4 mt-14 sm:ml-64">
@@ -137,7 +137,7 @@
             </form>
         </div>
 
-        {% include './appointment_dashboard_filters.html' %}
+        {% include './components/filter_and_search.html' %}
 
         <!-- Rest of the template remains the same but with updated styling to match -->
         <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
@@ -257,7 +257,10 @@
                               <i class="fa-duotone fa-solid fa-ellipsis-vertical" id="dropdownMenuIconButton{{ appointment.id }}" data-dropdown-toggle="dropdownDots{{ appointment.id }}"></i>
                             </td>
                         </tr>
-                        {% include './appointment_dashboard_dropdown.html' with appointment=appointment %}
+                        {% include './components/dropdown.html' with appointment=appointment %}
+                        {% include './modals/delete.html' with appointment=appointment %}
+                        {% include './modals/export.html' with appointment=appointment %}
+                        {% include './modals/reschedule.html' with appointment=appointment %}
                     {% endfor %}
                 </tbody>
             </table>

@@ -61,6 +61,7 @@ from ..models import (
     DoctorTimeSlot,
     ReminderConfiguration,
     ReminderTemplate,
+    AppointmentAcknowledgement
 )
 
 # Logger configuration
@@ -80,7 +81,7 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
-        return [get_template_path('appointment_detail.html', self.request.user.role, 'appointment_management')]
+        return [get_template_path('appointments/detail.html', self.request.user.role, 'appointment_management')]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -735,3 +736,51 @@ class AppointmentRescheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error rescheduling appointment: {str(e)}")
             messages.error(request, 'Error rescheduling appointment')
             return redirect('appointment_dashboard')
+
+
+@api_view(['POST'])
+def acknowledge_appointment(request, appointment_id):
+    """Handle appointment acknowledgement from both patient and staff"""
+    try:
+        appointment = get_object_or_404(Appointment, id=appointment_id)
+        
+        # Check if user has already acknowledged
+        if appointment.acknowledgements.filter(user=request.user).exists():
+            messages.error(request, "You have already acknowledged this appointment")
+            return redirect('appointment_detail', pk=appointment_id)
+
+        is_patient = request.user.role.name == 'PATIENT'
+        
+        # Verify user permission to acknowledge
+        if is_patient and request.user != appointment.patient:
+            messages.error(request, "You can only acknowledge your own appointments")
+            return redirect('appointment_detail', pk=appointment_id)
+
+        # Create acknowledgement
+        notes = request.POST.get('notes', '')
+        acknowledgement = AppointmentAcknowledgement.objects.create(
+            appointment=appointment,
+            user=request.user,
+            notes=notes
+        )
+
+        # Check acknowledgement status and set appropriate message
+        patient_ack = appointment.acknowledgements.filter(user__role__name='PATIENT').exists()
+        staff_ack = appointment.acknowledgements.filter(~Q(user__role__name='PATIENT')).exists()
+
+        if patient_ack and staff_ack:
+            messages.success(request, "Appointment fully acknowledged and confirmed")
+        else:
+            acknowledger_type = "Patient" if is_patient else "Staff"
+            waiting_for = "staff" if is_patient else "patient"
+            messages.success(
+                request, 
+                f"{acknowledger_type} acknowledgement recorded. Waiting for {waiting_for} acknowledgement."
+            )
+            
+        return redirect('appointment_detail', pk=appointment_id)
+
+    except Exception as e:
+        logger.error(f"Error acknowledging appointment: {str(e)}")
+        messages.error(request, "Error acknowledging appointment")
+        return redirect('appointment_detail', pk=appointment_id)

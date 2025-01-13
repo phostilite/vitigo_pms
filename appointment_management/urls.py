@@ -26,6 +26,9 @@ urlpatterns = [
     path('<int:appointment_id>/reschedule/', 
          appointment_views.AppointmentRescheduleView.as_view(), 
          name='appointment_reschedule'),
+    path('<int:appointment_id>/acknowledge/', 
+         appointment_views.acknowledge_appointment, 
+         name='acknowledge_appointment'),
 
     # Doctor Timeslot Management URLs
     path('doctor-timeslots/', appointment_views.get_doctor_timeslots, 
