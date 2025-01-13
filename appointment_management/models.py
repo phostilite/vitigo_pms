@@ -115,6 +115,19 @@ class Appointment(models.Model):
     def __str__(self):
         return f"Appointment for {self.patient} on {self.date} at {self.time_slot}"
 
+    def can_acknowledge(self, user):
+        """Check if the user can acknowledge this appointment"""
+        if self.status != 'CONFIRMED':
+            return False
+
+        # Check if user hasn't already acknowledged
+        return not self.acknowledgements.filter(user=user).exists()
+
+    @property
+    def is_fully_acknowledged(self):
+        """Check if both parties have acknowledged the appointment"""
+        return self.acknowledgements.count() == 2
+
 
 class ReminderTemplate(models.Model):
     """Pre-configured reminder templates"""
@@ -273,3 +286,37 @@ class CancellationReason(models.Model):
 
     def __str__(self):
         return f"Cancellation reason for {self.appointment}"
+
+
+class AppointmentAcknowledgement(models.Model):
+    """Track acknowledgements for confirmed appointments"""
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name='acknowledgements'
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='appointment_acknowledgements'
+    )
+    acknowledged_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('appointment', 'user')
+        ordering = ['acknowledged_at']
+
+    def __str__(self):
+        return f"Acknowledgement by {self.user} for {self.appointment}"
+
+    def clean(self):
+        if self.appointment.status != 'CONFIRMED':
+            raise ValidationError("Can only acknowledge confirmed appointments")
+        
+        if self.appointment.acknowledgements.filter(user=self.user).exists():
+            raise ValidationError("User has already acknowledged this appointment")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

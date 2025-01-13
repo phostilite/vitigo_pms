@@ -6,7 +6,8 @@ from .models import (
     ReminderTemplate,
     ReminderConfiguration,
     AppointmentReminder,
-    CancellationReason
+    CancellationReason,
+    AppointmentAcknowledgement  # Add this import
 )
 
 @admin.register(TimeSlotConfig)
@@ -45,3 +46,8 @@ class AppointmentReminderAdmin(admin.ModelAdmin):
 class CancellationReasonAdmin(admin.ModelAdmin):
     list_display = ('appointment', 'cancelled_by', 'cancelled_at')
     search_fields = ('appointment__patient__username', 'reason')
+
+@admin.register(AppointmentAcknowledgement)
+class AppointmentAcknowledgementAdmin(admin.ModelAdmin):
+    list_display = ('appointment', 'user', 'acknowledged_at')
+    list_filter = ('acknowledged_at', 'user')
