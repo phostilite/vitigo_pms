@@ -264,6 +264,12 @@
                     {% endfor %}
                 </tbody>
             </table>
+            
+            {% with page_obj=page_obj paginator=paginator %}
+                {% if page_obj.has_other_pages %}
+                    {% include '../common/pagination.html' %}
+                {% endif %}
+            {% endwith %}
         </div>
     </div>
 {% endblock %}
