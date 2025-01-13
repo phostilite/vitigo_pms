@@ -134,25 +134,25 @@ class Procedure(models.Model):
 
     procedure_type = models.ForeignKey(
         ProcedureType,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,  # Changed from SET_NULL to CASCADE
         related_name='procedures'
     )
     patient = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,  # Changed from SET_NULL to CASCADE
         related_name='procedures',
         limit_choices_to={'role__name': 'PATIENT'}
     )
     appointment = models.OneToOneField(
         'appointment_management.Appointment',
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,  # Changed from SET_NULL to CASCADE
         related_name='procedure'
     )
     
     # Staff assignments
     primary_doctor = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         related_name='primary_procedures',
         limit_choices_to={'role__name': 'DOCTOR'}
     )
