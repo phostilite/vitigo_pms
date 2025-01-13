@@ -143,7 +143,7 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
-        return [get_template_path('appointment_create.html', self.request.user.role, 'appointment_management')]
+        return [get_template_path('appointments/create.html', self.request.user.role, 'appointment_management')]
 
     def form_valid(self, form):
         try:
@@ -297,29 +297,19 @@ def get_doctor_timeslots(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get the user
+        # Get the user and doctor profile
         try:
             user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            logger.error(f"User with id {user_id} not found")
-            return Response(
-                {"error": "User not found"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            if not user.role.name == 'DOCTOR':
+                logger.error(f"User {user_id} is not a doctor")
+                return Response(
+                    {"error": "User is not a doctor"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Check if user is a doctor
-        if not user.role.name == 'DOCTOR':
-            logger.error(f"User {user_id} is not a doctor")
-            return Response(
-                {"error": "User is not a doctor"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Get doctor profile
-        try:
-            doctor_profile = user.doctor_profile
-        except DoctorProfile.DoesNotExist:
-            logger.error(f"Doctor profile not found for user {user_id}")
+            doctor_profile = DoctorProfile.objects.get(user=user)
+        except (User.DoesNotExist, DoctorProfile.DoesNotExist) as e:
+            logger.error(f"Doctor profile not found for user {user_id}: {str(e)}")
             return Response(
                 {"error": "Doctor profile not found"}, 
                 status=status.HTTP_404_NOT_FOUND
@@ -328,7 +318,7 @@ def get_doctor_timeslots(request):
         # Get all timeslots for the doctor on the specified date
         current_datetime = timezone.now()
         timeslots = DoctorTimeSlot.objects.filter(
-            doctor=doctor_profile,
+            doctor=user,  # Changed from doctor_profile to user
             date=date
         ).order_by('start_time')
 
