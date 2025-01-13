@@ -88,29 +88,10 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
         
         # Initialize default context values
         context.update({
-            'medical_history': None,
             'cancellation': None,
-            'doctor_profile': None,
             'previous_appointments': [],
-            'has_patient_profile': False,
-            'has_doctor_profile': False,
             'error_messages': []
         })
-        
-        # Get patient's medical history if patient profile exists
-        try:
-            if hasattr(appointment.patient, 'patient_profile'):
-                medical_history = MedicalHistory.objects.get(patient=appointment.patient.patient_profile)
-                context['medical_history'] = medical_history
-                context['has_patient_profile'] = True
-            else:
-                logger.warning(f"Patient {appointment.patient.id} has no patient profile")
-                context['error_messages'].append("Patient profile is incomplete")
-        except MedicalHistory.DoesNotExist:
-            logger.info(f"No medical history found for patient {appointment.patient.id}")
-        except Exception as e:
-            logger.error(f"Error fetching medical history: {str(e)}")
-            context['error_messages'].append("Error loading medical history")
 
         # Get cancellation reason if appointment is cancelled
         if appointment.status == 'CANCELLED':
@@ -121,18 +102,6 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
             except Exception as e:
                 logger.error(f"Error fetching cancellation reason: {str(e)}")
                 context['error_messages'].append("Error loading cancellation details")
-
-        # Get doctor's profile if exists
-        try:
-            if hasattr(appointment.doctor, 'doctor_profile'):
-                context['doctor_profile'] = appointment.doctor.doctor_profile
-                context['has_doctor_profile'] = True
-            else:
-                logger.warning(f"Doctor {appointment.doctor.id} has no doctor profile")
-                context['error_messages'].append("Doctor profile is incomplete")
-        except Exception as e:
-            logger.error(f"Error fetching doctor profile: {str(e)}")
-            context['error_messages'].append("Error loading doctor details")
 
         # Get previous appointments safely
         try:
