@@ -1,4 +1,4 @@
-{% extends '../base.html' %}
+{% extends '../../base.html' %}
 
 {% block content %}
     <div class="p-4 mt-14 sm:ml-64">
@@ -95,7 +95,8 @@
             </div>
         </div>
 
-        {% include './query_graphs.html' %}
+        <!-- Graphs -->
+        {% include './components/graphs.html' %}
 
         <!-- Export Controls -->
         <div class="bg-white p-4 rounded-lg shadow-md mb-6">
@@ -352,7 +353,11 @@
                             </td>
                         </tr>
 
-                        {% include './query_dashboard_dropdown.html' with query=query %}
+                        {% include './components/dropdown.html' with query=query %}
+                        {% include './modals/assignment.html' with query=query %}
+                        {% include './modals/delete.html' with query=query %}
+                        {% include './modals/update.html' with query=query %}
+
                         {% endfor %}
                     </tbody>
                 </table>

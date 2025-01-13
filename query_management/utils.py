@@ -4,6 +4,7 @@ from django.conf import settings
 from notifications.models import UserNotification, EmailNotification, NotificationType
 from django.utils import timezone
 import logging
+from access_control.models import Role
 
 logger = logging.getLogger('query_management')
 
@@ -147,3 +148,20 @@ def send_query_notification(query, notification_type, recipient=None, **kwargs):
     except Exception as e:
         logger.exception(f"General notification error: {str(e)}")
         raise  # Re-raise to see the error in development
+
+
+def get_template_path(base_template, role, module=''):
+    """
+    Resolves template path based on user role.
+    Now uses the template_folder from Role model.
+    """
+    if isinstance(role, Role):
+        role_folder = role.template_folder
+    else:
+        # Fallback for any legacy code
+        role = Role.objects.get(name=role)
+        role_folder = role.template_folder
+    
+    if module:
+        return f'{role_folder}/{module}/{base_template}'
+    return f'{role_folder}/{base_template}'
