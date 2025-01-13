@@ -1,172 +1,73 @@
 # Python Standard Library imports
-from collections import defaultdict
-from datetime import timedelta, datetime
-import logging
-import json
 import csv
+import json
+import logging
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+# Third-party imports
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from django.http import HttpResponse
+from reportlab.platypus import (
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 # Django core imports
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Count, Q
-from django.shortcuts import redirect
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views import View
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
+)
 from django.views.generic.edit import FormView
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.models import User
-from django.contrib.auth import get_user_model
-from django.http import JsonResponse
-from django.db import transaction
-from django.core.exceptions import ValidationError
 
+# Django REST Framework imports
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
-from django.views import View
-from django.views.generic import ListView, DetailView, CreateView, DeleteView, UpdateView
-
 
 # Local application imports
 from access_control.models import Role
 from access_control.permissions import PermissionManager
+from doctor_management.models import DoctorProfile
 from error_handling.views import handler403, handler404, handler500
 from patient_management.models import MedicalHistory
-from doctor_management.models import DoctorProfile
-from .models import Appointment, CancellationReason, DoctorTimeSlot, AppointmentReminder, ReminderConfiguration, ReminderTemplate
+from notifications.services import NotificationService
+from notifications.models import NotificationType
 
-from .forms import AppointmentCreateForm
+from ..utils import get_template_path
+from ..forms import AppointmentCreateForm
+from ..models import (
+    Appointment,
+    AppointmentReminder,
+    CancellationReason,
+    DoctorTimeSlot,
+    ReminderConfiguration,
+    ReminderTemplate,
+)
 
 # Logger configuration
 logger = logging.getLogger(__name__)
 
 # Get the User model
 User = get_user_model()
-
-def get_template_path(base_template, role, module=''):
-    """
-    Resolves template path based on user role.
-    Now uses the template_folder from Role model.
-    """
-    if isinstance(role, Role):
-        role_folder = role.template_folder
-    else:
-        # Fallback for any legacy code
-        role = Role.objects.get(name=role)
-        role_folder = role.template_folder
-    
-    if module:
-        return f'{role_folder}/{module}/{base_template}'
-    return f'{role_folder}/{base_template}'
-
-class AppointmentDashboardView(LoginRequiredMixin, ListView):
-    model = Appointment
-    context_object_name = 'appointments'
-    paginate_by = 10
-
-    def dispatch(self, request, *args, **kwargs):
-        if not PermissionManager.check_module_access(request.user, 'appointment_management'):
-            messages.error(request, "You don't have permission to access Appointments")
-            return handler403(request, exception="Access Denied")
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_template_names(self):
-        return [get_template_path('appointment_dashboard.html', self.request.user.role, 'appointment_management')]
-
-    def get_queryset(self):
-        queryset = Appointment.objects.select_related(
-            'patient',
-            'doctor',
-            'time_slot'
-        )
-        
-        # Get filter parameters from URL
-        filters = {}
-        priority = self.request.GET.get('priority')
-        status = self.request.GET.get('status')
-        date = self.request.GET.get('date')
-        doctor = self.request.GET.get('doctor')
-        patient = self.request.GET.get('patient')
-        appointment_type = self.request.GET.get('appointment_type')
-        search = self.request.GET.get('search')
-        
-        # Apply filters
-        if priority:
-            filters['priority'] = priority
-        if status:
-            filters['status'] = status
-        if date:
-            filters['date'] = date
-        if doctor:
-            filters['doctor_id'] = doctor
-        if patient:
-            filters['patient_id'] = patient
-        if appointment_type:
-            filters['appointment_type'] = appointment_type
-            
-        # Apply search query
-        if search:
-            queryset = queryset.filter(
-                Q(patient__first_name__icontains=search) |
-                Q(patient__last_name__icontains=search) |
-                Q(patient__email__icontains=search) |
-                Q(doctor__first_name__icontains=search) |
-                Q(doctor__last_name__icontains=search) |
-                Q(doctor__email__icontains=search) |
-                Q(notes__icontains=search)
-            )
-            
-        return queryset.filter(**filters).order_by('-date', '-time_slot__start_time')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        today = timezone.now().date()
-        start_of_month = today.replace(day=1)
-        
-        # Basic statistics
-        context.update({
-            'total_appointments': Appointment.objects.count(),
-            'pending_appointments': Appointment.objects.filter(status='PENDING').count(),
-            'completed_appointments': Appointment.objects.filter(status='COMPLETED').count(),
-            'today_appointments': Appointment.objects.filter(date=today).count(),
-            
-            # Current filters for template
-            'current_filters': {
-                'priority': self.request.GET.get('priority', ''),
-                'status': self.request.GET.get('status', ''),
-                'date': self.request.GET.get('date', ''),
-                'search': self.request.GET.get('search', ''),
-            },
-        })
-        
-        context.update({
-            # Add choices for filter dropdowns
-            'status_choices': Appointment.STATUS_CHOICES,
-            'priority_choices': Appointment.PRIORITY_CHOICES,
-            'appointment_type_choices': Appointment.APPOINTMENT_TYPES,
-            
-            # Add available doctors and patients for filters
-            'doctors': User.objects.filter(role__name='DOCTOR').order_by('first_name'),
-            'patients': User.objects.filter(role__name='PATIENT').order_by('first_name'),
-            
-            # Current filter values
-            'current_filters': {
-                'priority': self.request.GET.get('priority', ''),
-                'status': self.request.GET.get('status', ''),
-                'date': self.request.GET.get('date', ''),
-                'doctor': self.request.GET.get('doctor', ''),
-                'patient': self.request.GET.get('patient', ''),
-                'appointment_type': self.request.GET.get('appointment_type', ''),
-                'search': self.request.GET.get('search', ''),
-            }
-        })
-        
-        return context
 
 class AppointmentDetailView(LoginRequiredMixin, DetailView):
     model = Appointment
@@ -259,8 +160,6 @@ class AppointmentDetailView(LoginRequiredMixin, DetailView):
         except self.model.DoesNotExist:
             return handler404(self.request, exception="Appointment not found")
 
-from notifications.services import NotificationService
-from notifications.models import NotificationType
 
 class AppointmentCreateView(LoginRequiredMixin, CreateView):
     model = Appointment
@@ -787,6 +686,7 @@ def _create_cancellation_notifications(appointment, reason, cancelled_by):
         logger.error(f"Error in _create_cancellation_notifications: {str(e)}")
         # Don't raise the exception - we want the cancellation to proceed even if notifications fail
 
+
 class AppointmentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return PermissionManager.check_module_delete(self.request.user, 'appointment_management')
@@ -818,497 +718,7 @@ class AppointmentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
             logger.error(f"Error deleting appointment: {str(e)}")
             messages.error(request, f"Error deleting appointment: {str(e)}")
             return redirect('appointment_dashboard')
-
-class AppointmentExportView(LoginRequiredMixin, UserPassesTestMixin, View):
-    def test_func(self):
-        return PermissionManager.check_module_access(self.request.user, 'appointment_management')
-
-    def get_filtered_queryset(self, date_range, start_date=None, end_date=None):
-        """Filter queryset based on date range"""
-        queryset = Appointment.objects.select_related('patient', 'doctor', 'time_slot')
-
-        if date_range == 'custom':
-            if not start_date or not end_date:
-                raise ValueError("Both start date and end date are required for custom range")
-            try:
-                start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
-                end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
-                queryset = queryset.filter(date__range=[start_datetime, end_datetime])
-            except ValueError as e:
-                raise ValueError(f"Invalid date format: {str(e)}")
-        else:
-            try:
-                days = int(date_range or '30')
-                if days <= 0:
-                    raise ValueError("Days must be a positive number")
-                end_date = timezone.now().date()
-                start_date = end_date - timedelta(days=days)
-                queryset = queryset.filter(date__range=[start_date, end_date])
-            except ValueError:
-                raise ValueError("Invalid date range value")
-
-        return queryset
-
-    def get(self, request):
-        try:
-            export_format = request.GET.get('format', 'csv')
-            date_range = request.GET.get('date_range')
-            start_date = request.GET.get('start_date')
-            end_date = request.GET.get('end_date')
-
-            queryset = self.get_filtered_queryset(date_range, start_date, end_date)
-
-            if export_format == 'csv':
-                return self.export_csv(queryset)
-            elif export_format == 'pdf':
-                return self.export_pdf(queryset)
-            else:
-                messages.error(request, "Invalid export format")
-                return redirect('appointment_dashboard')
-
-        except Exception as e:
-            messages.error(request, f"Export failed: {str(e)}")
-            return redirect('appointment_dashboard')
-
-    def export_csv(self, queryset):
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="appointments_report.csv"'
-
-        writer = csv.writer(response)
-        writer.writerow([
-            'Appointment ID',
-            'Patient Name',
-            'Doctor Name',
-            'Date',
-            'Time',
-            'Type',
-            'Status',
-            'Priority',
-            'Notes',
-            'Created At',
-            'Last Updated',
-            'Cancellation Reason'
-        ])
-
-        for appointment in queryset:
-            cancellation_reason = appointment.cancellation_reason.reason if hasattr(appointment, 'cancellation_reason') else 'N/A'
-            writer.writerow([
-                appointment.id,
-                appointment.patient.get_full_name(),
-                appointment.doctor.get_full_name(),
-                appointment.date,
-                appointment.time_slot.start_time if appointment.time_slot else 'N/A',
-                appointment.get_appointment_type_display(),
-                appointment.get_status_display(),
-                appointment.get_priority_display(),
-                appointment.notes or 'N/A',
-                appointment.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                appointment.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
-                cancellation_reason
-            ])
-
-        return response
-
-    def export_pdf(self, queryset):
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="appointments_report.pdf"'
-
-        doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-        elements = []
-
-        # Styles
-        styles = getSampleStyleSheet()
-        title_style = styles['Heading1']
-        normal_style = styles['Normal']
-
-        # Title
-        elements.append(Paragraph('Appointments Report', title_style))
-        elements.append(Spacer(1, 20))
-
-        # Statistics
-        stats = [
-            ['Total Appointments:', str(queryset.count())],
-            ['Pending Appointments:', str(queryset.filter(status='PENDING').count())],
-            ['Completed Appointments:', str(queryset.filter(status='COMPLETED').count())],
-            ['Cancelled Appointments:', str(queryset.filter(status='CANCELLED').count())]
-        ]
-
-        stats_table = Table(stats, colWidths=[150, 100])
-        stats_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.gray),  # Changed from colors.grey
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ]))
-        elements.append(stats_table)
-        elements.append(Spacer(1, 20))
-
-        # Appointments table
-        data = [['Date', 'Time', 'Patient', 'Doctor', 'Type', 'Status']]
-        for appointment in queryset:
-            data.append([
-                appointment.date.strftime('%Y-%m-%d'),
-                appointment.time_slot.start_time.strftime('%H:%M') if appointment.time_slot else 'N/A',
-                appointment.patient.get_full_name(),
-                appointment.doctor.get_full_name(),
-                appointment.get_appointment_type_display(),
-                appointment.get_status_display()
-            ])
-
-        table = Table(data, colWidths=[70, 50, 100, 100, 80, 80])
-        table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E5E7EB')),  # Light gray background
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),  # Changed text color
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ]))
-        elements.append(table)
-
-        doc.build(elements)
-        return response
-
-class AppointmentReminderView(LoginRequiredMixin, ListView):
-    model = ReminderTemplate
-    context_object_name = 'reminder_templates'
-
-    def dispatch(self, request, *args, **kwargs):
-        if not PermissionManager.check_module_access(self.request.user, 'appointment_management'):
-            messages.error(request, "You don't have permission to access appointment reminders")
-            return handler403(request, exception="Access Denied")
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_template_names(self):
-        return [get_template_path('appointment_reminders.html', self.request.user.role, 'appointment_management')]
-
-    def get_context_data(self, **kwargs):
-        try:
-            context = super().get_context_data(**kwargs)
-            
-            # Add reminder-related data
-            context.update({
-                'appointment_types': dict(Appointment.APPOINTMENT_TYPES),
-                'reminder_configs': ReminderConfiguration.objects.select_related().all(),
-                
-                # Statistics
-                'total_templates': ReminderTemplate.objects.count(),
-                'active_templates': ReminderTemplate.objects.filter(is_active=True).count(),
-                'total_reminders': AppointmentReminder.objects.count(),
-                'pending_reminders': AppointmentReminder.objects.filter(status='PENDING').count(),
-            })
-            
-            return context
-            
-        except Exception as e:
-            logger.error(f"Error in AppointmentReminderView context: {str(e)}")
-            messages.error(self.request, "Error loading reminder data")
-            return {}
-
-from .forms import ReminderTemplateForm
-
-class CreateReminderTemplateView(LoginRequiredMixin, View):
-    def post(self, request):
-        try:
-            form = ReminderTemplateForm(request.POST)
-            if form.is_valid():
-                template = form.save(commit=False)
-                template.created_by = request.user
-                template.save()
-                
-                messages.success(request, 'Reminder template created successfully!')
-                return redirect('appointment_reminders')
-            else:
-                messages.error(request, 'Failed to create template. Please check the form data.')
-                return redirect('appointment_reminders')
-        except Exception as e:
-            logger.error(f"Error creating reminder template: {str(e)}")
-            messages.error(request, 'An error occurred while creating the template.')
-            return redirect('appointment_reminders')
-
-from .forms import ReminderConfigurationForm
-
-class ConfigureReminderSettingsView(LoginRequiredMixin, View):
-    def get(self, request):
-        configs = ReminderConfiguration.objects.all()
-        return JsonResponse({
-            'configs': list(configs.values('id', 'appointment_type', 'reminder_types', 'is_active')),
-            'templates': list(ReminderTemplate.objects.filter(is_active=True).values('id', 'name'))
-        })
-
-    def post(self, request):
-        try:
-            appointment_type = request.POST.get('appointment_type')
-            template_ids = request.POST.getlist('templates')
-            
-            # Fix: Properly handle notification methods
-            reminder_types = {
-                'email': request.POST.get('notification_email') == 'on',
-                'sms': request.POST.get('notification_sms') == 'on'
-            }
-            
-            # Fix: Properly handle active status
-            is_active = request.POST.get('is_active') == 'on'
-
-            config, created = ReminderConfiguration.objects.update_or_create(
-                appointment_type=appointment_type,
-                defaults={
-                    'reminder_types': reminder_types,
-                    'is_active': is_active
-                }
-            )
-            
-            # Update templates
-            config.templates.set(template_ids)
-            
-            messages.success(request, 'Reminder settings updated successfully!')
-            return redirect('appointment_reminders')
-            
-        except Exception as e:
-            logger.error(f"Error configuring reminder settings: {str(e)}")
-            messages.error(request, 'Failed to update reminder settings')
-            return redirect('appointment_reminders')
-
-class DeleteReminderTemplateView(LoginRequiredMixin, View):
-    def post(self, request, template_id):
-        try:
-            template = get_object_or_404(ReminderTemplate, id=template_id)
-            template_name = template.name
-            
-            # Check if template is being used in any configurations
-            if template.configurations.exists():
-                messages.error(request, 'Cannot delete template as it is being used in active configurations.')
-                return redirect('appointment_reminders')
-            
-            template.delete()
-            messages.success(request, f'Template "{template_name}" deleted successfully.')
-            return redirect('appointment_reminders')
-            
-        except Exception as e:
-            logger.error(f"Error deleting reminder template: {str(e)}")
-            messages.error(request, 'Failed to delete template.')
-            return redirect('appointment_reminders')
-
-class DeleteReminderConfigurationView(LoginRequiredMixin, View):
-    def post(self, request, config_id):
-        try:
-            config = get_object_or_404(ReminderConfiguration, id=config_id)
-            appointment_type = config.get_appointment_type_display()
-            
-            # Remove template associations first
-            config.templates.clear()
-            config.delete()
-            
-            messages.success(request, f'Configuration for "{appointment_type}" deleted successfully.')
-            return redirect('appointment_reminders')
-            
-        except Exception as e:
-            logger.error(f"Error deleting reminder configuration: {str(e)}")
-            messages.error(request, 'Failed to delete configuration.')
-            return redirect('appointment_reminders')
-
-class EditReminderTemplateView(LoginRequiredMixin, View):
-    def get(self, request, template_id):
-        template = get_object_or_404(ReminderTemplate, id=template_id)
-        return JsonResponse({
-            'id': template.id,
-            'name': template.name,
-            'days_before': template.days_before,
-            'hours_before': template.hours_before,
-            'message_template': template.message_template,
-            'is_active': template.is_active,
-        })
-    
-    def post(self, request, template_id):
-        try:
-            template = get_object_or_404(ReminderTemplate, id=template_id)
-            form = ReminderTemplateForm(request.POST, instance=template)
-            
-            if form.is_valid():
-                template = form.save()
-                messages.success(request, f'Template "{template.name}" updated successfully.')
-                return redirect('appointment_reminders')
-            else:
-                messages.error(request, 'Failed to update template. Please check the form data.')
-                return redirect('appointment_reminders')
-                
-        except Exception as e:
-            logger.error(f"Error updating reminder template: {str(e)}")
-            messages.error(request, 'Failed to update template.')
-            return redirect('appointment_reminders')
-
-class EditReminderConfigurationView(LoginRequiredMixin, View):
-    def get(self, request, config_id):
-        config = get_object_or_404(ReminderConfiguration, id=config_id)
-        return JsonResponse({
-            'id': config.id,
-            'appointment_type': config.appointment_type,
-            'templates': list(config.templates.values_list('id', flat=True)),
-            'reminder_types': config.reminder_types,
-            'is_active': config.is_active
-        })
-
-    def post(self, request, config_id):
-        try:
-            config = get_object_or_404(ReminderConfiguration, id=config_id)
-            
-            # Update basic fields
-            config.appointment_type = request.POST.get('appointment_type')
-            config.reminder_types = {
-                'email': request.POST.get('notification_email') == 'on',
-                'sms': request.POST.get('notification_sms') == 'on'
-            }
-            config.is_active = request.POST.get('is_active') == 'on'
-            
-            # Update template associations
-            template_ids = request.POST.getlist('templates')
-            
-            with transaction.atomic():
-                config.save()
-                config.templates.set(template_ids)
-            
-            messages.success(request, f'Configuration for "{config.get_appointment_type_display()}" updated successfully.')
-            return redirect('appointment_reminders')
-            
-        except Exception as e:
-            logger.error(f"Error updating reminder configuration: {str(e)}")
-            messages.error(request, 'Failed to update configuration.')
-            return redirect('appointment_reminders')
-
-class AppointmentExportSingleView(LoginRequiredMixin, UserPassesTestMixin, View):
-    def test_func(self):
-        return PermissionManager.check_module_access(self.request.user, 'appointment_management')
-
-    def get(self, request, appointment_id):
-        try:
-            appointment = get_object_or_404(Appointment, id=appointment_id)
-            export_format = request.GET.get('format', 'csv')
-
-            if export_format == 'csv':
-                return self.export_csv(appointment)
-            elif export_format == 'pdf':
-                return self.export_pdf(appointment)
-            else:
-                messages.error(request, "Invalid export format")
-                return redirect('appointment_dashboard')
-
-        except Exception as e:
-            messages.error(request, f"Export failed: {str(e)}")
-            return redirect('appointment_dashboard')
-
-    def export_csv(self, appointment):
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="appointment_{appointment.id}.csv"'
-
-        writer = csv.writer(response)
-        writer.writerow([
-            'Appointment ID',
-            'Patient Name',
-            'Doctor Name',
-            'Date',
-            'Time',
-            'Type',
-            'Status',
-            'Priority',
-            'Notes',
-            'Created At',
-            'Last Updated',
-            'Cancellation Reason'
-        ])
-
-        # Get cancellation reason if exists
-        cancellation_reason = appointment.cancellation_reason.reason if hasattr(appointment, 'cancellation_reason') else 'N/A'
-
-        writer.writerow([
-            appointment.id,
-            appointment.patient.get_full_name(),
-            appointment.doctor.get_full_name(),
-            appointment.date,
-            appointment.time_slot.start_time if appointment.time_slot else 'N/A',
-            appointment.get_appointment_type_display(),
-            appointment.get_status_display(),
-            appointment.get_priority_display(),
-            appointment.notes or 'N/A',
-            appointment.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            appointment.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
-            cancellation_reason
-        ])
-
-        return response
-
-    def export_pdf(self, appointment):
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="appointment_{appointment.id}.pdf"'
-
-        doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-        elements = []
-
-        # Styles
-        styles = getSampleStyleSheet()
-        title_style = styles['Heading1']
-        subtitle_style = styles['Heading2']
-        normal_style = styles['Normal']
-
-        # Title
-        elements.append(Paragraph(f'Appointment Details - #{appointment.id}', title_style))
-        elements.append(Spacer(1, 20))
-
-        # Basic Info
-        elements.append(Paragraph('Basic Information', subtitle_style))
-        elements.append(Spacer(1, 10))
-
-        data = [
-            ['Patient Name:', appointment.patient.get_full_name()],
-            ['Doctor Name:', appointment.doctor.get_full_name()],
-            ['Date:', appointment.date.strftime('%B %d, %Y')],
-            ['Time:', appointment.time_slot.start_time.strftime('%I:%M %p') if appointment.time_slot else 'N/A'],
-            ['Type:', appointment.get_appointment_type_display()],
-            ['Status:', appointment.get_status_display()],
-            ['Priority:', appointment.get_priority_display()]
-        ]
-
-        # Create table for basic info
-        table = Table(data, colWidths=[120, 300])
-        table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.grey),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ]))
-        elements.append(table)
-        elements.append(Spacer(1, 20))
-
-        # Notes Section
-        if appointment.notes:
-            elements.append(Paragraph('Notes', subtitle_style))
-            elements.append(Spacer(1, 10))
-            elements.append(Paragraph(appointment.notes, normal_style))
-            elements.append(Spacer(1, 20))
-
-        # Cancellation Info
-        if hasattr(appointment, 'cancellation_reason'):
-            elements.append(Paragraph('Cancellation Information', subtitle_style))
-            elements.append(Spacer(1, 10))
-            cancel_data = [
-                ['Reason:', appointment.cancellation_reason.reason],
-                ['Cancelled By:', appointment.cancellation_reason.cancelled_by.get_full_name()],
-                ['Cancelled At:', appointment.cancellation_reason.cancelled_at.strftime('%B %d, %Y %I:%M %p')]
-            ]
-            cancel_table = Table(cancel_data, colWidths=[120, 300])
-            cancel_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('TEXTCOLOR', (0, 0), (0, -1), colors.grey),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ]))
-            elements.append(cancel_table)
-
-        doc.build(elements)
-        return response
+        
 
 class AppointmentRescheduleView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
