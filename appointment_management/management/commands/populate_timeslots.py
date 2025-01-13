@@ -18,8 +18,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--days',
             type=int,
-            default=30,
-            help='Number of days to generate slots for (default: 30)'
+            default=100,
+            help='Number of days to generate slots for (default: 100)'
         )
         parser.add_argument(
             '--clear',
