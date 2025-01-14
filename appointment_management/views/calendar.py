@@ -41,10 +41,10 @@ class AppointmentCalendarView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
             year = int(self.request.GET.get('year', timezone.now().year))
             month = int(self.request.GET.get('month', timezone.now().month))
             
-            # Get filter parameters
-            doctor_id = self.request.GET.get('doctor')
-            center_id = self.request.GET.get('center')
-            availability = self.request.GET.get('availability')
+            # Get filter parameters - change None to empty string
+            doctor_id = self.request.GET.get('doctor', '')
+            center_id = self.request.GET.get('center', '')
+            availability = self.request.GET.get('availability', '')
             
             # Get first and last day of month
             _, last_day = monthrange(year, month)
@@ -58,12 +58,12 @@ class AppointmentCalendarView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
                 date__range=[start_date, end_date]
             )
 
-            # Apply filters
-            if doctor_id:
+            # Apply filters only if they have values
+            if doctor_id and doctor_id != 'None':
                 slots = slots.filter(doctor_id=doctor_id)
-            if center_id:
+            if center_id and center_id != 'None':
                 slots = slots.filter(center_id=center_id)
-            if availability:
+            if availability and availability != 'None':
                 is_available = availability == 'available'
                 slots = slots.filter(is_available=is_available)
 
@@ -103,9 +103,9 @@ class AppointmentCalendarView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
                 'next_month': (datetime(year, month, last_day) + timedelta(days=1)).strftime('%Y-%m'),
                 'doctors': doctors,
                 'centers': centers,
-                'selected_doctor': doctor_id,
-                'selected_center': center_id,
-                'selected_availability': availability,
+                'selected_doctor': doctor_id if doctor_id and doctor_id != 'None' else '',
+                'selected_center': center_id if center_id and center_id != 'None' else '',
+                'selected_availability': availability if availability and availability != 'None' else '',
                 'page_title': 'Appointment Calendar',
                 'page_description': 'View and manage appointment slots across all centers'
             })

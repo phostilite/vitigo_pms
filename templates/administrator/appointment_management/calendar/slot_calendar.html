@@ -61,11 +61,11 @@
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-bold text-gray-900">{{ month_name }} {{ year }}</h2>
         <div class="flex space-x-2">
-            <a href="?year={{ prev_month|slice:':4' }}&month={{ prev_month|slice:'5:7' }}&doctor={{ selected_doctor }}&center={{ selected_center }}&availability={{ selected_availability }}" 
+            <a href="?year={{ prev_month|slice:':4' }}&month={{ prev_month|slice:'5:7' }}{% if selected_doctor %}&doctor={{ selected_doctor }}{% endif %}{% if selected_center %}&center={{ selected_center }}{% endif %}{% if selected_availability %}&availability={{ selected_availability }}{% endif %}" 
                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                 <i class="fas fa-chevron-left mr-2"></i> Previous
             </a>
-            <a href="?year={{ next_month|slice:':4' }}&month={{ next_month|slice:'5:7' }}&doctor={{ selected_doctor }}&center={{ selected_center }}&availability={{ selected_availability }}" 
+            <a href="?year={{ next_month|slice:':4' }}&month={{ next_month|slice:'5:7' }}{% if selected_doctor %}&doctor={{ selected_doctor }}{% endif %}{% if selected_center %}&center={{ selected_center }}{% endif %}{% if selected_availability %}&availability={{ selected_availability }}{% endif %}" 
                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                 Next <i class="fas fa-chevron-right ml-2"></i>
             </a>
