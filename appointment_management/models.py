@@ -53,9 +53,7 @@ class DoctorTimeSlot(models.Model):
     center = models.ForeignKey(
         Center,
         on_delete=models.CASCADE,
-        related_name='doctor_time_slots',
-        blank=True,
-        null=True
+        related_name='doctor_time_slots'
     )
     date = models.DateField()
     start_time = models.TimeField()
@@ -69,33 +67,6 @@ class DoctorTimeSlot(models.Model):
 
     def __str__(self):
         return f"{self.date} {self.start_time}-{self.end_time}"
-
-    def clean(self):
-        # Check if the time slot falls within doctor's availability at the specific center
-        day_of_week = self.date.weekday()
-        availability = self.doctor.availability.filter(
-            center=self.center,
-            day_of_week=day_of_week,
-            start_time__lte=self.start_time,
-            end_time__gte=self.end_time,
-            is_available=True
-        ).exists()
-        
-        if not availability:
-            raise ValidationError("Time slot is outside doctor's availability hours at this center")
-
-        # Check for overlapping slots at the same center
-        overlapping_slots = DoctorTimeSlot.objects.filter(
-            doctor=self.doctor,
-            center=self.center,
-            date=self.date,
-            start_time__lt=self.end_time,
-            end_time__gt=self.start_time
-        )
-        if self.pk:
-            overlapping_slots = overlapping_slots.exclude(pk=self.pk)
-        if overlapping_slots.exists():
-            raise ValidationError("This time slot overlaps with another slot at the same center")
 
 
 class Appointment(models.Model):

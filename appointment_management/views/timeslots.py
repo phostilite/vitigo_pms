@@ -9,6 +9,7 @@ from ..models import DoctorTimeSlot, Center
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403
 from ..utils import get_template_path
+from ..forms import DoctorTimeSlotForm
 from django.contrib.auth import get_user_model
 import logging
 from django.db.models import Count, Q
@@ -127,24 +128,44 @@ class DoctorTimeSlotsView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
 class DoctorTimeSlotCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = DoctorTimeSlot
-    fields = ['doctor', 'center', 'date', 'start_time', 'end_time']
-    success_url = reverse_lazy('timeslot_management')
+    form_class = DoctorTimeSlotForm
+    success_url = reverse_lazy('timeslot_dashboard')
 
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'appointment_management')
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to create time slots")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_names(self):
+        return [get_template_path(
+            'timeslots/create.html',
+            self.request.user.role,
+            'appointment_management'
+        )]
+
     def form_valid(self, form):
         try:
             with transaction.atomic():
-                timeslot = form.save(commit=False)
-                timeslot.is_available = True
-                timeslot.save()
+                self.object = form.save()
                 messages.success(self.request, "Time slot created successfully")
                 return super().form_valid(form)
         except Exception as e:
             logger.error(f"Error creating time slot: {str(e)}")
             messages.error(self.request, f"Error creating time slot: {str(e)}")
-            return super().form_invalid(form)
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below")
+        return super().form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = "Create Time Slot"
+        return context
 
 class DoctorTimeSlotUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = DoctorTimeSlot

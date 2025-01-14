@@ -1,0 +1,149 @@
+{% extends '../../base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="p-4 mt-14 sm:ml-64">
+    <!-- Breadcrumb -->
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'appointment_dashboard' %}" class="hover:text-blue-600"><i class="fas fa-calendar-check mr-2"></i>Appointments</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li><a href="{% url 'timeslot_dashboard' %}" class="hover:text-blue-600">Time Slot Management</a></li>
+            <li><i class="fas fa-chevron-right text-gray-400 text-sm"></i></li>
+            <li class="text-gray-400">Create Time Slot</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Create New Time Slot</h1>
+            <p class="mt-1 text-sm text-gray-600">Add a new time slot for doctor availability</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-3xl bg-white rounded-lg shadow p-6">
+        {% if messages %}
+        <div class="mb-6">
+            {% for message in messages %}
+            <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Doctor Selection -->
+                <div class="space-y-2">
+                    <label for="{{ form.doctor.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Doctor <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.doctor }}
+                    {% if form.doctor.errors %}
+                    <div class="text-red-500 text-sm">
+                        {% for error in form.doctor.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Center Selection -->
+                <div class="space-y-2">
+                    <label for="{{ form.center.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Medical Center <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.center }}
+                    {% if form.center.errors %}
+                    <div class="text-red-500 text-sm">
+                        {% for error in form.center.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Date -->
+                <div class="space-y-2">
+                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Date <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.date }}
+                    {% if form.date.errors %}
+                    <div class="text-red-500 text-sm">
+                        {% for error in form.date.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Time Range -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label for="{{ form.start_time.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Start Time <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.start_time }}
+                        {% if form.start_time.errors %}
+                        <div class="text-red-500 text-sm">
+                            {% for error in form.start_time.errors %}
+                            <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="{{ form.end_time.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            End Time <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.end_time }}
+                        {% if form.end_time.errors %}
+                        <div class="text-red-500 text-sm">
+                            {% for error in form.end_time.errors %}
+                            <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-4 pt-4 border-t">
+                <a href="{% url 'timeslot_dashboard' %}" 
+                   class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Create Time Slot
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Enhance form fields with select2 for better dropdown experience
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize doctor and center select fields with select2
+        $('#id_doctor, #id_center').select2({
+            theme: 'default',
+            width: '100%',
+            placeholder: 'Select an option',
+        });
+
+        // Set min date for date picker to today
+        const dateInput = document.getElementById('{{ form.date.id_for_label }}');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+    });
+</script>
+{% endblock %}

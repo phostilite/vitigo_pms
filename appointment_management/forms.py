@@ -1,5 +1,5 @@
 from django import forms
-from .models import Appointment, DoctorTimeSlot, ReminderTemplate, ReminderConfiguration
+from .models import Appointment, DoctorTimeSlot, ReminderTemplate, ReminderConfiguration, Center
 from django.contrib.auth import get_user_model
 from access_control.models import Role
 from django.utils import timezone
@@ -124,3 +124,42 @@ class ReminderConfigurationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['templates'].queryset = ReminderTemplate.objects.filter(is_active=True)
+
+class DoctorTimeSlotForm(forms.ModelForm):
+    class Meta:
+        model = DoctorTimeSlot
+        fields = ['doctor', 'center', 'date', 'start_time', 'end_time']
+        widgets = {
+            'doctor': forms.Select(attrs={'class': 'form-select rounded-lg'}),
+            'center': forms.Select(attrs={'class': 'form-select rounded-lg'}),
+            'date': forms.DateInput(attrs={'class': 'form-input rounded-lg', 'type': 'date'}),
+            'start_time': forms.TimeInput(attrs={'class': 'form-input rounded-lg', 'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'class': 'form-input rounded-lg', 'type': 'time'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['doctor'].queryset = User.objects.filter(role__name='DOCTOR', is_active=True)
+        self.fields['center'].queryset = Center.objects.filter(is_active=True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+        date = cleaned_data.get('date')
+
+        if start_time and end_time and date:
+            # Check if start time is before end time
+            if start_time >= end_time:
+                raise forms.ValidationError("End time must be after start time")
+
+            # Check if date is not in the past
+            if date < timezone.now().date():
+                raise forms.ValidationError("Cannot create time slots for past dates")
+
+            # Check if slot duration is valid (minimum 15 minutes)
+            time_diff = datetime.combine(date, end_time) - datetime.combine(date, start_time)
+            if time_diff.total_seconds() < 900:  # 900 seconds = 15 minutes
+                raise forms.ValidationError("Time slot must be at least 15 minutes long")
+
+        return cleaned_data
