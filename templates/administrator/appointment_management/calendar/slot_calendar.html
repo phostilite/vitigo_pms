@@ -102,7 +102,16 @@
                     <!-- Slots -->
                     <div class="space-y-1 overflow-y-auto max-h-[120px]">
                         {% for slot in slots %}
-                            <div class="text-xs p-1 rounded {% if slot.is_available %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            <div data-modal-target="slot-details-modal" 
+                                 data-modal-toggle="slot-details-modal"
+                                 data-slot-id="{{ slot.id }}"
+                                 data-slot-doctor="{{ slot.doctor_name }}"
+                                 data-slot-center="{{ slot.center_name }}"
+                                 data-slot-date="{{ date|date:'F d, Y' }}"
+                                 data-slot-start="{{ slot.start_time }}"
+                                 data-slot-end="{{ slot.end_time }}"
+                                 data-slot-available="{{ slot.is_available|lower }}"
+                                 class="text-xs p-1 rounded cursor-pointer hover:opacity-75 transition-opacity {% if slot.is_available %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
                                 <div class="font-semibold">{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</div>
                                 <div class="truncate">Dr. {{ slot.doctor_name }}</div>
                                 <div class="truncate text-xs opacity-75">{{ slot.center_name }}</div>
@@ -127,7 +136,119 @@
     </div>
 </div>
 
+<!-- Enhanced Slot Details Modal -->
+<div id="slot-details-modal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative w-full max-w-2xl max-h-full">
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-2xl shadow-xl">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-6 border-b rounded-t bg-gray-50">
+                <h3 class="text-2xl font-semibold text-gray-900">
+                    <i class="fas fa-calendar-check mr-2 text-indigo-600"></i>
+                    Appointment Slot Information
+                </h3>
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center" data-modal-hide="slot-details-modal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal body -->
+            <div class="p-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <!-- Doctor Information -->
+                    <div class="col-span-1">
+                        <div class="text-center">
+                            <img id="modal-doctor-image" src="{% static 'images/default-doctor.png' %}" alt="Doctor" class="w-32 h-32 rounded-full mx-auto mb-4 border-4 border-indigo-100 shadow-md">
+                            <h4 class="text-xl font-semibold text-gray-900" id="modal-doctor"></h4>
+                            <p class="text-sm text-gray-500">Dermatologist</p>
+                        </div>
+                    </div>
+
+                    <!-- Appointment Details -->
+                    <div class="col-span-2 space-y-6">
+                        <!-- Date and Time -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="far fa-clock text-xl text-indigo-600 mr-3"></i>
+                                <div>
+                                    <h5 class="font-medium text-gray-900">Date & Time</h5>
+                                    <p class="text-gray-600" id="modal-date"></p>
+                                    <p class="text-gray-600" id="modal-time"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Center Information -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-start mb-3">
+                                <i class="far fa-hospital text-xl text-indigo-600 mr-3 mt-1"></i>
+                                <div>
+                                    <h5 class="font-medium text-gray-900" id="modal-center"></h5>
+                                    <p class="text-gray-600" id="modal-center-address">123 Medical Center Drive</p>
+                                    <p class="text-gray-600" id="modal-center-phone">+1 (555) 123-4567</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Badge -->
+                        <div class="inline-flex items-center">
+                            <span class="text-sm font-medium mr-2">Status:</span>
+                            <span id="modal-status-badge" class="px-3 py-1 rounded-full text-sm font-medium"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal footer -->
+            <div class="flex items-center justify-end p-6 space-x-2 border-t bg-gray-50 rounded-b">
+                <button data-modal-hide="slot-details-modal" type="button" 
+                        class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update modal content when a slot is clicked
+        document.querySelectorAll('[data-modal-target="slot-details-modal"]').forEach(slot => {
+            slot.addEventListener('click', function() {
+                const slotData = this.dataset;
+                
+                // Update doctor information
+                document.getElementById('modal-doctor').textContent = `Dr. ${slotData.slotDoctor}`;
+                
+                // Format and update date/time
+                const date = new Date(slotData.slotDate);
+                const formattedDate = date.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                document.getElementById('modal-date').textContent = formattedDate;
+                document.getElementById('modal-time').textContent = `${slotData.slotStart} - ${slotData.slotEnd}`;
+                
+                // Update center information
+                document.getElementById('modal-center').textContent = slotData.slotCenter;
+                
+                // Update status badge
+                const statusBadge = document.getElementById('modal-status-badge');
+                if (slotData.slotAvailable === 'true') {
+                    statusBadge.textContent = 'Available';
+                    statusBadge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800';
+                } else {
+                    statusBadge.textContent = 'Booked';
+                    statusBadge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800';
+                }
+            });
+        });
+    });
+
     // Auto-submit form when filters change
     document.querySelectorAll('select[name="doctor"], select[name="center"], select[name="availability"]').forEach(select => {
         select.addEventListener('change', () => {
