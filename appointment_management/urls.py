@@ -7,10 +7,11 @@ from .views import (
 )
 from .views.calendar import AppointmentCalendarView
 from .views.timeslots import (
-    DoctorTimeSlotManagementView,
+    DoctorTimeSlotDashboardView,
+    DoctorTimeSlotsView,
     DoctorTimeSlotCreateView,
     DoctorTimeSlotUpdateView,
-    DoctorTimeSlotDeleteView
+    DoctorTimeSlotDeleteView,
 )
 
 # URL patterns grouped by functionality
@@ -36,16 +37,6 @@ urlpatterns = [
     path('<int:appointment_id>/acknowledge/', 
          appointment_views.acknowledge_appointment, 
          name='acknowledge_appointment'),
-
-    # Doctor Timeslot Management URLs
-    path('doctor-timeslots/', appointment_views.get_doctor_timeslots, 
-         name='doctor_timeslots'),
-    path('doctor-timeslots/<int:timeslot_id>/', 
-         appointment_views.update_doctor_timeslot, 
-         name='update_doctor_timeslot'),
-    path('appointments/<int:appointment_id>/timeslot/', 
-         appointment_views.update_appointment_timeslot, 
-         name='update_appointment_timeslot'),
 
     # Export URLs
     path('export/', export_views.AppointmentExportView.as_view(), 
@@ -79,9 +70,11 @@ urlpatterns = [
     # Calendar URL
     path('calendar/', AppointmentCalendarView.as_view(), name='appointment_calendar'),
 
-    # Time Slot Management URLs
-    path('timeslots/', DoctorTimeSlotManagementView.as_view(), name='timeslot_management'),
+    # Time Slot Management URLs - Reorganized
+    path('timeslots/', DoctorTimeSlotDashboardView.as_view(), name='timeslot_dashboard'),
+    path('timeslots/<int:pk>/', DoctorTimeSlotsView.as_view(), name='doctor_timeslots'),
     path('timeslots/create/', DoctorTimeSlotCreateView.as_view(), name='timeslot_create'),
-    path('timeslots/<int:pk>/update/', DoctorTimeSlotUpdateView.as_view(), name='timeslot_update'),
-    path('timeslots/<int:pk>/delete/', DoctorTimeSlotDeleteView.as_view(), name='timeslot_delete'),
+    path('timeslots/slot/<int:pk>/edit/', DoctorTimeSlotUpdateView.as_view(), name='timeslot_update'),
+    path('timeslots/slot/<int:pk>/delete/', DoctorTimeSlotDeleteView.as_view(), name='timeslot_delete'),
+
 ]

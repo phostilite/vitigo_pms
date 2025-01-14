@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.utils import timezone
@@ -11,78 +11,117 @@ from error_handling.views import handler403
 from ..utils import get_template_path
 from django.contrib.auth import get_user_model
 import logging
+from django.db.models import Count, Q
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
-class DoctorTimeSlotManagementView(LoginRequiredMixin, UserPassesTestMixin, ListView):
-    model = DoctorTimeSlot
-    context_object_name = 'timeslots'
-    paginate_by = 20
+class DoctorTimeSlotDashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    context_object_name = 'doctors'
+    
+    def test_func(self):
+        return PermissionManager.check_module_access(self.request.user, 'appointment_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to manage doctor time slots")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_names(self):
+        return [get_template_path(
+            'timeslots/dashboard.html',
+            self.request.user.role,
+            'appointment_management'
+        )]
+    
+    def get_queryset(self):
+        return User.objects.filter(
+            role__name='DOCTOR',
+            is_active=True
+        ).annotate(
+            total_slots=Count('time_slots'),
+            available_slots=Count('time_slots', filter=Q(time_slots__is_available=True)),
+            booked_slots=Count('time_slots', filter=Q(time_slots__is_available=False))
+        ).order_by('first_name')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['centers'] = Center.objects.filter(is_active=True)
+        return context
+
+class DoctorTimeSlotsView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    context_object_name = 'doctor'
+    model = User
 
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'appointment_management')
 
     def dispatch(self, request, *args, **kwargs):
         if not self.test_func():
-            messages.error(request, "You don't have permission to manage time slots")
+            messages.error(request, "You don't have permission to view doctor time slots")
             return handler403(request, exception="Access Denied")
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):
         return [get_template_path(
-            'timeslots/list.html',
+            'timeslots/doctor_slots.html',
             self.request.user.role,
             'appointment_management'
         )]
 
-    def get_queryset(self):
-        queryset = DoctorTimeSlot.objects.select_related('doctor', 'center').filter(
-            date__gte=timezone.now().date()
-        )
-
-        # Apply filters
-        doctor_id = self.request.GET.get('doctor')
-        center_id = self.request.GET.get('center')
-        date_from = self.request.GET.get('date_from')
-        date_to = self.request.GET.get('date_to')
-        availability = self.request.GET.get('availability')
-
-        if doctor_id:
-            queryset = queryset.filter(doctor_id=doctor_id)
-        if center_id:
-            queryset = queryset.filter(center_id=center_id)
-        if date_from:
-            queryset = queryset.filter(date__gte=date_from)
-        if date_to:
-            queryset = queryset.filter(date__lte=date_to)
-        if availability:
-            is_available = availability == 'available'
-            queryset = queryset.filter(is_available=is_available)
-
-        return queryset.order_by('date', 'start_time')
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # Add filters data
-        context['doctors'] = User.objects.filter(
-            role__name='DOCTOR',
-            is_active=True
-        ).order_by('first_name')
-        
-        context['centers'] = Center.objects.filter(
-            is_active=True
-        ).order_by('name')
-        
-        # Add selected filter values
-        context.update({
-            'selected_doctor': self.request.GET.get('doctor', ''),
-            'selected_center': self.request.GET.get('center', ''),
-            'selected_date_from': self.request.GET.get('date_from', ''),
-            'selected_date_to': self.request.GET.get('date_to', ''),
-            'selected_availability': self.request.GET.get('availability', ''),
-        })
+        try:
+            # Get filter parameters
+            center_id = self.request.GET.get('center')
+            date = self.request.GET.get('date', timezone.now().date())
+            
+            # Base queryset with efficient joins
+            slots = DoctorTimeSlot.objects.select_related('center').filter(
+                doctor=self.object,
+                date__gte=timezone.now().date()
+            ).order_by('date', 'start_time')
+            
+            # Apply filters
+            if center_id:
+                slots = slots.filter(center_id=center_id)
+            if date:
+                slots = slots.filter(date=date)
+            
+            # Group slots by date for better organization
+            slots_by_date = {}
+            for slot in slots:
+                if slot.date not in slots_by_date:
+                    slots_by_date[slot.date] = {
+                        'total': 0,
+                        'available': 0,
+                        'slots': []
+                    }
+                
+                slots_by_date[slot.date]['slots'].append(slot)
+                slots_by_date[slot.date]['total'] += 1
+                if slot.is_available:
+                    slots_by_date[slot.date]['available'] += 1
+            
+            context.update({
+                'slots_by_date': slots_by_date,
+                'centers': Center.objects.filter(is_active=True),
+                'selected_center': center_id,
+                'selected_date': date,
+                'page_title': f"Time Slots - Dr. {self.object.get_full_name()}",
+                'total_slots': sum(data['total'] for data in slots_by_date.values()),
+                'available_slots': sum(data['available'] for data in slots_by_date.values())
+            })
+            
+        except Exception as e:
+            logger.error(f"Error fetching doctor time slots: {str(e)}")
+            messages.error(self.request, "Error loading time slots")
+            context.update({
+                'error': True,
+                'slots_by_date': {},
+                'centers': Center.objects.filter(is_active=True)
+            })
         
         return context
 
