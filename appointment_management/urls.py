@@ -5,6 +5,7 @@ from .views import (
     exports as export_views,
     reminders as reminder_views,
 )
+from .views.calendar import AppointmentCalendarView
 
 # URL patterns grouped by functionality
 urlpatterns = [
@@ -68,4 +69,7 @@ urlpatterns = [
     path('reminders/edit-config/<int:config_id>/', 
          reminder_views.EditReminderConfigurationView.as_view(), 
          name='edit_reminder_config'),
+
+    # Calendar URL
+    path('calendar/', AppointmentCalendarView.as_view(), name='appointment_calendar'),
 ]
