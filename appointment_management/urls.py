@@ -6,6 +6,12 @@ from .views import (
     reminders as reminder_views,
 )
 from .views.calendar import AppointmentCalendarView
+from .views.timeslots import (
+    DoctorTimeSlotManagementView,
+    DoctorTimeSlotCreateView,
+    DoctorTimeSlotUpdateView,
+    DoctorTimeSlotDeleteView
+)
 
 # URL patterns grouped by functionality
 urlpatterns = [
@@ -72,4 +78,10 @@ urlpatterns = [
 
     # Calendar URL
     path('calendar/', AppointmentCalendarView.as_view(), name='appointment_calendar'),
+
+    # Time Slot Management URLs
+    path('timeslots/', DoctorTimeSlotManagementView.as_view(), name='timeslot_management'),
+    path('timeslots/create/', DoctorTimeSlotCreateView.as_view(), name='timeslot_create'),
+    path('timeslots/<int:pk>/update/', DoctorTimeSlotUpdateView.as_view(), name='timeslot_update'),
+    path('timeslots/<int:pk>/delete/', DoctorTimeSlotDeleteView.as_view(), name='timeslot_delete'),
 ]
