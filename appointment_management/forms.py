@@ -19,10 +19,11 @@ class AppointmentCreateForm(forms.ModelForm):
 
     class Meta:
         model = Appointment
-        fields = ['patient', 'doctor', 'appointment_type', 'date', 'priority', 'notes', 'timeslot_id']
+        fields = ['patient', 'doctor', 'center', 'appointment_type', 'date', 'priority', 'notes', 'timeslot_id']
         widgets = {
             'patient': forms.Select(attrs={'class': 'form-select'}),
             'doctor': forms.Select(attrs={'class': 'form-select'}),
+            'center': forms.Select(attrs={'class': 'form-select'}),
             'appointment_type': forms.Select(attrs={'class': 'form-select'}),
             'priority': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
@@ -30,6 +31,7 @@ class AppointmentCreateForm(forms.ModelForm):
         help_texts = {
             'patient': 'Select the patient who needs the appointment',
             'doctor': 'Select the doctor you want to consult with',
+            'center': 'Select the medical center where the appointment will take place',
             'appointment_type': 'Choose the type of appointment (consultation, follow-up, procedure, or phototherapy)',
             'priority': 'Set priority level - High (A) for urgent cases, Medium (B) for regular visits, Low (C) for routine checkups',
             'notes': 'Add any relevant details, symptoms, or concerns for the doctor (optional)',
@@ -54,8 +56,9 @@ class AppointmentCreateForm(forms.ModelForm):
         cleaned_data = super().clean()
         date = cleaned_data.get('date')
         timeslot_id = cleaned_data.get('timeslot_id')
+        center = cleaned_data.get('center')
 
-        if date and timeslot_id:
+        if date and timeslot_id and center:
             try:
                 time_slot = DoctorTimeSlot.objects.get(id=timeslot_id)
                 current_datetime = timezone.now()
@@ -81,6 +84,12 @@ class AppointmentCreateForm(forms.ModelForm):
                 if not time_slot.is_available:
                     raise forms.ValidationError(
                         "This time slot is no longer available."
+                    )
+
+                # Check if time slot belongs to selected center
+                if time_slot.center != center:
+                    raise forms.ValidationError(
+                        "Selected time slot is not available at this center."
                     )
 
             except DoctorTimeSlot.DoesNotExist:

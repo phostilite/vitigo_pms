@@ -61,7 +61,8 @@ from ..models import (
     DoctorTimeSlot,
     ReminderConfiguration,
     ReminderTemplate,
-    AppointmentAcknowledgement
+    AppointmentAcknowledgement,
+    Center
 )
 
 # Logger configuration
@@ -262,10 +263,11 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
 @api_view(['GET'])
 def get_doctor_timeslots(request):
     """
-    Get all timeslots for a doctor on a specific date.
+    Get all timeslots for a doctor on a specific date at a specific center.
     Required query parameters:
     - user_id: ID of the doctor
     - date: Date in YYYY-MM-DD format
+    - center_id: ID of the medical center
     """
     logger.info("Fetching doctor timeslots")
     
@@ -288,6 +290,15 @@ def get_doctor_timeslots(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Get and validate center_id
+        center_id = request.GET.get('center_id')
+        if not center_id:
+            logger.error("No center_id provided")
+            return Response(
+                {"error": "center_id is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError as e:
@@ -297,9 +308,11 @@ def get_doctor_timeslots(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get the user and doctor profile
+        # Get the user, doctor profile, and center
         try:
             user = User.objects.get(id=user_id)
+            center = Center.objects.get(id=center_id, is_active=True)
+            
             if not user.role.name == 'DOCTOR':
                 logger.error(f"User {user_id} is not a doctor")
                 return Response(
@@ -307,19 +320,25 @@ def get_doctor_timeslots(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            doctor_profile = DoctorProfile.objects.get(user=user)
-        except (User.DoesNotExist, DoctorProfile.DoesNotExist) as e:
-            logger.error(f"Doctor profile not found for user {user_id}: {str(e)}")
+        except User.DoesNotExist:
+            logger.error(f"Doctor not found with ID {user_id}")
             return Response(
-                {"error": "Doctor profile not found"}, 
+                {"error": "Doctor not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Center.DoesNotExist:
+            logger.error(f"Center not found with ID {center_id}")
+            return Response(
+                {"error": "Center not found or inactive"}, 
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Get all timeslots for the doctor on the specified date
+        # Get all timeslots for the doctor on the specified date at the specified center
         current_datetime = timezone.now()
         timeslots = DoctorTimeSlot.objects.filter(
-            doctor=user,  # Changed from doctor_profile to user
-            date=date
+            doctor=user,
+            date=date,
+            center=center
         ).order_by('start_time')
 
         # Filter out past time slots
@@ -334,20 +353,24 @@ def get_doctor_timeslots(request):
                     'id': slot.id,
                     'start_time': slot.start_time.strftime('%H:%M'),
                     'end_time': slot.end_time.strftime('%H:%M'),
-                    'is_available': slot.is_available
+                    'is_available': slot.is_available,
+                    'center_id': slot.center.id,
+                    'center_name': slot.center.name
                 })
 
         if not timeslots_data:
             return Response({
                 'doctor_name': user.get_full_name(),
                 'date': date_str,
+                'center_name': center.name,
                 'timeslots': [],
-                'message': 'No available time slots found for this date.'
+                'message': 'No available time slots found for this date and center.'
             })
 
         return Response({
             'doctor_name': user.get_full_name(),
             'date': date_str,
+            'center_name': center.name,
             'timeslots': timeslots_data
         })
 

@@ -12,7 +12,8 @@ from appointment_management.models import (
     ReminderConfiguration,
     AppointmentReminder,
     CancellationReason,
-    AppointmentAcknowledgement
+    AppointmentAcknowledgement,
+    Center
 )
 from access_control.models import Role
 import random
@@ -43,24 +44,13 @@ class Command(BaseCommand):
 
         try:
             with transaction.atomic():
-                if not keep_existing:
-                    # Delete all related data except timeslots
-                    self.stdout.write("Deleting existing appointment data...")
-                    AppointmentAcknowledgement.objects.all().delete()
-                    CancellationReason.objects.all().delete()
-                    AppointmentReminder.objects.all().delete()
-                    Appointment.objects.all().delete()
-                    ReminderTemplate.objects.all().delete()
-                    ReminderConfiguration.objects.all().delete()
-                    TimeSlotConfig.objects.all().delete()
+                # Always run populate_timeslots first to ensure clean data
+                self.stdout.write("Running populate_timeslots command first...")
+                call_command('populate_timeslots')
 
-                # Create TimeSlotConfig entries
+                # Create configurations
                 self.create_timeslot_configs()
-
-                # Create ReminderTemplates
                 self.create_reminder_templates()
-
-                # Create ReminderConfigurations
                 self.create_reminder_configurations()
 
                 # Get roles and users
@@ -76,11 +66,6 @@ class Command(BaseCommand):
                 if not patients.exists() or not doctors.exists():
                     self.stdout.write(self.style.ERROR('No active patients or doctors found'))
                     return
-
-                # Check if we have existing timeslots
-                if not DoctorTimeSlot.objects.exists():
-                    self.stdout.write("No timeslots found. Running populate_timeslots command...")
-                    call_command('populate_timeslots')
 
                 # Create appointments with diverse data using existing timeslots
                 self.create_diverse_appointments(count, doctors, patients)
@@ -145,7 +130,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Created reminder configurations'))
 
     def create_diverse_appointments(self, count, doctors, patients):
-        """Create appointments with diverse types, statuses, and priorities using existing timeslots"""
+        """Create appointments with diverse types, statuses, and priorities"""
         appointment_types = [choice[0] for choice in Appointment.APPOINTMENT_TYPES]
         statuses = [choice[0] for choice in Appointment.STATUS_CHOICES]
         priorities = [choice[0] for choice in Appointment.PRIORITY_CHOICES]
@@ -154,17 +139,28 @@ class Command(BaseCommand):
         cancelled_count = 0
         acknowledged_count = 0
 
+        # Get all centers
+        centers = list(Center.objects.filter(is_active=True))
+        if not centers:
+            self.stdout.write(self.style.ERROR('No active centers found'))
+            return
+
         # Get all available timeslots
-        available_timeslots = list(DoctorTimeSlot.objects.filter(is_available=True))
+        available_timeslots = list(DoctorTimeSlot.objects.filter(
+            is_available=True,
+            center__in=centers
+        ))
+        
         if not available_timeslots:
             self.stdout.write(self.style.ERROR('No available timeslots found'))
             return
 
         for _ in range(count):
             try:
-                # Randomly select a timeslot and its associated doctor
+                # Randomly select a timeslot and its associated doctor and center
                 timeslot = random.choice(available_timeslots)
                 doctor = timeslot.doctor
+                center = timeslot.center
                 patient = random.choice(patients)
                 
                 # Remove used timeslot from available list
@@ -175,16 +171,17 @@ class Command(BaseCommand):
                 status = random.choice(statuses)
                 priority = random.choice(priorities)
 
-                # Create appointment
+                # Create appointment with center
                 appointment = Appointment.objects.create(
                     patient=patient,
                     doctor=doctor,
+                    center=center,  # Add center to appointment
                     appointment_type=apt_type,
                     date=timeslot.date,
                     time_slot=timeslot,
                     status=status,
                     priority=priority,
-                    notes=f'Sample {apt_type} appointment with {priority} priority'
+                    notes=f'Sample {apt_type} appointment at {center.name}'
                 )
 
                 # Mark timeslot as unavailable

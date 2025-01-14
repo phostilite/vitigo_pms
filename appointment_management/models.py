@@ -27,6 +27,21 @@ class TimeSlotConfig(models.Model):
     class Meta:
         ordering = ['start_time']
 
+class Center(models.Model):
+    """Medical centers/clinic locations"""
+    name = models.CharField(max_length=100)
+    address = models.TextField()
+    contact_number = models.CharField(max_length=20)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
 class DoctorTimeSlot(models.Model):
     """Available time slots for each doctor"""
     doctor = models.ForeignKey(
@@ -35,6 +50,13 @@ class DoctorTimeSlot(models.Model):
         related_name='time_slots',
         limit_choices_to={'role__name': 'DOCTOR'}
     )
+    center = models.ForeignKey(
+        Center,
+        on_delete=models.CASCADE,
+        related_name='doctor_time_slots',
+        blank=True,
+        null=True
+    )
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -42,16 +64,17 @@ class DoctorTimeSlot(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('doctor', 'date', 'start_time')
+        unique_together = ('doctor', 'center', 'date', 'start_time')
         ordering = ['date', 'start_time']
 
     def __str__(self):
         return f"{self.date} {self.start_time}-{self.end_time}"
 
     def clean(self):
-        # Check if the time slot falls within doctor's availability
+        # Check if the time slot falls within doctor's availability at the specific center
         day_of_week = self.date.weekday()
         availability = self.doctor.availability.filter(
+            center=self.center,
             day_of_week=day_of_week,
             start_time__lte=self.start_time,
             end_time__gte=self.end_time,
@@ -59,7 +82,20 @@ class DoctorTimeSlot(models.Model):
         ).exists()
         
         if not availability:
-            raise ValidationError("Time slot is outside doctor's availability hours")
+            raise ValidationError("Time slot is outside doctor's availability hours at this center")
+
+        # Check for overlapping slots at the same center
+        overlapping_slots = DoctorTimeSlot.objects.filter(
+            doctor=self.doctor,
+            center=self.center,
+            date=self.date,
+            start_time__lt=self.end_time,
+            end_time__gt=self.start_time
+        )
+        if self.pk:
+            overlapping_slots = overlapping_slots.exclude(pk=self.pk)
+        if overlapping_slots.exists():
+            raise ValidationError("This time slot overlaps with another slot at the same center")
 
 
 class Appointment(models.Model):
@@ -97,6 +133,13 @@ class Appointment(models.Model):
         related_name='doctor_appointments',
         limit_choices_to={'role__name': 'DOCTOR'}   
     )
+    center = models.ForeignKey(
+        Center,
+        on_delete=models.CASCADE,
+        related_name='appointments',
+        blank = True,
+        null = True
+    )
     appointment_type = models.CharField(max_length=20, choices=APPOINTMENT_TYPES, default='CONSULTATION')
     date = models.DateField()
     time_slot = models.ForeignKey(DoctorTimeSlot, on_delete=models.CASCADE, null=True, blank=True)
@@ -107,6 +150,10 @@ class Appointment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
+        # Ensure the time slot belongs to the correct center
+        if self.time_slot and self.center != self.time_slot.center:
+            raise ValidationError("The selected time slot is not available at this center")
+            
         if self.appointment_type == 'FOLLOW_UP':
             days_until_appointment = (self.date - timezone.now().date()).days
             if days_until_appointment > 30:
