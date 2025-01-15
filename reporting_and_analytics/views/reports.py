@@ -19,7 +19,7 @@ from django.db import transaction
 from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
-from .models import Report, ReportCategory, ReportExport
+from ..models import Report, ReportCategory, ReportExport
 
 # Configure logging
 logger = logging.getLogger(__name__)
