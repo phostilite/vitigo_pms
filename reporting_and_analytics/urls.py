@@ -12,4 +12,7 @@ urlpatterns = [
     path('category/<int:category_id>/reports/', 
          report_views.CategoryReportsView.as_view(), 
          name='category_reports'),
+    path('report/<int:report_id>/exports/', 
+         report_views.ReportExportsView.as_view(), 
+         name='report_exports'),
 ]
