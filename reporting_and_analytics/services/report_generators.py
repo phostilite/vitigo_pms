@@ -18,6 +18,7 @@ from .generators.query_volume_report_generator import QueryVolumeReportGenerator
 from .generators.staff_report_generator import StaffReportGenerator
 from .generators.performance_report_generator import PerformanceReportGenerator
 from .generators.conversion_report_generator import ConversionReportGenerator
+from .generators.resolution_report_generator import ResolutionReportGenerator
 
 class ReportGeneratorFactory:
     """Factory class to get appropriate report generator based on report type"""
@@ -62,4 +63,13 @@ class ReportGeneratorFactory:
                 return ConversionReportGenerator.generate_source_conversion_analysis
             elif report_name == "Follow-up to Conversion Timeline":
                 return ConversionReportGenerator.generate_followup_conversion_timeline
+        elif report_category == "Resolution Reports":
+            if report_name == "Resolution Summary Analysis":
+                return ResolutionReportGenerator.generate_resolution_summary
+            elif report_name == "Common Resolution Patterns":
+                return ResolutionReportGenerator.generate_resolution_patterns
+            elif report_name == "Time to Resolution by Query Type":
+                return ResolutionReportGenerator.generate_time_to_resolution_by_type
+            elif report_name == "Resolution Satisfaction Correlation":
+                return ResolutionReportGenerator.generate_resolution_satisfaction_correlation
         return None
