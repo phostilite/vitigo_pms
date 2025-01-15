@@ -20,6 +20,7 @@ from .generators.performance_report_generator import PerformanceReportGenerator
 from .generators.conversion_report_generator import ConversionReportGenerator
 from .generators.resolution_report_generator import ResolutionReportGenerator
 from .generators.status_report_generator import StatusReportGenerator
+from .generators.priority_report_generator import PriorityReportGenerator
 
 class ReportGeneratorFactory:
     """Factory class to get appropriate report generator based on report type"""
@@ -82,4 +83,13 @@ class ReportGeneratorFactory:
                 return StatusReportGenerator.generate_resolution_rate_report
             elif report_name == "Status Transition Analysis":
                 return StatusReportGenerator.generate_status_transition_analysis
+        elif report_category == "Priority Based Reports":
+            if report_name == "High Priority Queries Status":
+                return PriorityReportGenerator.generate_high_priority_status
+            elif report_name == "Priority Distribution Analysis":
+                return PriorityReportGenerator.generate_priority_distribution
+            elif report_name == "SLA Compliance Report":
+                return PriorityReportGenerator.generate_sla_compliance_report
+            elif report_name == "Priority Escalation Tracking":
+                return PriorityReportGenerator.generate_priority_escalation_tracking
         return None
