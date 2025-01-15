@@ -1,5 +1,6 @@
 {% extends '../../base.html' %}
 {% load static %}
+{% load crispy_forms_tags %}
 
 {% block content %}
 <div class="p-4 mt-14 sm:ml-64">
@@ -14,115 +15,69 @@
         </ol>
     </nav>
 
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Create New Time Slot</h1>
-            <p class="mt-1 text-sm text-gray-600">Add a new time slot for doctor availability</p>
-        </div>
+    <!-- Header with Doctor Info -->
+    <div>
+        <h1 class="text-2xl font-semibold text-gray-900">Create Time Slot</h1>
+        {% if doctor %}
+        <p class="mt-1 text-sm text-gray-600">Creating time slot for Dr. {{ doctor.get_full_name }}</p>
+        {% endif %}
     </div>
 
-    <!-- Main Content -->
-    <div class="max-w-3xl bg-white rounded-lg shadow p-6">
-        {% if messages %}
-        <div class="mb-6">
-            {% for message in messages %}
-            <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
+    <!-- Form Section -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
         <form method="post" class="space-y-6">
             {% csrf_token %}
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Doctor Selection -->
-                <div class="space-y-2">
-                    <label for="{{ form.doctor.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Doctor <span class="text-red-500">*</span>
-                    </label>
-                    {{ form.doctor }}
-                    {% if form.doctor.errors %}
-                    <div class="text-red-500 text-sm">
-                        {% for error in form.doctor.errors %}
-                        <p>{{ error }}</p>
+            <!-- Error Messages -->
+            {% if form.errors %}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong class="font-bold">Please correct the following errors:</strong>
+                <ul class="list-disc list-inside">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
                         {% endfor %}
-                    </div>
-                    {% endif %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Doctor Selection -->
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                    {{ form.doctor|as_crispy_field }}
                 </div>
 
                 <!-- Center Selection -->
-                <div class="space-y-2">
-                    <label for="{{ form.center.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Medical Center <span class="text-red-500">*</span>
-                    </label>
-                    {{ form.center }}
-                    {% if form.center.errors %}
-                    <div class="text-red-500 text-sm">
-                        {% for error in form.center.errors %}
-                        <p>{{ error }}</p>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <!-- Date -->
-                <div class="space-y-2">
-                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Date <span class="text-red-500">*</span>
-                    </label>
-                    {{ form.date }}
-                    {% if form.date.errors %}
-                    <div class="text-red-500 text-sm">
-                        {% for error in form.date.errors %}
-                        <p>{{ error }}</p>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <!-- Time Range -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label for="{{ form.start_time.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                            Start Time <span class="text-red-500">*</span>
-                        </label>
-                        {{ form.start_time }}
-                        {% if form.start_time.errors %}
-                        <div class="text-red-500 text-sm">
-                            {% for error in form.start_time.errors %}
-                            <p>{{ error }}</p>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="space-y-2">
-                        <label for="{{ form.end_time.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                            End Time <span class="text-red-500">*</span>
-                        </label>
-                        {{ form.end_time }}
-                        {% if form.end_time.errors %}
-                        <div class="text-red-500 text-sm">
-                            {% for error in form.end_time.errors %}
-                            <p>{{ error }}</p>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
+                <div>
+                    {{ form.center|as_crispy_field }}
                 </div>
             </div>
 
-            <!-- Form Actions -->
-            <div class="flex justify-end space-x-4 pt-4 border-t">
-                <a href="{% url 'timeslot_dashboard' %}" 
-                   class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <!-- Date and Time Selection -->
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div>
+                    {{ form.date|as_crispy_field }}
+                </div>
+
+                <div>
+                    {{ form.start_time|as_crispy_field }}
+                </div>
+
+                <div>
+                    {{ form.end_time|as_crispy_field }}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <a href="{% url 'timeslot_dashboard' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                     Cancel
                 </a>
-                <button type="submit" 
-                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 border border-transparent rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Create Time Slot
                 </button>
             </div>
@@ -130,20 +85,29 @@
     </div>
 </div>
 
+<!-- JavaScript for Form Validation -->
+{% block extra_js %}
 <script>
-    // Enhance form fields with select2 for better dropdown experience
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize doctor and center select fields with select2
-        $('#id_doctor, #id_center').select2({
-            theme: 'default',
-            width: '100%',
-            placeholder: 'Select an option',
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(e) {
+            const date = document.querySelector('#{{ form.date.id_for_label }}').value;
+            const startTime = document.querySelector('#{{ form.start_time.id_for_label }}').value;
+            const endTime = document.querySelector('#{{ form.end_time.id_for_label }}').value;
+            
+            if (!date || !startTime || !endTime) {
+                e.preventDefault();
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            if (startTime >= endTime) {
+                e.preventDefault();
+                alert('End time must be after start time');
+                return;
+            }
         });
-
-        // Set min date for date picker to today
-        const dateInput = document.getElementById('{{ form.date.id_for_label }}');
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.min = today;
     });
 </script>
+{% endblock %}
 {% endblock %}

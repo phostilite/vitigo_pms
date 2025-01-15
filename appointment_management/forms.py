@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from access_control.models import Role
 from django.utils import timezone
 from datetime import datetime
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -125,10 +126,35 @@ class ReminderConfigurationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['templates'].queryset = ReminderTemplate.objects.filter(is_active=True)
 
-class DoctorTimeSlotForm(forms.ModelForm):
+class DoctorTimeSlotUpdateForm(forms.ModelForm):
     class Meta:
         model = DoctorTimeSlot
         fields = ['center', 'date', 'start_time', 'end_time', 'is_available']
+        widgets = {
+            'center': forms.Select(attrs={'class': 'form-select rounded-lg w-full'}),
+            'date': forms.DateInput(attrs={
+                'class': 'form-input rounded-lg w-full',
+                'type': 'date'
+            }),
+            'start_time': forms.TimeInput(attrs={
+                'class': 'form-input rounded-lg w-full',
+                'type': 'time'
+            }),
+            'end_time': forms.TimeInput(attrs={
+                'class': 'form-input rounded-lg w-full',
+                'type': 'time'
+            }),
+            'is_available': forms.CheckboxInput(attrs={
+                'class': 'form-checkbox rounded text-blue-600'
+            })
+        }
+        help_texts = {
+            'center': 'Update the medical center where the time slot will be available.',
+            'date': 'Change the date for this time slot (cannot be set to past dates).',
+            'start_time': 'Modify the starting time of the availability slot (24-hour format).',
+            'end_time': 'Modify the ending time of the availability slot (must be after start time).',
+            'is_available': 'Uncheck this box if you want to mark the time slot as unavailable.'
+        }
 
     def clean(self):
         cleaned_data = super().clean()
@@ -144,3 +170,40 @@ class DoctorTimeSlotForm(forms.ModelForm):
                 self.add_error('date', 'Cannot create time slots in the past')
 
         return cleaned_data
+
+class DoctorTimeSlotCreateForm(forms.ModelForm):
+    class Meta:
+        model = DoctorTimeSlot
+        fields = ['doctor', 'center', 'date', 'start_time', 'end_time']
+        widgets = {
+            'doctor': forms.Select(attrs={'class': 'form-select rounded-lg w-full'}),
+            'center': forms.Select(attrs={'class': 'form-select rounded-lg w-full'}),
+            'date': forms.DateInput(attrs={
+                'class': 'form-input rounded-lg w-full',
+                'type': 'date'
+            }),
+            'start_time': forms.TimeInput(attrs={
+                'class': 'form-input rounded-lg w-full',
+                'type': 'time'
+            }),
+            'end_time': forms.TimeInput(attrs={
+                'class': 'form-input rounded-lg w-full',
+                'type': 'time'
+            })
+        }
+        help_texts = {
+            'doctor': 'Select the doctor for whom you want to create the time slot.',
+            'center': 'Choose the medical center where the doctor will be available.',
+            'date': 'Select a future date for the time slot (cannot be in the past).',
+            'start_time': 'Choose the starting time of the availability slot (24-hour format).',
+            'end_time': 'Choose the ending time of the availability slot (must be after start time).'
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make all fields required
+        for field in self.fields:
+            self.fields[field].required = True
+            # Add asterisk to required field labels
+            if self.fields[field].required:
+                self.fields[field].label = f"{self.fields[field].label}*"

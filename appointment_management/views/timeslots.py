@@ -9,7 +9,7 @@ from ..models import DoctorTimeSlot, Center
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403
 from ..utils import get_template_path
-from ..forms import DoctorTimeSlotForm
+from ..forms import DoctorTimeSlotUpdateForm, DoctorTimeSlotCreateForm
 from django.contrib.auth import get_user_model
 import logging
 from django.db.models import Count, Q
@@ -128,7 +128,7 @@ class DoctorTimeSlotsView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
 class DoctorTimeSlotCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = DoctorTimeSlot
-    form_class = DoctorTimeSlotForm
+    form_class = DoctorTimeSlotCreateForm
     success_url = reverse_lazy('timeslot_dashboard')
 
     def test_func(self):
@@ -149,10 +149,21 @@ class DoctorTimeSlotCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVi
 
     def form_valid(self, form):
         try:
-            with transaction.atomic():
-                self.object = form.save()
-                messages.success(self.request, "Time slot created successfully")
-                return super().form_valid(form)
+            timeslot = form.save(commit=False)
+            
+            # Basic validation
+            if timeslot.date < timezone.now().date():
+                form.add_error('date', "Cannot create time slots in the past")
+                return self.form_invalid(form)
+                
+            if timeslot.start_time >= timeslot.end_time:
+                form.add_error('end_time', "End time must be after start time")
+                return self.form_invalid(form)
+            
+            timeslot.save()
+            messages.success(self.request, "Time slot created successfully")
+            return super().form_valid(form)
+            
         except Exception as e:
             logger.error(f"Error creating time slot: {str(e)}")
             messages.error(self.request, f"Error creating time slot: {str(e)}")
@@ -164,12 +175,15 @@ class DoctorTimeSlotCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVi
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = "Create Time Slot"
+        context.update({
+            'page_title': "Create Time Slot",
+            'centers': Center.objects.filter(is_active=True)
+        })
         return context
 
 class DoctorTimeSlotUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = DoctorTimeSlot
-    form_class = DoctorTimeSlotForm
+    form_class = DoctorTimeSlotUpdateForm
     
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'appointment_management')

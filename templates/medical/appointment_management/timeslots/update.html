@@ -1,5 +1,6 @@
 {% extends '../../base.html' %}
 {% load static %}
+{% load crispy_forms_tags %}
 
 {% block content %}
 <div class="p-4 mt-14 sm:ml-64">
@@ -17,13 +18,13 @@
     </nav>
 
     <!-- Header -->
-    <div class="mb-6">
+    <div>
         <h1 class="text-2xl font-semibold text-gray-900">{{ page_title }}</h1>
         <p class="mt-1 text-sm text-gray-600">Update time slot details</p>
     </div>
 
     <!-- Form Card -->
-    <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
+    <div class="bg-white rounded-lg shadow-sm p-6">
         <form method="post" class="space-y-6">
             {% csrf_token %}
 
@@ -55,9 +56,8 @@
 
             <!-- Center Selection -->
             <div>
-                <label for="{{ form.center.id_for_label }}" class="block text-sm font-medium text-gray-700">Center</label>
                 <div class="mt-1">
-                    {{ form.center }}
+                    {{ form.center|as_crispy_field }}
                 </div>
                 {% if form.center.errors %}
                     <div class="mt-1 text-sm text-red-600">
@@ -70,9 +70,8 @@
 
             <!-- Date -->
             <div>
-                <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700">Date</label>
                 <div class="mt-1">
-                    {{ form.date }}
+                    {{ form.date|as_crispy_field }}
                 </div>
                 {% if form.date.errors %}
                     <div class="mt-1 text-sm text-red-600">
@@ -86,9 +85,8 @@
             <!-- Time Range -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label for="{{ form.start_time.id_for_label }}" class="block text-sm font-medium text-gray-700">Start Time</label>
                     <div class="mt-1">
-                        {{ form.start_time }}
+                        {{ form.start_time|as_crispy_field }}
                     </div>
                     {% if form.start_time.errors %}
                         <div class="mt-1 text-sm text-red-600">
@@ -100,9 +98,8 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.end_time.id_for_label }}" class="block text-sm font-medium text-gray-700">End Time</label>
                     <div class="mt-1">
-                        {{ form.end_time }}
+                        {{ form.end_time|as_crispy_field }}
                     </div>
                     {% if form.end_time.errors %}
                         <div class="mt-1 text-sm text-red-600">
