@@ -169,11 +169,71 @@ class DoctorTimeSlotCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVi
 
 class DoctorTimeSlotUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = DoctorTimeSlot
-    fields = ['doctor', 'center', 'date', 'start_time', 'end_time', 'is_available']
-    success_url = reverse_lazy('timeslot_management')
-
+    form_class = DoctorTimeSlotForm
+    
     def test_func(self):
         return PermissionManager.check_module_access(self.request.user, 'appointment_management')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.test_func():
+            messages.error(request, "You don't have permission to update time slots")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_names(self):
+        return [get_template_path(
+            'timeslots/update.html',
+            self.request.user.role,
+            'appointment_management'
+        )]
+
+    def get_success_url(self):
+        return reverse_lazy('doctor_timeslots', kwargs={'pk': self.object.doctor.id})
+
+    def form_valid(self, form):
+        try:
+            with transaction.atomic():
+                timeslot = form.save(commit=False)
+                
+                # Add validation error messages
+                if timeslot.date < timezone.now().date():
+                    form.add_error('date', "Cannot modify past time slots")
+                    return self.form_invalid(form)
+                    
+                if not timeslot.is_available and self.get_object().is_available:
+                    form.add_error(None, "Cannot modify a booked time slot")
+                    return self.form_invalid(form)
+                
+                timeslot.save()
+                messages.success(self.request, "Time slot updated successfully")
+                return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Error updating time slot: {str(e)}")
+            form.add_error(None, f"Error updating time slot: {str(e)}")
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        # Log all form errors for debugging
+        logger.error(f"Form validation errors: {form.errors}")
+        
+        # Add specific error messages for each field
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, f"{field}: {error}")
+        
+        if form.non_field_errors():
+            for error in form.non_field_errors():
+                messages.error(self.request, error)
+                
+        return super().form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'page_title': f"Update Time Slot - {self.object.doctor.get_full_name()}",
+            'doctor': self.object.doctor
+        })
+        return context
 
 class DoctorTimeSlotDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = DoctorTimeSlot
