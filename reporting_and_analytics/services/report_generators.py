@@ -19,6 +19,7 @@ from .generators.staff_report_generator import StaffReportGenerator
 from .generators.performance_report_generator import PerformanceReportGenerator
 from .generators.conversion_report_generator import ConversionReportGenerator
 from .generators.resolution_report_generator import ResolutionReportGenerator
+from .generators.status_report_generator import StatusReportGenerator
 
 class ReportGeneratorFactory:
     """Factory class to get appropriate report generator based on report type"""
@@ -72,4 +73,13 @@ class ReportGeneratorFactory:
                 return ResolutionReportGenerator.generate_time_to_resolution_by_type
             elif report_name == "Resolution Satisfaction Correlation":
                 return ResolutionReportGenerator.generate_resolution_satisfaction_correlation
+        elif report_category == "Status Based Reports":
+            if report_name == "Open Queries Summary":
+                return StatusReportGenerator.generate_open_queries_summary
+            elif report_name == "Stalled Queries Analysis":
+                return StatusReportGenerator.generate_stalled_queries_analysis
+            elif report_name == "Resolution Rate Report":
+                return StatusReportGenerator.generate_resolution_rate_report
+            elif report_name == "Status Transition Analysis":
+                return StatusReportGenerator.generate_status_transition_analysis
         return None
