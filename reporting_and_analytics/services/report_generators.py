@@ -17,6 +17,7 @@ from query_management.models import Query
 from .generators.query_volume_report_generator import QueryVolumeReportGenerator
 from .generators.staff_report_generator import StaffReportGenerator
 from .generators.performance_report_generator import PerformanceReportGenerator
+from .generators.conversion_report_generator import ConversionReportGenerator
 
 class ReportGeneratorFactory:
     """Factory class to get appropriate report generator based on report type"""
@@ -52,4 +53,13 @@ class ReportGeneratorFactory:
                 return PerformanceReportGenerator.generate_pending_followups_list
             elif report_name == "User Satisfaction Ratings Summary":
                 return PerformanceReportGenerator.generate_satisfaction_ratings_summary
+        elif report_category == "Conversion Reports":
+            if report_name == "Conversion Rate by Query Type":
+                return ConversionReportGenerator.generate_conversion_by_type
+            elif report_name == "Patient Conversion Tracking":
+                return ConversionReportGenerator.generate_patient_conversion_tracking
+            elif report_name == "Source-wise Conversion Analysis":
+                return ConversionReportGenerator.generate_source_conversion_analysis
+            elif report_name == "Follow-up to Conversion Timeline":
+                return ConversionReportGenerator.generate_followup_conversion_timeline
         return None
