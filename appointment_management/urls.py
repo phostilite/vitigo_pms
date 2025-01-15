@@ -77,4 +77,6 @@ urlpatterns = [
     path('timeslots/slot/<int:pk>/edit/', DoctorTimeSlotUpdateView.as_view(), name='timeslot_update'),
     path('timeslots/slot/<int:pk>/delete/', DoctorTimeSlotDeleteView.as_view(), name='timeslot_delete'),
 
+    # Add this new URL pattern for doctor timeslots
+    path('doctor-timeslots/', appointment_views.get_doctor_timeslots, name='get_doctor_timeslots'),
 ]

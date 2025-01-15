@@ -40,7 +40,8 @@ from django.views.generic.edit import FormView
 
 # Django REST Framework imports
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 # Local application imports
@@ -261,124 +262,104 @@ class AppointmentCreateView(LoginRequiredMixin, CreateView):
             # Don't raise the exception - we want the appointment to be created even if notifications fail
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_doctor_timeslots(request):
     """
-    Get all timeslots for a doctor on a specific date at a specific center.
-    Required query parameters:
-    - user_id: ID of the doctor
-    - date: Date in YYYY-MM-DD format
-    - center_id: ID of the medical center
+    Get available time slots for a doctor on a specific date at a specific center.
+    Required query parameters: user_id, date, center_id
     """
-    logger.info("Fetching doctor timeslots")
+    logger.info("Starting get_doctor_timeslots function")
     
     try:
-        # Get and validate user_id
+        # Get and validate parameters
         user_id = request.GET.get('user_id')
-        if not user_id:
-            logger.error("No user_id provided")
-            return Response(
-                {"error": "user_id is required"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Get and validate date
         date_str = request.GET.get('date')
-        if not date_str:
-            logger.error("No date provided")
-            return Response(
-                {"error": "date is required"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Get and validate center_id
         center_id = request.GET.get('center_id')
-        if not center_id:
-            logger.error("No center_id provided")
-            return Response(
-                {"error": "center_id is required"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
+        logger.debug(f"Received parameters - user_id: {user_id}, date: {date_str}, center_id: {center_id}")
+
+        if not all([user_id, date_str, center_id]):
+            missing_params = []
+            if not user_id: missing_params.append('user_id')
+            if not date_str: missing_params.append('date')
+            if not center_id: missing_params.append('center_id')
+            
+            error_msg = f"Missing required parameters: {', '.join(missing_params)}"
+            logger.error(error_msg)
+            return Response({"error": error_msg}, status=400)
+
+        # Parse date
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError as e:
-            logger.error(f"Invalid date format: {e}")
-            return Response(
-                {"error": "Invalid date format. Use YYYY-MM-DD"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            error_msg = f"Invalid date format: {str(e)}"
+            logger.error(error_msg)
+            return Response({"error": error_msg}, status=400)
 
-        # Get the user, doctor profile, and center
+        # Get doctor and validate role
         try:
-            user = User.objects.get(id=user_id)
-            center = Center.objects.get(id=center_id, is_active=True)
-            
-            if not user.role.name == 'DOCTOR':
-                logger.error(f"User {user_id} is not a doctor")
-                return Response(
-                    {"error": "User is not a doctor"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
+            doctor = User.objects.get(id=user_id)
+            if not doctor.role.name == 'DOCTOR':
+                error_msg = f"User {user_id} is not a doctor"
+                logger.error(error_msg)
+                return Response({"error": error_msg}, status=400)
         except User.DoesNotExist:
-            logger.error(f"Doctor not found with ID {user_id}")
-            return Response(
-                {"error": "Doctor not found"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Center.DoesNotExist:
-            logger.error(f"Center not found with ID {center_id}")
-            return Response(
-                {"error": "Center not found or inactive"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            error_msg = f"Doctor with ID {user_id} not found"
+            logger.error(error_msg)
+            return Response({"error": error_msg}, status=404)
 
-        # Get all timeslots for the doctor on the specified date at the specified center
-        current_datetime = timezone.now()
-        timeslots = DoctorTimeSlot.objects.filter(
-            doctor=user,
+        # Get center
+        try:
+            center = Center.objects.get(id=center_id, is_active=True)
+        except Center.DoesNotExist:
+            error_msg = f"Center with ID {center_id} not found or inactive"
+            logger.error(error_msg)
+            return Response({"error": error_msg}, status=404)
+
+        # Get time slots
+        time_slots = DoctorTimeSlot.objects.filter(
+            doctor=doctor,
             date=date,
             center=center
         ).order_by('start_time')
 
-        # Filter out past time slots
-        timeslots_data = []
-        for slot in timeslots:
-            slot_datetime = timezone.make_aware(
-                datetime.combine(date, slot.start_time)
-            )
+        logger.debug(f"Found {time_slots.count()} time slots")
+
+        # Convert time slots to response format
+        slots_data = []
+        current_datetime = timezone.now()
+        
+        for slot in time_slots:
+            slot_datetime = timezone.make_aware(datetime.combine(date, slot.start_time))
             
             if slot_datetime > current_datetime:
-                timeslots_data.append({
+                slots_data.append({
                     'id': slot.id,
                     'start_time': slot.start_time.strftime('%H:%M'),
                     'end_time': slot.end_time.strftime('%H:%M'),
                     'is_available': slot.is_available,
-                    'center_id': slot.center.id,
-                    'center_name': slot.center.name
                 })
 
-        if not timeslots_data:
-            return Response({
-                'doctor_name': user.get_full_name(),
-                'date': date_str,
-                'center_name': center.name,
-                'timeslots': [],
-                'message': 'No available time slots found for this date and center.'
-            })
-
-        return Response({
-            'doctor_name': user.get_full_name(),
+        response_data = {
+            'doctor_name': doctor.get_full_name(),
             'date': date_str,
             'center_name': center.name,
-            'timeslots': timeslots_data
-        })
+            'timeslots': slots_data
+        }
+
+        if not slots_data:
+            logger.info("No available time slots found")
+            response_data['message'] = 'No available time slots found for this date and center.'
+
+        logger.info("Successfully retrieved time slots")
+        return Response(response_data)
 
     except Exception as e:
-        logger.exception(f"Unexpected error in get_doctor_timeslots: {str(e)}")
+        error_msg = f"Unexpected error in get_doctor_timeslots: {str(e)}"
+        logger.exception(error_msg)
         return Response(
-            {"error": "An unexpected error occurred"}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {"error": "An unexpected error occurred while fetching time slots"}, 
+            status=500
         )
 
 @api_view(['PUT'])
