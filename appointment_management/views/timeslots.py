@@ -237,20 +237,30 @@ class DoctorTimeSlotUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateVi
 
 class DoctorTimeSlotDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = DoctorTimeSlot
-    success_url = reverse_lazy('timeslot_management')
-
+    
     def test_func(self):
         return PermissionManager.check_module_delete(self.request.user, 'appointment_management')
 
-    def delete(self, request, *args, **kwargs):
+    def get_success_url(self):
+        return reverse_lazy('doctor_timeslots', kwargs={'pk': self.object.doctor.id})
+
+    def post(self, request, *args, **kwargs):
         try:
-            timeslot = self.get_object()
-            if timeslot.date >= timezone.now().date():
-                messages.error(request, "Cannot delete future time slots")
-                return redirect('timeslot_management')
+            self.object = self.get_object()
+            if self.object.date < timezone.now().date():
+                messages.error(request, "Cannot delete past time slots")
+                return redirect('doctor_timeslots', pk=self.object.doctor.id)
+            
+            if not self.object.is_available:
+                messages.error(request, "Cannot delete booked time slots")
+                return redirect('doctor_timeslots', pk=self.object.doctor.id)
+            
+            doctor_id = self.object.doctor.id
+            self.object.delete()
             messages.success(request, "Time slot deleted successfully")
-            return super().delete(request, *args, **kwargs)
+            return redirect('doctor_timeslots', pk=doctor_id)
+            
         except Exception as e:
             logger.error(f"Error deleting time slot: {str(e)}")
             messages.error(request, f"Error deleting time slot: {str(e)}")
-            return redirect('timeslot_management')
+            return redirect('doctor_timeslots', pk=self.object.doctor.id)
