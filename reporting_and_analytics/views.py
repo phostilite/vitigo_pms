@@ -61,7 +61,7 @@ class ReportsAnalyticsManagementView(LoginRequiredMixin, View):
             # Group categories by module
             categories_by_module = {}
             for category in report_categories:
-                module_name = category.module.name
+                module_name = category.module.display_name
                 if module_name not in categories_by_module:
                     categories_by_module[module_name] = []
                 categories_by_module[module_name].append(category)
@@ -79,4 +79,32 @@ class ReportsAnalyticsManagementView(LoginRequiredMixin, View):
         except Exception as e:
             logger.error(f"Error in ReportsAnalyticsManagementView: {str(e)}")
             messages.error(request, "An error occurred while fetching reports data.")
-            return redirect('dashboard')
+            return redirect('reporting_and_analytics:reports_analytics_management')
+
+class CategoryReportsView(LoginRequiredMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if not PermissionManager.check_module_access(request.user, 'reporting_and_analytics'):
+            messages.error(request, "You don't have permission to access Reports & Analytics")
+            return handler403(request, exception="Access Denied")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_template_name(self):
+        return get_template_path('reports/category_reports.html', self.request.user.role, 'reporting_and_analytics')
+
+    def get(self, request, category_id):
+        try:
+            category = get_object_or_404(ReportCategory, id=category_id)
+            reports = Report.objects.filter(category=category).order_by('order')
+            
+            context = {
+                'category': category,
+                'reports': reports,
+            }
+            
+            template_name = self.get_template_name()
+            return render(request, template_name, context)
+
+        except Exception as e:
+            logger.error(f"Error in CategoryReportsView: {str(e)}")
+            messages.error(request, "An error occurred while fetching category reports.")
+            return redirect('reporting_and_analytics:reports_analytics_management')
