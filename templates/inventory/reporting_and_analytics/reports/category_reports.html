@@ -85,9 +85,72 @@
                     <h3 class="text-lg font-medium text-gray-900 mb-2">{{ report.name }}</h3>
                     <p class="text-sm text-gray-600 mb-4">{{ report.description }}</p>
                     <div class="flex items-center justify-start">
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                        <button data-modal-target="generateReportModal-{{ report.id }}" 
+                                data-modal-toggle="generateReportModal-{{ report.id }}"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
                             Generate Report
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Generation Modal -->
+            <div id="generateReportModal-{{ report.id }}" tabindex="-1" aria-hidden="true" 
+                 class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative w-full max-w-md max-h-full">
+                    <!-- Modal content -->
+                    <div class="relative bg-white rounded-lg shadow">
+                        <!-- Modal header -->
+                        <div class="flex items-start justify-between p-4 border-b rounded-t">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                Generate Report: {{ report.name }}
+                            </h3>
+                            <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" 
+                                    data-modal-hide="generateReportModal-{{ report.id }}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <!-- Modal body -->
+                        <form method="post" action="{% url 'reporting_and_analytics:category_reports' category.id %}" class="p-6">
+                            {% csrf_token %}
+                            <input type="hidden" name="report_id" value="{{ report.id }}">
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="preset-range-{{ report.id }}" class="block mb-2 text-sm font-medium text-gray-900">Select Date Range</label>
+                                    <select name="preset_range" id="preset-range-{{ report.id }}" 
+                                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                        {% for value, label in form.fields.preset_range.choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                {% if form.errors %}
+                                <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <p>{{ error }}</p>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <p>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Modal footer -->
+                            <div class="flex items-center space-x-2 mt-6">
+                                <button type="submit" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                                    Generate
+                                </button>
+                                <button type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10" 
+                                        data-modal-hide="generateReportModal-{{ report.id }}">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

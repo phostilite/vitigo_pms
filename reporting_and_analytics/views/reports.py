@@ -20,6 +20,7 @@ from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
 from ..models import Report, ReportCategory, ReportExport
+from ..forms import ReportGenerationForm
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -96,9 +97,13 @@ class CategoryReportsView(LoginRequiredMixin, View):
             category = get_object_or_404(ReportCategory, id=category_id)
             reports = Report.objects.filter(category=category).order_by('order')
             
+            # Add form to context
+            form = ReportGenerationForm()
+            
             context = {
                 'category': category,
                 'reports': reports,
+                'form': form,
             }
             
             template_name = self.get_template_name()
@@ -108,6 +113,36 @@ class CategoryReportsView(LoginRequiredMixin, View):
             logger.error(f"Error in CategoryReportsView: {str(e)}")
             messages.error(request, "An error occurred while fetching category reports.")
             return redirect('reporting_and_analytics:reports_analytics_management')
+
+    def post(self, request, category_id):
+        try:
+            report_id = request.POST.get('report_id')
+            report = get_object_or_404(Report, id=report_id)
+            form = ReportGenerationForm(request.POST)
+
+            if form.is_valid():
+                # Create report export but don't save yet
+                report_export = ReportExport(
+                    report=report,
+                    created_by=request.user,
+                    status='PENDING',
+                    # Get the cleaned dates from form
+                    start_date=form.cleaned_data['start_date'],
+                    end_date=form.cleaned_data['end_date']
+                )
+                report_export.save()
+
+                messages.success(request, "Report generation has been initiated.")
+                return redirect('reporting_and_analytics:report_exports', report_id=report.id)
+            
+            # If form is invalid, redirect back with error
+            messages.error(request, "Invalid date range selected.")
+            return redirect('reporting_and_analytics:category_reports', category_id=category_id)
+
+        except Exception as e:
+            logger.error(f"Error generating report: {str(e)}")
+            messages.error(request, "An error occurred while generating the report.")
+            return redirect('reporting_and_analytics:category_reports', category_id=category_id)
 
 class ReportExportsView(LoginRequiredMixin, View):
     def dispatch(self, request, *args, **kwargs):
