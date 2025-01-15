@@ -19,7 +19,7 @@ from django.db import transaction
 from access_control.models import Role
 from access_control.permissions import PermissionManager
 from error_handling.views import handler403, handler404, handler500
-from .models import Report, ReportExecution, Dashboard, DashboardWidget, AnalyticsLog
+from .models import Report, ReportCategory, ReportExport
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -48,57 +48,35 @@ class ReportsAnalyticsManagementView(LoginRequiredMixin, View):
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_name(self):
-        return get_template_path('reports_analytics_dashboard.html', self.request.user.role, 'reporting_and_analytics')
+        return get_template_path('dashboard/dashboard.html', self.request.user.role, 'reporting_and_analytics')
 
     def get(self, request):
         try:
-            template_path = self.get_template_name()
-            if not template_path:
-                return handler403(request, exception="Unauthorized access")
+            # Get reports data
+            report_categories = ReportCategory.objects.select_related('module').all()
+            total_categories = report_categories.count()
+            total_reports = Report.objects.count()
+            total_exports = ReportExport.objects.count()
 
-            # Fetch data with try-except blocks
-            try:
-                reports = Report.objects.all()
-                report_executions = ReportExecution.objects.all()
-                dashboards = Dashboard.objects.all()
-                dashboard_widgets = DashboardWidget.objects.all()
-                analytics_logs = AnalyticsLog.objects.all()
-            except Exception as e:
-                logger.error(f"Error fetching reports data: {str(e)}")
-                return handler500(request, exception="Error fetching reports data")
+            # Group categories by module
+            categories_by_module = {}
+            for category in report_categories:
+                module_name = category.module.name
+                if module_name not in categories_by_module:
+                    categories_by_module[module_name] = []
+                categories_by_module[module_name].append(category)
 
-            # Calculate statistics
             context = {
-                'reports': reports,
-                'report_executions': report_executions,
-                'dashboards': dashboards,
-                'dashboard_widgets': dashboard_widgets,
-                'analytics_logs': analytics_logs,
-                'total_reports': reports.count(),
-                'total_executions': report_executions.count(),
-                'total_dashboards': dashboards.count(),
-                'total_widgets': dashboard_widgets.count(),
-                'total_logs': analytics_logs.count(),
-                'user_role': request.user.role,
+                'categories_by_module': categories_by_module,
+                'total_categories': total_categories,
+                'total_reports': total_reports,
+                'total_exports': total_exports,
             }
 
-            # Handle pagination
-            try:
-                paginator = Paginator(reports, 10)
-                page = request.GET.get('page')
-                context['reports'] = paginator.page(page)
-                context['paginator'] = paginator
-                context['page_obj'] = context['reports']
-            except PageNotAnInteger:
-                context['reports'] = paginator.page(1)
-            except EmptyPage:
-                context['reports'] = paginator.page(paginator.num_pages)
-            except Exception as e:
-                logger.error(f"Pagination error: {str(e)}")
-                messages.warning(request, "Error in pagination. Showing all results.")
-
-            return render(request, template_path, context)
+            template_name = self.get_template_name()
+            return render(request, template_name, context)
 
         except Exception as e:
-            logger.exception(f"Unexpected error in ReportsAnalyticsManagementView: {str(e)}")
-            return handler500(request, exception="An unexpected error occurred")
+            logger.error(f"Error in ReportsAnalyticsManagementView: {str(e)}")
+            messages.error(request, "An error occurred while fetching reports data.")
+            return redirect('dashboard')

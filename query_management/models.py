@@ -105,3 +105,5 @@ class QueryAttachment(models.Model):
 
     def __str__(self):
         return f"Attachment for Query {self.query.query_id}"
+    
+
