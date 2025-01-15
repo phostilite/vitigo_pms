@@ -21,6 +21,7 @@ from .generators.conversion_report_generator import ConversionReportGenerator
 from .generators.resolution_report_generator import ResolutionReportGenerator
 from .generators.status_report_generator import StatusReportGenerator
 from .generators.priority_report_generator import PriorityReportGenerator
+from .generators.tag_report_generator import TagReportGenerator
 
 class ReportGeneratorFactory:
     """Factory class to get appropriate report generator based on report type"""
@@ -92,4 +93,13 @@ class ReportGeneratorFactory:
                 return PriorityReportGenerator.generate_sla_compliance_report
             elif report_name == "Priority Escalation Tracking":
                 return PriorityReportGenerator.generate_priority_escalation_tracking
+        elif report_category == "Tag Analysis Reports":
+            if report_name == "Common Issues/Tags Report":
+                return TagReportGenerator.generate_common_issues_report
+            elif report_name == "Tag Correlation Analysis":
+                return TagReportGenerator.generate_tag_correlation_analysis
+            elif report_name == "Trending Tags Over Time":
+                return TagReportGenerator.generate_trending_tags_report
+            elif report_name == "Tag Distribution by Source":
+                return TagReportGenerator.generate_tag_source_distribution
         return None
